@@ -2,17 +2,27 @@
 
 {% block content %}
 
-<div class="page-head">
+<div class="student-hero">
 
     <div>
-        <h1>Welcome, {{ student.name }}</h1>
+
+        <div class="eyebrow">
+            STUDENT DASHBOARD
+        </div>
+
+        <h1>
+            Welcome, {{ student.name }}
+        </h1>
 
         <p class="muted">
             {{ student.roll_no }}
-            ·
-            {{ student.department or 'Student' }}
+            {% if student.department %}
+                · {{ student.department }}
+            {% endif %}
         </p>
+
     </div>
+
 
     <a
         class="primary button"
@@ -24,9 +34,11 @@
 </div>
 
 
-<div class="cards">
+<!-- ATTENDANCE SUMMARY -->
 
-    <div class="card">
+<div class="cards attendance-cards">
+
+    <div class="card stat-card">
 
         <span>Attendance</span>
 
@@ -34,21 +46,34 @@
             {{ pct }}%
         </strong>
 
+        <div class="progress">
+
+            <div
+                class="progress-fill"
+                style="width: {{ [pct, 100]|min }}%;"
+            ></div>
+
+        </div>
+
     </div>
 
 
-    <div class="card">
+    <div class="card stat-card">
 
-        <span>Present</span>
+        <span>Classes Attended</span>
 
         <strong>
             {{ present }}
         </strong>
 
+        <small>
+            Present classes
+        </small>
+
     </div>
 
 
-    <div class="card">
+    <div class="card stat-card">
 
         <span>Total Classes</span>
 
@@ -56,14 +81,81 @@
             {{ total }}
         </strong>
 
+        <small>
+            Classes conducted
+        </small>
+
     </div>
 
 </div>
 
 
+<!-- ATTENDANCE STATUS -->
+
 <div class="panel">
 
-    <h2>Attendance History</h2>
+    <div class="section-title">
+
+        <div>
+
+            <h2>Attendance Overview</h2>
+
+            <p class="muted">
+                Your current attendance performance.
+            </p>
+
+        </div>
+
+        <div class="attendance-number">
+            {{ pct }}%
+        </div>
+
+    </div>
+
+
+    <div class="large-progress">
+
+        <div
+            class="large-progress-fill"
+            style="width: {{ [pct, 100]|min }}%;"
+        ></div>
+
+    </div>
+
+
+    <div class="progress-labels">
+
+        <span>
+            {{ present }} Present
+        </span>
+
+        <span>
+            {{ total - present }} Absent
+        </span>
+
+    </div>
+
+</div>
+
+
+<!-- ATTENDANCE HISTORY -->
+
+<div class="panel">
+
+    <div class="section-title">
+
+        <div>
+
+            <h2>Attendance History</h2>
+
+            <p class="muted">
+                Complete class-by-class attendance record.
+            </p>
+
+        </div>
+
+    </div>
+
 
     <div class="table-wrap">
 
@@ -72,10 +164,15 @@
             <thead>
 
                 <tr>
+
                     <th>Subject</th>
+
                     <th>Date</th>
+
                     <th>Time</th>
+
                     <th>Status</th>
+
                 </tr>
 
             </thead>
@@ -88,33 +185,69 @@
                 <tr>
 
                     <td>
-                        {{ h.code }} — {{ h.name }}
+
+                        <strong>
+                            {{ h.code }}
+                        </strong>
+
+                        <br>
+
+                        <span class="muted">
+                            {{ h.name }}
+                        </span>
+
                     </td>
+
 
                     <td>
                         {{ h.class_date }}
                     </td>
 
+
                     <td>
                         {{ h.start_time }}
                     </td>
 
+
                     <td>
 
-                        <span class="badge">
-                            {{ h.status }}
+                        {% if h.status == 'Present' %}
+
+                        <span class="status-badge present">
+                            ✓ Present
                         </span>
+
+                        {% else %}
+
+                        <span class="status-badge absent">
+                            ✕ Absent
+                        </span>
+
+                        {% endif %}
 
                     </td>
 
                 </tr>
+
 
                 {% else %}
 
                 <tr>
 
                     <td colspan="4">
-                        No attendance yet.
+
+                        <div class="empty-state">
+
+                            <strong>
+                                No classes yet
+                            </strong>
+
+                            <span>
+                                Your attendance history will appear here.
+                            </span>
+
+                        </div>
+
                     </td>
 
                 </tr>
@@ -128,5 +261,6 @@
     </div>
 
 </div>
+
 
 {% endblock %}
