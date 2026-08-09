@@ -2,6 +2,8 @@
 
 {% block content %}
 
+<!-- STUDENT HERO -->
+
 <div class="student-hero">
 
     <div>
@@ -16,6 +18,7 @@
 
         <p class="muted">
             {{ student.roll_no }}
+
             {% if student.department %}
                 · {{ student.department }}
             {% endif %}
@@ -34,13 +37,16 @@
 </div>
 
 
-<!-- ATTENDANCE SUMMARY -->
+<!-- STAT CARDS -->
 
 <div class="cards attendance-cards">
 
+
     <div class="card stat-card">
 
-        <span>Attendance</span>
+        <span>
+            Attendance
+        </span>
 
         <strong>
             {{ pct }}%
@@ -60,7 +66,9 @@
 
     <div class="card stat-card">
 
-        <span>Classes Attended</span>
+        <span>
+            Classes Attended
+        </span>
 
         <strong>
             {{ present }}
@@ -75,7 +83,9 @@
 
     <div class="card stat-card">
 
-        <span>Total Classes</span>
+        <span>
+            Total Classes
+        </span>
 
         <strong>
             {{ total }}
@@ -87,10 +97,11 @@
 
     </div>
 
+
 </div>
 
 
-<!-- ATTENDANCE STATUS -->
+<!-- ATTENDANCE OVERVIEW -->
 
 <div class="panel">
 
@@ -98,13 +109,16 @@
 
         <div>
 
-            <h2>Attendance Overview</h2>
+            <h2>
+                Attendance Overview
+            </h2>
 
             <p class="muted">
                 Your current attendance performance.
             </p>
 
         </div>
+
 
         <div class="attendance-number">
             {{ pct }}%
@@ -146,7 +160,9 @@
 
         <div>
 
-            <h2>Attendance History</h2>
+            <h2>
+                Attendance History
+            </h2>
 
             <p class="muted">
                 Complete class-by-class attendance record.
@@ -165,13 +181,21 @@
 
                 <tr>
 
-                    <th>Subject</th>
+                    <th>
+                        Subject
+                    </th>
 
-                    <th>Date</th>
+                    <th>
+                        Date
+                    </th>
 
-                    <th>Time</th>
+                    <th>
+                        Time
+                    </th>
 
-                    <th>Status</th>
+                    <th>
+                        Status
+                    </th>
 
                 </tr>
 
@@ -213,15 +237,15 @@
 
                         {% if h.status == 'Present' %}
 
-                        <span class="status-badge present">
-                            ✓ Present
-                        </span>
+                            <span class="status-badge present">
+                                ✓ Present
+                            </span>
 
                         {% else %}
 
-                        <span class="status-badge absent">
-                            ✕ Absent
-                        </span>
+                            <span class="status-badge absent">
+                                ✕ Absent
+                            </span>
 
                         {% endif %}
 
@@ -261,6 +285,5 @@
     </div>
 
 </div>
-
 
 {% endblock %}
