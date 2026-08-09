@@ -198,10 +198,39 @@ button:disabled {
 .login-card {
     max-width: 430px;
     margin: 70px auto;
-    background: #ffffff;
-    border-radius: 16px;
-    padding: 22px;
-    box-shadow: 0 5px 20px rgba(16, 24, 40, 0.07);
+
+    background: rgba(255, 255, 255, 0.88);
+
+    border-radius: 22px;
+
+    padding: 32px;
+
+    box-shadow:
+        0 20px 60px rgba(16, 24, 40, 0.12);
+
+    border: 1px solid rgba(255, 255, 255, 0.7);
+
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+}
+.login-card h1 {
+    font-size: 30px;
+    margin-bottom: 8px;
+}
+
+.login-card input {
+    transition: 0.2s ease;
+}
+
+.login-card input:focus {
+    outline: none;
+    border-color: #175cd3;
+    box-shadow: 0 0 0 4px rgba(23, 92, 211, 0.12);
+}
+
+.login-card .primary {
+    width: 100%;
+    margin-top: 20px;
 }
 
 /* MESSAGES */
