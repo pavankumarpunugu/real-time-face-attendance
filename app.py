@@ -901,7 +901,7 @@ def update_subject(subject_id):
 
 
 # =========================================================
-# DELETE SUBJECT
+# DELETE SUBJECT + ITS CLASS SESSIONS + ATTENDANCE
 # =========================================================
 
 @app.route(
@@ -928,38 +928,122 @@ def delete_subject(subject_id):
             error="Subject not found."
         ), 404
 
-    class_count = q(
-        """
-        SELECT COUNT(*) AS c
-        FROM classes
-        WHERE subject_id=:sid
-        """,
-        {"sid": subject_id},
-        True,
-        True
-    )["c"]
+    try:
+        # Delete attendance records belonging to this
+        # subject's class sessions first.
+        q(
+            """
+            DELETE FROM attendance
+            WHERE class_id IN (
+                SELECT id
+                FROM classes
+                WHERE subject_id=:sid
+            )
+            """,
+            {"sid": subject_id}
+        )
 
-    if class_count > 0:
+        # Delete all class sessions for the subject.
+        q(
+            """
+            DELETE FROM classes
+            WHERE subject_id=:sid
+            """,
+            {"sid": subject_id}
+        )
+
+        # Finally delete the subject itself.
+        q(
+            """
+            DELETE FROM subjects
+            WHERE id=:id
+            """,
+            {"id": subject_id}
+        )
+
+        return jsonify(
+            ok=True,
+            message=(
+                f"Subject {subject['code']} deleted "
+                "along with its class sessions "
+                "and attendance records."
+            )
+        )
+
+    except Exception as e:
         return jsonify(
             ok=False,
-            error=(
-                "This subject has class sessions. "
-                "Delete those class sessions first."
-            )
-        ), 409
+            error=f"Delete failed: {str(e)}"
+        ), 500
 
-    q(
+
+# =========================================================
+# DELETE CLASS SESSION + ITS ATTENDANCE
+# =========================================================
+
+@app.route(
+    "/classes/<int:class_id>",
+    methods=["DELETE"]
+)
+@admin_required
+def delete_class(class_id):
+
+    class_info = q(
         """
-        DELETE FROM subjects
-        WHERE id=:id
+        SELECT
+            c.id,
+            c.class_date,
+            c.start_time,
+            s.code,
+            s.name
+        FROM classes c
+        JOIN subjects s
+            ON s.id=c.subject_id
+        WHERE c.id=:id
         """,
-        {"id": subject_id}
+        {"id": class_id},
+        True,
+        True
     )
 
-    return jsonify(
-        ok=True,
-        message="Subject deleted successfully."
-    )
+    if not class_info:
+        return jsonify(
+            ok=False,
+            error="Class session not found."
+        ), 404
+
+    try:
+        # Delete attendance records first.
+        q(
+            """
+            DELETE FROM attendance
+            WHERE class_id=:cid
+            """,
+            {"cid": class_id}
+        )
+
+        # Then delete the class session.
+        q(
+            """
+            DELETE FROM classes
+            WHERE id=:id
+            """,
+            {"id": class_id}
+        )
+
+        return jsonify(
+            ok=True,
+            message=(
+                f"{class_info['code']} class session "
+                "deleted along with its attendance records."
+            )
+        )
+
+    except Exception as e:
+        return jsonify(
+            ok=False,
+            error=f"Delete failed: {str(e)}"
+        ), 500
 
 
 # =========================================================
