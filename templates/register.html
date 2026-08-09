@@ -1,0 +1,367 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="page-head">
+
+    <div>
+        <h1>Register Student</h1>
+
+        <p class="muted">
+            Capture three face samples for reliable enrollment.
+        </p>
+    </div>
+
+</div>
+
+
+<div class="grid2">
+
+    <!-- STUDENT DETAILS -->
+
+    <div class="panel">
+
+        <label>Roll Number</label>
+
+        <input
+            id="roll"
+            placeholder="101"
+        >
+
+
+        <label>Name</label>
+
+        <input
+            id="name"
+            placeholder="Student name"
+        >
+
+
+        <label>Email</label>
+
+        <input
+            id="email"
+            type="email"
+            placeholder="student@example.com"
+        >
+
+
+        <label>Department</label>
+
+        <input
+            id="department"
+            placeholder="CSE"
+        >
+
+
+        <label>Student temporary password</label>
+
+        <input
+            id="password"
+            placeholder="student123"
+            value="student123"
+        >
+
+
+        <button
+            id="start"
+            class="secondary"
+        >
+            Start Camera
+        </button>
+
+
+        <button
+            id="capture"
+            class="primary"
+            disabled
+        >
+            Capture Sample
+        </button>
+
+
+        <button
+            id="save"
+            class="success"
+            disabled
+        >
+            Save Student
+        </button>
+
+
+        <div
+            id="samples"
+            class="samples"
+        >
+            Samples: 0 / 3
+        </div>
+
+
+        <div
+            id="status"
+            class="status"
+        ></div>
+
+    </div>
+
+
+    <!-- CAMERA -->
+
+    <div class="camera panel">
+
+        <video
+            id="video"
+            autoplay
+            muted
+            playsinline
+        ></video>
+
+    </div>
+
+</div>
+
+{% endblock %}
+
+
+{% block scripts %}
+
+<script>
+
+const MODEL_URL =
+    "https://justadudewhohacks.github.io/face-api.js/models";
+
+
+let stream = null;
+
+let embeddings = [];
+
+
+const video =
+    document.getElementById("video");
+
+const statusEl =
+    document.getElementById("status");
+
+
+async function loadModels() {
+
+    statusEl.textContent =
+        "Loading face models...";
+
+
+    await Promise.all([
+
+        faceapi.nets.tinyFaceDetector
+            .loadFromUri(MODEL_URL),
+
+        faceapi.nets.faceLandmark68Net
+            .loadFromUri(MODEL_URL),
+
+        faceapi.nets.faceRecognitionNet
+            .loadFromUri(MODEL_URL)
+
+    ]);
+
+}
+
+
+start.onclick = async function() {
+
+    try {
+
+        await loadModels();
+
+
+        stream =
+            await navigator.mediaDevices
+                .getUserMedia({
+
+                    video: {
+                        facingMode: "user"
+                    },
+
+                    audio: false
+
+                });
+
+
+        video.srcObject =
+            stream;
+
+
+        capture.disabled =
+            false;
+
+
+        start.disabled =
+            true;
+
+
+        statusEl.textContent =
+            "Camera ready. Look at the camera.";
+
+
+    } catch (error) {
+
+        statusEl.textContent =
+            "Camera/model error: "
+            + error.message;
+
+    }
+
+};
+
+
+capture.onclick = async function() {
+
+    const result =
+        await faceapi
+            .detectSingleFace(
+
+                video,
+
+                new faceapi
+                    .TinyFaceDetectorOptions({
+
+                        inputSize: 224,
+
+                        scoreThreshold: 0.5
+
+                    })
+
+            )
+            .withFaceLandmarks()
+            .withFaceDescriptor();
+
+
+    if (!result) {
+
+        statusEl.textContent =
+            "No clear face detected. Look straight at the camera.";
+
+        return;
+
+    }
+
+
+    embeddings.push(
+        Array.from(result.descriptor)
+    );
+
+
+    samples.textContent =
+        `Samples: ${embeddings.length} / 3`;
+
+
+    if (embeddings.length >= 3) {
+
+        capture.disabled =
+            true;
+
+
+        save.disabled =
+            false;
+
+
+        statusEl.textContent =
+            "Three samples captured. Save the student.";
+
+    }
+
+    else {
+
+        statusEl.textContent =
+            `Sample ${embeddings.length} captured. Slightly change your angle and capture again.`;
+
+    }
+
+};
+
+
+save.onclick = async function() {
+
+    const payload = {
+
+        roll_no:
+            roll.value,
+
+        name:
+            name.value,
+
+        email:
+            email.value,
+
+        department:
+            department.value,
+
+        password:
+            password.value,
+
+        embeddings:
+            embeddings
+
+    };
+
+
+    if (
+        !payload.roll_no ||
+        !payload.name ||
+        embeddings.length < 3
+    ) {
+
+        statusEl.textContent =
+            "Complete the fields and capture 3 samples.";
+
+        return;
+
+    }
+
+
+    const response =
+        await fetch(
+
+            "/api/students",
+
+            {
+
+                method: "POST",
+
+                headers: {
+                    "Content-Type":
+                        "application/json"
+                },
+
+                body:
+                    JSON.stringify(payload)
+
+            }
+
+        );
+
+
+    const data =
+        await response.json();
+
+
+    if (data.ok) {
+
+        statusEl.textContent =
+            `Registered. Student login: ${data.login_username} / ${data.temporary_password}`;
+
+        save.disabled =
+            true;
+
+    }
+
+    else {
+
+        statusEl.textContent =
+            data.error;
+
+    }
+
+};
+
+</script>
+
+{% endblock %}
