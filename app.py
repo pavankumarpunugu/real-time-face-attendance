@@ -129,6 +129,9 @@ def current_user():
     uid=session.get("user_id")
     if not uid: return None
     return q("SELECT * FROM users WHERE id=:id", {"id":uid}, True, True)
+@app.context_processor
+def inject_current_user():
+    return {"current_user": current_user}
 
 def login_required(fn):
     @wraps(fn)
