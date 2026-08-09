@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="page-head">
+
+    <div>
+        <h1>Welcome, {{ student.name }}</h1>
+
+        <p class="muted">
+            {{ student.roll_no }}
+            ·
+            {{ student.department or 'Student' }}
+        </p>
+    </div>
+
+    <a
+        class="primary button"
+        href="{{ url_for('attendance_page') }}"
+    >
+        Take Attendance
+    </a>
+
+</div>
+
+
+<div class="cards">
+
+    <div class="card">
+
+        <span>Attendance</span>
+
+        <strong>
+            {{ pct }}%
+        </strong>
+
+    </div>
+
+
+    <div class="card">
+
+        <span>Present</span>
+
+        <strong>
+            {{ present }}
+        </strong>
+
+    </div>
+
+
+    <div class="card">
+
+        <span>Total Classes</span>
+
+        <strong>
+            {{ total }}
+        </strong>
+
+    </div>
+
+</div>
+
+
+<div class="panel">
+
+    <h2>Attendance History</h2>
+
+    <div class="table-wrap">
+
+        <table>
+
+            <thead>
+
+                <tr>
+                    <th>Subject</th>
+                    <th>Date</th>
+                    <th>Time</th>
+                    <th>Status</th>
+                </tr>
+
+            </thead>
+
+
+            <tbody>
+
+                {% for h in history %}
+
+                <tr>
+
+                    <td>
+                        {{ h.code }} — {{ h.name }}
+                    </td>
+
+                    <td>
+                        {{ h.class_date }}
+                    </td>
+
+                    <td>
+                        {{ h.start_time }}
+                    </td>
+
+                    <td>
+
+                        <span class="badge">
+                            {{ h.status }}
+                        </span>
+
+                    </td>
+
+                </tr>
+
+                {% else %}
+
+                <tr>
+
+                    <td colspan="4">
+                        No attendance yet.
+                    </td>
+
+                </tr>
+
+                {% endfor %}
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</div>
+
+{% endblock %}
