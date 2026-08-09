@@ -500,3 +500,14 @@ td {
         font-size: 24px;
     }
 }
+/* ADMIN ACTION BUTTON */
+
+.danger {
+    background: #d92d20;
+    color: #ffffff;
+    border: none;
+}
+
+.danger:hover {
+    background: #b42318;
+}
