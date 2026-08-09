@@ -2,12 +2,16 @@
 
 {% block content %}
 
-<div>
-    <h1>Admin Dashboard</h1>
+<div class="page-head">
+    <div>
+        <div class="eyebrow">ADMIN DASHBOARD</div>
 
-    <p class="muted">
-        Students, subjects, classes and attendance.
-    </p>
+        <h1>Attendance Management</h1>
+
+        <p class="muted">
+            Students, subjects, classes and attendance.
+        </p>
+    </div>
 </div>
 
 
@@ -15,19 +19,24 @@
 
 <div class="cards">
 
-    <div class="card">
+    <div class="card stat-card">
         <span>Students</span>
         <strong>{{ students|length }}</strong>
+        <small>Registered students</small>
     </div>
 
-    <div class="card">
+
+    <div class="card stat-card">
         <span>Present Today</span>
         <strong>{{ present_today }}</strong>
+        <small>Attendance marked today</small>
     </div>
 
-    <div class="card">
+
+    <div class="card stat-card">
         <span>Subjects</span>
         <strong>{{ subjects|length }}</strong>
+        <small>Available subjects</small>
     </div>
 
 </div>
@@ -37,17 +46,46 @@
 
 <div class="panel">
 
-    <h2>Create Subject</h2>
+    <div class="section-title">
 
-    <input
-        id="scode"
-        placeholder="Code e.g. CS301"
-    >
+        <div>
+            <h2>Create Subject</h2>
 
-    <input
-        id="sname"
-        placeholder="Subject name"
-    >
+            <p class="muted">
+                Add a new subject to the attendance system.
+            </p>
+        </div>
+
+    </div>
+
+
+    <div class="grid2">
+
+        <div>
+
+            <label>Subject Code</label>
+
+            <input
+                id="scode"
+                placeholder="e.g. CS301"
+            >
+
+        </div>
+
+
+        <div>
+
+            <label>Subject Name</label>
+
+            <input
+                id="sname"
+                placeholder="e.g. Python Programming"
+            >
+
+        </div>
+
+    </div>
+
 
     <button
         class="primary"
@@ -55,6 +93,7 @@
     >
         Create Subject
     </button>
+
 
     <div
         id="subjectMsg"
@@ -64,11 +103,134 @@
 </div>
 
 
+<!-- SUBJECT MANAGEMENT -->
+
+<div class="panel">
+
+    <div class="section-title">
+
+        <div>
+            <h2>Subject Management</h2>
+
+            <p class="muted">
+                Edit or remove subjects.
+            </p>
+        </div>
+
+    </div>
+
+
+    <div class="table-wrap">
+
+        <table>
+
+            <thead>
+
+                <tr>
+                    <th>Code</th>
+                    <th>Subject</th>
+                    <th>Actions</th>
+                </tr>
+
+            </thead>
+
+
+            <tbody>
+
+                {% for s in subjects %}
+
+                <tr>
+
+                    <td>
+                        <strong>
+                            {{ s.code }}
+                        </strong>
+                    </td>
+
+
+                    <td>
+                        {{ s.name }}
+                    </td>
+
+
+                    <td>
+
+                        <button
+                            class="secondary"
+                            onclick="editSubject(
+                                {{ s.id }},
+                                '{{ s.code|e }}',
+                                '{{ s.name|e }}'
+                            )"
+                        >
+                            Edit
+                        </button>
+
+
+                        <button
+                            class="danger"
+                            onclick="deleteSubject(
+                                {{ s.id }},
+                                '{{ s.name|e }}'
+                            )"
+                        >
+                            Delete
+                        </button>
+
+                    </td>
+
+                </tr>
+
+
+                {% else %}
+
+                <tr>
+
+                    <td colspan="3">
+
+                        <div class="empty-state">
+                            <strong>No subjects yet</strong>
+
+                            <span>
+                                Create your first subject above.
+                            </span>
+                        </div>
+
+                    </td>
+
+                </tr>
+
+                {% endfor %}
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</div>
+
+
 <!-- CREATE CLASS -->
 
 <div class="panel">
 
-    <h2>Create Class Session</h2>
+    <div class="section-title">
+
+        <div>
+
+            <h2>Create Class Session</h2>
+
+            <p class="muted">
+                Schedule a class for attendance.
+            </p>
+
+        </div>
+
+    </div>
+
+
+    <label>Subject</label>
 
     <select id="subject">
 
@@ -76,10 +238,13 @@
             Select subject
         </option>
 
+
         {% for s in subjects %}
 
         <option value="{{ s.id }}">
+
             {{ s.code }} — {{ s.name }}
+
         </option>
 
         {% endfor %}
@@ -87,16 +252,32 @@
     </select>
 
 
-    <input
-        id="cdate"
-        type="date"
-    >
+    <div class="grid2">
+
+        <div>
+
+            <label>Date</label>
+
+            <input
+                id="cdate"
+                type="date"
+            >
+
+        </div>
 
 
-    <input
-        id="ctime"
-        type="time"
-    >
+        <div>
+
+            <label>Start Time</label>
+
+            <input
+                id="ctime"
+                type="time"
+            >
+
+        </div>
+
+    </div>
 
 
     <button
@@ -115,11 +296,76 @@
 </div>
 
 
+<!-- CLASS-WISE ATTENDANCE -->
+
+<div class="panel">
+
+    <div class="section-title">
+
+        <div>
+
+            <h2>Class-wise Attendance</h2>
+
+            <p class="muted">
+                View attendance for a specific class session.
+            </p>
+
+        </div>
+
+    </div>
+
+
+    <label>Select Class</label>
+
+    <select id="attendanceClass">
+
+        <option value="">
+            Loading classes...
+        </option>
+
+    </select>
+
+
+    <button
+        class="primary"
+        onclick="loadClassAttendance()"
+    >
+        View Attendance
+    </button>
+
+
+    <div
+        id="classAttendanceMsg"
+        class="status"
+    ></div>
+
+
+    <div
+        id="classAttendanceResult"
+        style="margin-top: 20px;"
+    ></div>
+
+</div>
+
+
 <!-- STUDENTS -->
 
 <div class="panel">
 
-    <h2>Students</h2>
+    <div class="section-title">
+
+        <div>
+
+            <h2>Students</h2>
+
+            <p class="muted">
+                Registered students in the system.
+            </p>
+
+        </div>
+
+    </div>
+
 
     <div class="table-wrap">
 
@@ -128,10 +374,12 @@
             <thead>
 
                 <tr>
+
                     <th>Roll</th>
                     <th>Name</th>
                     <th>Department</th>
                     <th>Email</th>
+
                 </tr>
 
             </thead>
@@ -144,16 +392,21 @@
                 <tr>
 
                     <td>
-                        {{ s.roll_no }}
+                        <strong>
+                            {{ s.roll_no }}
+                        </strong>
                     </td>
+
 
                     <td>
                         {{ s.name }}
                     </td>
 
+
                     <td>
                         {{ s.department or '-' }}
                     </td>
+
 
                     <td>
                         {{ s.email or '-' }}
@@ -161,12 +414,25 @@
 
                 </tr>
 
+
                 {% else %}
 
                 <tr>
 
                     <td colspan="4">
-                        No students yet.
+
+                        <div class="empty-state">
+
+                            <strong>
+                                No students yet
+                            </strong>
+
+                            <span>
+                                Registered students will appear here.
+                            </span>
+
+                        </div>
+
                     </td>
 
                 </tr>
@@ -188,16 +454,31 @@
 
 <script>
 
+
+/* =====================================================
+   CREATE SUBJECT
+===================================================== */
+
 async function createSubject() {
 
     const code =
-        document.getElementById("scode").value.trim();
+        document
+            .getElementById("scode")
+            .value
+            .trim();
+
 
     const name =
-        document.getElementById("sname").value.trim();
+        document
+            .getElementById("sname")
+            .value
+            .trim();
+
 
     const message =
-        document.getElementById("subjectMsg");
+        document.getElementById(
+            "subjectMsg"
+        );
 
 
     if (!code || !name) {
@@ -215,22 +496,23 @@ async function createSubject() {
 
     try {
 
-        const response = await fetch(
-            "/subjects",
-            {
-                method: "POST",
+        const response =
+            await fetch(
+                "/subjects",
+                {
+                    method: "POST",
 
-                headers: {
-                    "Content-Type":
-                        "application/json"
-                },
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
 
-                body: JSON.stringify({
-                    code: code,
-                    name: name
-                })
-            }
-        );
+                    body: JSON.stringify({
+                        code: code,
+                        name: name
+                    })
+                }
+            );
 
 
         const data =
@@ -247,45 +529,250 @@ async function createSubject() {
 
 
         message.textContent =
-            "Subject created successfully. Refresh the page.";
+            "Subject created successfully.";
+
+        document.getElementById(
+            "scode"
+        ).value = "";
+
+        document.getElementById(
+            "sname"
+        ).value = "";
 
 
-        document.getElementById("scode").value = "";
-
-        document.getElementById("sname").value = "";
+        setTimeout(
+            function() {
+                window.location.reload();
+            },
+            700
+        );
 
     }
 
     catch (error) {
 
-        console.error(
-            "Create subject error:",
-            error
-        );
-
         message.textContent =
-            "Error: " + error.message;
+            "Error: " +
+            error.message;
     }
 
 }
 
 
+/* =====================================================
+   EDIT SUBJECT
+===================================================== */
+
+async function editSubject(
+    subjectId,
+    oldCode,
+    oldName
+) {
+
+    const code =
+        prompt(
+            "Enter subject code:",
+            oldCode
+        );
+
+
+    if (code === null) {
+        return;
+    }
+
+
+    const name =
+        prompt(
+            "Enter subject name:",
+            oldName
+        );
+
+
+    if (name === null) {
+        return;
+    }
+
+
+    const cleanCode =
+        code.trim();
+
+
+    const cleanName =
+        name.trim();
+
+
+    if (!cleanCode || !cleanName) {
+
+        alert(
+            "Subject code and name are required."
+        );
+
+        return;
+    }
+
+
+    try {
+
+        const response =
+            await fetch(
+                `/subjects/${subjectId}`,
+                {
+                    method: "PUT",
+
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
+
+                    body: JSON.stringify({
+
+                        code:
+                            cleanCode,
+
+                        name:
+                            cleanName
+
+                    })
+                }
+            );
+
+
+        const data =
+            await response.json();
+
+
+        if (!response.ok || !data.ok) {
+
+            throw new Error(
+                data.error ||
+                "Failed to update subject."
+            );
+        }
+
+
+        alert(
+            data.message ||
+            "Subject updated successfully."
+        );
+
+
+        window.location.reload();
+
+    }
+
+    catch (error) {
+
+        alert(
+            "Update failed: " +
+            error.message
+        );
+    }
+
+}
+
+
+/* =====================================================
+   DELETE SUBJECT
+===================================================== */
+
+async function deleteSubject(
+    subjectId,
+    subjectName
+) {
+
+    const confirmed =
+        confirm(
+            `Delete subject "${subjectName}"?\n\n` +
+            `This is only possible if the subject ` +
+            `has no class sessions.`
+        );
+
+
+    if (!confirmed) {
+        return;
+    }
+
+
+    try {
+
+        const response =
+            await fetch(
+                `/subjects/${subjectId}`,
+                {
+                    method: "DELETE"
+                }
+            );
+
+
+        const data =
+            await response.json();
+
+
+        if (!response.ok || !data.ok) {
+
+            throw new Error(
+                data.error ||
+                "Failed to delete subject."
+            );
+        }
+
+
+        alert(
+            data.message ||
+            "Subject deleted successfully."
+        );
+
+
+        window.location.reload();
+
+    }
+
+    catch (error) {
+
+        alert(
+            "Delete failed: " +
+            error.message
+        );
+    }
+
+}
+
+
+/* =====================================================
+   CREATE CLASS
+===================================================== */
+
 async function createClass() {
 
     const subject =
-        document.getElementById("subject").value;
+        document
+            .getElementById("subject")
+            .value;
+
 
     const classDate =
-        document.getElementById("cdate").value;
+        document
+            .getElementById("cdate")
+            .value;
+
 
     const startTime =
-        document.getElementById("ctime").value;
+        document
+            .getElementById("ctime")
+            .value;
+
 
     const message =
-        document.getElementById("classMsg");
+        document.getElementById(
+            "classMsg"
+        );
 
 
-    if (!subject || !classDate || !startTime) {
+    if (
+        !subject ||
+        !classDate ||
+        !startTime
+    ) {
 
         message.textContent =
             "Select a subject and enter date and time.";
@@ -300,27 +787,31 @@ async function createClass() {
 
     try {
 
-        const response = await fetch(
-            "/classes",
-            {
-                method: "POST",
+        const response =
+            await fetch(
+                "/classes",
+                {
+                    method: "POST",
 
-                headers: {
-                    "Content-Type":
-                        "application/json"
-                },
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
 
-                body: JSON.stringify({
+                    body: JSON.stringify({
 
-                    subject_id: subject,
+                        subject_id:
+                            subject,
 
-                    class_date: classDate,
+                        class_date:
+                            classDate,
 
-                    start_time: startTime
+                        start_time:
+                            startTime
 
-                })
-            }
-        );
+                    })
+                }
+            );
 
 
         const data =
@@ -340,24 +831,410 @@ async function createClass() {
             "Class created successfully.";
 
 
-        document.getElementById("cdate").value = "";
+        document.getElementById(
+            "cdate"
+        ).value = "";
 
-        document.getElementById("ctime").value = "";
+
+        document.getElementById(
+            "ctime"
+        ).value = "";
+
+
+        loadClassOptions();
 
     }
 
     catch (error) {
 
-        console.error(
-            "Create class error:",
-            error
-        );
-
         message.textContent =
-            "Error: " + error.message;
+            "Error: " +
+            error.message;
     }
 
 }
+
+
+/* =====================================================
+   LOAD CLASSES
+===================================================== */
+
+async function loadClassOptions() {
+
+    const select =
+        document.getElementById(
+            "attendanceClass"
+        );
+
+
+    try {
+
+        const response =
+            await fetch(
+                "/api/classes",
+                {
+                    credentials:
+                        "same-origin"
+                }
+            );
+
+
+        const classes =
+            await response.json();
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                "Failed to load classes."
+            );
+        }
+
+
+        select.innerHTML = "";
+
+
+        const first =
+            document.createElement(
+                "option"
+            );
+
+
+        first.value = "";
+
+
+        first.textContent =
+            classes.length
+                ? "Select class session"
+                : "No classes available";
+
+
+        select.appendChild(first);
+
+
+        classes.forEach(
+            function(c) {
+
+                const option =
+                    document.createElement(
+                        "option"
+                    );
+
+
+                option.value =
+                    c.id;
+
+
+                option.textContent =
+                    `${c.code} — ${c.name} — ` +
+                    `${c.class_date} ${c.start_time}`;
+
+
+                select.appendChild(
+                    option
+                );
+
+            }
+        );
+
+    }
+
+    catch (error) {
+
+        select.innerHTML =
+            `<option value="">
+                Failed to load classes
+            </option>`;
+    }
+
+}
+
+
+/* =====================================================
+   VIEW CLASS ATTENDANCE
+===================================================== */
+
+async function loadClassAttendance() {
+
+    const classId =
+        document
+            .getElementById(
+                "attendanceClass"
+            )
+            .value;
+
+
+    const message =
+        document.getElementById(
+            "classAttendanceMsg"
+        );
+
+
+    const result =
+        document.getElementById(
+            "classAttendanceResult"
+        );
+
+
+    if (!classId) {
+
+        message.textContent =
+            "Select a class first.";
+
+        result.innerHTML = "";
+
+        return;
+    }
+
+
+    message.textContent =
+        "Loading attendance...";
+
+
+    result.innerHTML = "";
+
+
+    try {
+
+        const response =
+            await fetch(
+                `/api/class-attendance/${classId}`,
+                {
+                    credentials:
+                        "same-origin"
+                }
+            );
+
+
+        const data =
+            await response.json();
+
+
+        if (!response.ok || !data.ok) {
+
+            throw new Error(
+                data.error ||
+                "Failed to load attendance."
+            );
+        }
+
+
+        const info =
+            data.class_info;
+
+
+        const students =
+            data.students;
+
+
+        const present =
+            students.filter(
+                function(s) {
+                    return s.status === "Present";
+                }
+            ).length;
+
+
+        const total =
+            students.length;
+
+
+        const absent =
+            total - present;
+
+
+        const percentage =
+            total
+                ? ((present / total) * 100)
+                    .toFixed(1)
+                : "0.0";
+
+
+        let html = `
+
+            <div class="cards">
+
+                <div class="card stat-card">
+                    <span>Present</span>
+                    <strong>${present}</strong>
+                </div>
+
+                <div class="card stat-card">
+                    <span>Absent</span>
+                    <strong>${absent}</strong>
+                </div>
+
+                <div class="card stat-card">
+                    <span>Attendance</span>
+                    <strong>${percentage}%</strong>
+                </div>
+
+            </div>
+
+
+            <div class="section-title">
+
+                <div>
+
+                    <h2>
+                        ${info.code} — ${info.name}
+                    </h2>
+
+                    <p class="muted">
+                        ${info.class_date}
+                        ·
+                        ${info.start_time}
+                    </p>
+
+                </div>
+
+            </div>
+
+
+            <div class="table-wrap">
+
+                <table>
+
+                    <thead>
+
+                        <tr>
+                            <th>Roll</th>
+                            <th>Name</th>
+                            <th>Department</th>
+                            <th>Status</th>
+                        </tr>
+
+                    </thead>
+
+                    <tbody>
+        `;
+
+
+        if (students.length === 0) {
+
+            html += `
+
+                <tr>
+
+                    <td colspan="4">
+
+                        <div class="empty-state">
+
+                            <strong>
+                                No students found
+                            </strong>
+
+                        </div>
+
+                    </td>
+
+                </tr>
+
+            `;
+
+        }
+
+
+        students.forEach(
+            function(student) {
+
+                const isPresent =
+                    student.status ===
+                    "Present";
+
+
+                html += `
+
+                    <tr>
+
+                        <td>
+                            <strong>
+                                ${student.roll_no}
+                            </strong>
+                        </td>
+
+                        <td>
+                            ${student.name}
+                        </td>
+
+                        <td>
+                            ${student.department || "-"}
+                        </td>
+
+                        <td>
+
+                            ${
+                                isPresent
+
+                                ? `
+                                    <span
+                                        class="status-badge present"
+                                    >
+                                        ✓ Present
+                                    </span>
+                                  `
+
+                                : `
+                                    <span
+                                        class="status-badge absent"
+                                    >
+                                        ✕ Absent
+                                    </span>
+                                  `
+                            }
+
+                        </td>
+
+                    </tr>
+
+                `;
+
+            }
+        );
+
+
+        html += `
+
+                    </tbody>
+
+                </table>
+
+            </div>
+        `;
+
+
+        result.innerHTML =
+            html;
+
+
+        message.textContent =
+            "Attendance loaded successfully.";
+
+    }
+
+    catch (error) {
+
+        message.textContent =
+            "Error: " +
+            error.message;
+
+    }
+
+}
+
+
+/* =====================================================
+   INITIAL LOAD
+===================================================== */
+
+document.addEventListener(
+    "DOMContentLoaded",
+    function() {
+
+        loadClassOptions();
+
+    }
+);
 
 </script>
 
