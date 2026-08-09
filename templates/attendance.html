@@ -1,0 +1,457 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="page-head">
+
+    <div>
+        <h1>Take Attendance</h1>
+
+        <p class="muted">
+            Choose a class, then verify your face.
+        </p>
+    </div>
+
+</div>
+
+
+<div class="grid2">
+
+    <!-- CONTROLS -->
+
+    <div class="panel">
+
+        <label>Class Session</label>
+
+        <select id="classSelect">
+
+            <option value="">
+                Loading classes...
+            </option>
+
+        </select>
+
+
+        <button
+            id="start"
+            class="primary"
+        >
+            Start Camera
+        </button>
+
+
+        <div
+            id="result"
+            class="result-box"
+        >
+            Select a class and start the camera.
+        </div>
+
+    </div>
+
+
+    <!-- CAMERA -->
+
+    <div class="camera panel">
+
+        <video
+            id="video"
+            autoplay
+            muted
+            playsinline
+        ></video>
+
+    </div>
+
+</div>
+
+{% endblock %}
+
+
+{% block scripts %}
+
+<script>
+
+const MODEL_URL =
+    "https://justadudewhohacks.github.io/face-api.js/models";
+
+
+const video =
+    document.getElementById("video");
+
+
+const select =
+    document.getElementById("classSelect");
+
+
+const result =
+    document.getElementById("result");
+
+
+const start =
+    document.getElementById("start");
+
+
+let stream = null;
+
+let students = [];
+
+let running = false;
+
+
+/*
+    Lower distance = better match.
+
+    This is an initial MVP threshold.
+*/
+const THRESHOLD = 0.50;
+
+
+
+function distance(a, b) {
+
+    let sum = 0;
+
+
+    for (
+        let i = 0;
+        i < a.length;
+        i++
+    ) {
+
+        const difference =
+            a[i] - b[i];
+
+        sum +=
+            difference * difference;
+
+    }
+
+
+    return Math.sqrt(sum);
+
+}
+
+
+
+async function loadModels() {
+
+    await Promise.all([
+
+        faceapi.nets.tinyFaceDetector
+            .loadFromUri(MODEL_URL),
+
+        faceapi.nets.faceLandmark68Net
+            .loadFromUri(MODEL_URL),
+
+        faceapi.nets.faceRecognitionNet
+            .loadFromUri(MODEL_URL)
+
+    ]);
+
+
+    students =
+        await (
+            await fetch(
+                "/api/recognition-data"
+            )
+        ).json();
+
+
+    const classes =
+        await (
+            await fetch(
+                "/api/classes"
+            )
+        ).json();
+
+
+    select.innerHTML =
+        '<option value="">Select class</option>'
+        +
+        classes.map(
+            c =>
+                `<option value="${c.id}">
+                    ${c.code} — ${c.name} — ${c.class_date} ${c.start_time}
+                </option>`
+        ).join("");
+
+}
+
+
+
+function findBestMatch(descriptor) {
+
+    let best = null;
+
+    let bestDistance =
+        Infinity;
+
+
+    for (const student of students) {
+
+        for (
+            const embedding
+            of student.embeddings
+        ) {
+
+            const d =
+                distance(
+                    descriptor,
+                    embedding
+                );
+
+
+            if (
+                d < bestDistance
+            ) {
+
+                bestDistance =
+                    d;
+
+                best =
+                    student;
+
+            }
+
+        }
+
+    }
+
+
+    return {
+        best,
+        bestDistance
+    };
+
+}
+
+
+
+async function markAttendance(studentId) {
+
+    const response =
+        await fetch(
+            "/api/mark-attendance",
+            {
+
+                method: "POST",
+
+                headers: {
+                    "Content-Type":
+                        "application/json"
+                },
+
+                body:
+                    JSON.stringify({
+
+                        student_id:
+                            studentId,
+
+                        class_id:
+                            Number(
+                                select.value
+                            )
+
+                    })
+
+            }
+        );
+
+
+    return await response.json();
+
+}
+
+
+
+start.onclick = async function() {
+
+    if (!select.value) {
+
+        result.textContent =
+            "Please select a class first.";
+
+        return;
+
+    }
+
+
+    try {
+
+        start.disabled =
+            true;
+
+
+        result.textContent =
+            "Loading face recognition models...";
+
+
+        await loadModels();
+
+
+        stream =
+            await navigator.mediaDevices
+                .getUserMedia({
+
+                    video: {
+                        facingMode: "user"
+                    },
+
+                    audio: false
+
+                });
+
+
+        video.srcObject =
+            stream;
+
+
+        running =
+            true;
+
+
+        result.textContent =
+            "Camera ready. Look directly at the camera.";
+
+
+        scan();
+
+
+    }
+
+    catch (error) {
+
+        result.textContent =
+            "Camera error: "
+            + error.message;
+
+
+        start.disabled =
+            false;
+
+    }
+
+};
+
+
+
+async function scan() {
+
+    if (!running) {
+        return;
+    }
+
+
+    const detected =
+        await faceapi
+            .detectSingleFace(
+
+                video,
+
+                new faceapi
+                    .TinyFaceDetectorOptions({
+
+                        inputSize: 224,
+
+                        scoreThreshold: 0.5
+
+                    })
+
+            )
+            .withFaceLandmarks()
+            .withFaceDescriptor();
+
+
+    if (!detected) {
+
+        result.textContent =
+            "Looking for a face...";
+
+
+        setTimeout(
+            scan,
+            350
+        );
+
+
+        return;
+
+    }
+
+
+    const descriptor =
+        Array.from(
+            detected.descriptor
+        );
+
+
+    const match =
+        findBestMatch(
+            descriptor
+        );
+
+
+    if (
+        match.best &&
+        match.bestDistance <=
+            THRESHOLD
+    ) {
+
+        running =
+            false;
+
+
+        result.textContent =
+            `Face matched: ${match.best.name}. Recording attendance...`;
+
+
+        const data =
+            await markAttendance(
+                match.best.id
+            );
+
+
+        result.textContent =
+            data.message;
+
+
+        if (stream) {
+
+            stream
+                .getTracks()
+                .forEach(
+                    track =>
+                        track.stop()
+                );
+
+        }
+
+
+        start.disabled =
+            false;
+
+
+        start.textContent =
+            "Take Again";
+
+
+        return;
+
+    }
+
+
+    result.textContent =
+        "Face not recognized. Please try again.";
+
+
+    setTimeout(
+        scan,
+        900
+    );
+
+}
+
+</script>
+
+{% endblock %}
