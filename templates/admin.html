@@ -2,17 +2,16 @@
 
 {% block content %}
 
-<div class="page-head">
+<div>
+    <h1>Admin Dashboard</h1>
 
-    <div>
-        <h1>Admin Dashboard</h1>
-        <p class="muted">
-            Students, subjects, classes and attendance.
-        </p>
-    </div>
-
+    <p class="muted">
+        Students, subjects, classes and attendance.
+    </p>
 </div>
 
+
+<!-- STAT CARDS -->
 
 <div class="cards">
 
@@ -34,88 +33,84 @@
 </div>
 
 
-<div class="grid2">
+<!-- CREATE SUBJECT -->
 
-    <!-- CREATE SUBJECT -->
+<div class="panel">
 
-    <div class="panel">
+    <h2>Create Subject</h2>
 
-        <h2>Create Subject</h2>
+    <input
+        id="scode"
+        placeholder="Code e.g. CS301"
+    >
 
-        <input
-            id="scode"
-            placeholder="Code e.g. CS301"
-        >
+    <input
+        id="sname"
+        placeholder="Subject name"
+    >
 
-        <input
-            id="sname"
-            placeholder="Subject name"
-        >
+    <button
+        class="primary"
+        onclick="createSubject()"
+    >
+        Create Subject
+    </button>
 
-        <button
-            class="primary"
-            onclick="createSubject()"
-        >
-            Create Subject
-        </button>
+    <div
+        id="subjectMsg"
+        class="status"
+    ></div>
 
-        <div
-            id="subjectMsg"
-            class="status"
-        ></div>
-
-    </div>
+</div>
 
 
-    <!-- CREATE CLASS -->
+<!-- CREATE CLASS -->
 
-    <div class="panel">
+<div class="panel">
 
-        <h2>Create Class Session</h2>
+    <h2>Create Class Session</h2>
 
-        <select id="subject">
+    <select id="subject">
 
-            <option value="">
-                Select subject
-            </option>
+        <option value="">
+            Select subject
+        </option>
 
-            {% for s in subjects %}
+        {% for s in subjects %}
 
-            <option value="{{ s.id }}">
+        <option value="{{ s.id }}">
+            {{ s.code }} — {{ s.name }}
+        </option>
 
-                {{ s.code }} — {{ s.name }}
+        {% endfor %}
 
-            </option>
-
-            {% endfor %}
-
-        </select>
+    </select>
 
 
-        <input
-            id="cdate"
-            type="date"
-        >
-
-        <input
-            id="ctime"
-            type="time"
-        >
+    <input
+        id="cdate"
+        type="date"
+    >
 
 
-        <button
-            class="primary"
-            onclick="createClass()"
-        >
-            Create Class
-        </button>
+    <input
+        id="ctime"
+        type="time"
+    >
 
-        <div
-            id="classMsg"
-            class="status"
-        ></div>
 
-    </div>
+    <button
+        class="primary"
+        onclick="createClass()"
+    >
+        Create Class
+    </button>
+
+
+    <div
+        id="classMsg"
+        class="status"
+    ></div>
 
 </div>
 
@@ -195,71 +190,172 @@
 
 async function createSubject() {
 
-    const response = await fetch(
-        "/subjects",
-        {
-            method: "POST",
+    const code =
+        document.getElementById("scode").value.trim();
 
-            headers: {
-                "Content-Type":
-                    "application/json"
-            },
+    const name =
+        document.getElementById("sname").value.trim();
 
-            body: JSON.stringify({
-                code: scode.value,
-                name: sname.value
-            })
+    const message =
+        document.getElementById("subjectMsg");
+
+
+    if (!code || !name) {
+
+        message.textContent =
+            "Enter both subject code and subject name.";
+
+        return;
+    }
+
+
+    message.textContent =
+        "Creating subject...";
+
+
+    try {
+
+        const response = await fetch(
+            "/subjects",
+            {
+                method: "POST",
+
+                headers: {
+                    "Content-Type":
+                        "application/json"
+                },
+
+                body: JSON.stringify({
+                    code: code,
+                    name: name
+                })
+            }
+        );
+
+
+        const data =
+            await response.json();
+
+
+        if (!response.ok || !data.ok) {
+
+            throw new Error(
+                data.error ||
+                "Failed to create subject."
+            );
         }
-    );
 
 
-    const data = await response.json();
+        message.textContent =
+            "Subject created successfully. Refresh the page.";
 
 
-    subjectMsg.textContent =
-        data.ok
-        ? "Subject created. Refresh the page."
-        : data.error;
+        document.getElementById("scode").value = "";
+
+        document.getElementById("sname").value = "";
+
+    }
+
+    catch (error) {
+
+        console.error(
+            "Create subject error:",
+            error
+        );
+
+        message.textContent =
+            "Error: " + error.message;
+    }
 
 }
 
 
 async function createClass() {
 
-    const response = await fetch(
-        "/classes",
-        {
-            method: "POST",
+    const subject =
+        document.getElementById("subject").value;
 
-            headers: {
-                "Content-Type":
-                    "application/json"
-            },
+    const classDate =
+        document.getElementById("cdate").value;
 
-            body: JSON.stringify({
+    const startTime =
+        document.getElementById("ctime").value;
 
-                subject_id:
-                    subject.value,
+    const message =
+        document.getElementById("classMsg");
 
-                class_date:
-                    cdate.value,
 
-                start_time:
-                    ctime.value
+    if (!subject || !classDate || !startTime) {
 
-            })
+        message.textContent =
+            "Select a subject and enter date and time.";
+
+        return;
+    }
+
+
+    message.textContent =
+        "Creating class...";
+
+
+    try {
+
+        const response = await fetch(
+            "/classes",
+            {
+                method: "POST",
+
+                headers: {
+                    "Content-Type":
+                        "application/json"
+                },
+
+                body: JSON.stringify({
+
+                    subject_id: subject,
+
+                    class_date: classDate,
+
+                    start_time: startTime
+
+                })
+            }
+        );
+
+
+        const data =
+            await response.json();
+
+
+        if (!response.ok || !data.ok) {
+
+            throw new Error(
+                data.error ||
+                "Failed to create class."
+            );
         }
-    );
 
 
-    const data =
-        await response.json();
+        message.textContent =
+            "Class created successfully.";
 
 
-    classMsg.textContent =
-        data.ok
-        ? "Class created."
-        : data.error;
+        document.getElementById("cdate").value = "";
+
+        document.getElementById("ctime").value = "";
+
+    }
+
+    catch (error) {
+
+        console.error(
+            "Create class error:",
+            error
+        );
+
+        message.textContent =
+            "Error: " + error.message;
+    }
 
 }
 
