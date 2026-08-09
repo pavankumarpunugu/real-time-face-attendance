@@ -1,23 +1,77 @@
-import os, json, secrets
+import os
+import json
+import secrets
+
 from datetime import datetime, date
 from functools import wraps
-from flask import Flask, render_template, request, jsonify, session, redirect, url_for
-from werkzeug.security import generate_password_hash, check_password_hash
+
+from flask import (
+    Flask,
+    render_template,
+    request,
+    jsonify,
+    session,
+    redirect,
+    url_for
+)
+
+from werkzeug.security import (
+    generate_password_hash,
+    check_password_hash
+)
+
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import IntegrityError
 
+
+# =========================================================
+# APP CONFIGURATION
+# =========================================================
+
 app = Flask(__name__)
-app.secret_key = os.environ.get("SECRET_KEY", secrets.token_hex(32))
 
-# Production: set DATABASE_URL to a PostgreSQL connection string.
-# Local fallback is SQLite so the project is still easy to test.
-database_url = os.environ.get("DATABASE_URL", "sqlite:///attendance.db")
+app.secret_key = os.environ.get(
+    "SECRET_KEY",
+    secrets.token_hex(32)
+)
+
+
+# =========================================================
+# DATABASE
+# =========================================================
+
+database_url = os.environ.get(
+    "DATABASE_URL",
+    "sqlite:///attendance.db"
+)
+
 if database_url.startswith("postgres://"):
-    database_url = database_url.replace("postgres://", "postgresql://", 1)
-if database_url.startswith("postgresql://") and "+psycopg" not in database_url:
-    database_url = database_url.replace("postgresql://", "postgresql+psycopg://", 1)
+    database_url = database_url.replace(
+        "postgres://",
+        "postgresql://",
+        1
+    )
 
-engine = create_engine(database_url, pool_pre_ping=True)
+if (
+    database_url.startswith("postgresql://")
+    and "+psycopg" not in database_url
+):
+    database_url = database_url.replace(
+        "postgresql://",
+        "postgresql+psycopg://",
+        1
+    )
+
+
+engine = create_engine(
+    database_url,
+    pool_pre_ping=True
+)
+
+
+# =========================================================
+# POSTGRESQL SCHEMA
+# =========================================================
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS users (
@@ -62,6 +116,11 @@ CREATE TABLE IF NOT EXISTS attendance (
 );
 """
 
+
+# =========================================================
+# SQLITE SCHEMA
+# =========================================================
+
 SQLITE_SCHEMA = """
 CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -70,6 +129,7 @@ CREATE TABLE IF NOT EXISTS users (
     role TEXT NOT NULL DEFAULT 'student',
     student_id INTEGER
 );
+
 CREATE TABLE IF NOT EXISTS students (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     roll_no TEXT UNIQUE NOT NULL,
@@ -79,11 +139,13 @@ CREATE TABLE IF NOT EXISTS students (
     face_embeddings TEXT NOT NULL,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
 CREATE TABLE IF NOT EXISTS subjects (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     code TEXT UNIQUE NOT NULL,
     name TEXT NOT NULL
 );
+
 CREATE TABLE IF NOT EXISTS classes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     subject_id INTEGER NOT NULL,
@@ -91,6 +153,7 @@ CREATE TABLE IF NOT EXISTS classes (
     start_time TEXT NOT NULL,
     UNIQUE(subject_id, class_date, start_time)
 );
+
 CREATE TABLE IF NOT EXISTS attendance (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     student_id INTEGER NOT NULL,
@@ -101,121 +164,390 @@ CREATE TABLE IF NOT EXISTS attendance (
 );
 """
 
+
+# =========================================================
+# DATABASE HELPERS
+# =========================================================
+
 def is_sqlite():
     return database_url.startswith("sqlite")
 
-def init_db():
-    with engine.begin() as conn:
-        for stmt in (SQLITE_SCHEMA if is_sqlite() else SCHEMA).split(";"):
-            if stmt.strip():
-                conn.execute(text(stmt))
-        # Demo admin only if none exists.
-        count = conn.execute(text("SELECT COUNT(*) FROM users WHERE role='admin'")).scalar()
-        if count == 0:
-            conn.execute(text(
-                "INSERT INTO users(username,password_hash,role) VALUES(:u,:p,'admin')"
-            ), {"u": os.environ.get("ADMIN_USER","admin"),
-                "p": generate_password_hash(os.environ.get("ADMIN_PASSWORD","admin123"))})
 
-def q(sql, params=None, fetch=False, one=False):
+def init_db():
+
     with engine.begin() as conn:
-        result=conn.execute(text(sql), params or {})
+
+        schema = (
+            SQLITE_SCHEMA
+            if is_sqlite()
+            else SCHEMA
+        )
+
+        for stmt in schema.split(";"):
+
+            if stmt.strip():
+
+                conn.execute(
+                    text(stmt)
+                )
+
+        # Create demo admin only if none exists
+        count = conn.execute(
+            text(
+                "SELECT COUNT(*) "
+                "FROM users "
+                "WHERE role='admin'"
+            )
+        ).scalar()
+
+        if count == 0:
+
+            conn.execute(
+                text(
+                    """
+                    INSERT INTO users(
+                        username,
+                        password_hash,
+                        role
+                    )
+                    VALUES(
+                        :u,
+                        :p,
+                        'admin'
+                    )
+                    """
+                ),
+                {
+                    "u": os.environ.get(
+                        "ADMIN_USER",
+                        "admin"
+                    ),
+                    "p": generate_password_hash(
+                        os.environ.get(
+                            "ADMIN_PASSWORD",
+                            "admin123"
+                        )
+                    )
+                }
+            )
+
+
+def q(
+    sql,
+    params=None,
+    fetch=False,
+    one=False
+):
+
+    with engine.begin() as conn:
+
+        result = conn.execute(
+            text(sql),
+            params or {}
+        )
+
         if fetch:
-            rows=result.mappings().all()
-            return (rows[0] if rows else None) if one else rows
+
+            rows = result.mappings().all()
+
+            return (
+                rows[0]
+                if rows and one
+                else rows
+            )
+
         return result
 
+
+# =========================================================
+# AUTHENTICATION
+# =========================================================
+
 def current_user():
-    uid=session.get("user_id")
-    if not uid: return None
-    return q("SELECT * FROM users WHERE id=:id", {"id":uid}, True, True)
+
+    uid = session.get("user_id")
+
+    if not uid:
+        return None
+
+    return q(
+        "SELECT * FROM users WHERE id=:id",
+        {"id": uid},
+        True,
+        True
+    )
+
+
 @app.context_processor
 def inject_current_user():
-    return {"current_user": current_user}
+
+    return {
+        "current_user": current_user
+    }
+
 
 def login_required(fn):
+
     @wraps(fn)
-    def wrapper(*a, **kw):
-        if not current_user(): return redirect(url_for("login"))
-        return fn(*a, **kw)
+    def wrapper(*args, **kwargs):
+
+        if not current_user():
+
+            return redirect(
+                url_for("login")
+            )
+
+        return fn(*args, **kwargs)
+
     return wrapper
 
+
 def admin_required(fn):
+
     @wraps(fn)
-    def wrapper(*a, **kw):
-        u=current_user()
-        if not u or u["role"]!="admin": return redirect(url_for("login"))
-        return fn(*a, **kw)
+    def wrapper(*args, **kwargs):
+
+        u = current_user()
+
+        if (
+            not u
+            or u["role"] != "admin"
+        ):
+
+            return redirect(
+                url_for("login")
+            )
+
+        return fn(*args, **kwargs)
+
     return wrapper
+
+
+# =========================================================
+# HOME
+# =========================================================
 
 @app.route("/")
 def home():
-    u=current_user()
-    if not u: return redirect(url_for("login"))
-    return redirect(url_for("admin_dashboard" if u["role"]=="admin" else "student_dashboard"))
 
-@app.route("/login", methods=["GET","POST"])
+    u = current_user()
+
+    if not u:
+
+        return redirect(
+            url_for("login")
+        )
+
+    if u["role"] == "admin":
+
+        return redirect(
+            url_for("admin_dashboard")
+        )
+
+    return redirect(
+        url_for("student_dashboard")
+    )
+
+
+# =========================================================
+# LOGIN
+# =========================================================
+
+@app.route(
+    "/login",
+    methods=["GET", "POST"]
+)
 def login():
-    error=None
-    if request.method=="POST":
-        u=q("SELECT * FROM users WHERE username=:u", {"u":request.form.get("username","").strip()}, True, True)
-        if u and check_password_hash(u["password_hash"], request.form.get("password","")):
-            session.clear(); session["user_id"]=u["id"]
-            return redirect(url_for("home"))
-        error="Invalid username or password."
-    return render_template("login.html", error=error)
+
+    error = None
+
+    if request.method == "POST":
+
+        username = (
+            request.form
+            .get("username", "")
+            .strip()
+        )
+
+        password = request.form.get(
+            "password",
+            ""
+        )
+
+        u = q(
+            """
+            SELECT *
+            FROM users
+            WHERE username=:u
+            """,
+            {"u": username},
+            True,
+            True
+        )
+
+        if (
+            u
+            and check_password_hash(
+                u["password_hash"],
+                password
+            )
+        ):
+
+            session.clear()
+
+            session["user_id"] = u["id"]
+
+            return redirect(
+                url_for("home")
+            )
+
+        error = (
+            "Invalid username or password."
+        )
+
+    return render_template(
+        "login.html",
+        error=error
+    )
+
+
+# =========================================================
+# LOGOUT
+# =========================================================
 
 @app.route("/logout")
 def logout():
-    session.clear(); return redirect(url_for("login"))
+
+    session.clear()
+
+    return redirect(
+        url_for("login")
+    )
+
+
+# =========================================================
+# ADMIN DASHBOARD
+# =========================================================
 
 @app.route("/admin")
 @admin_required
 def admin_dashboard():
-    students=q("SELECT * FROM students ORDER BY name", fetch=True)
-    subjects=q("SELECT * FROM subjects ORDER BY name", fetch=True)
-    today=str(date.today())
-    present=q("""SELECT COUNT(*) c FROM attendance a
-                 JOIN classes c ON c.id=a.class_id
-                 WHERE c.class_date=:d AND a.status='Present'""", {"d":today}, True, True)["c"]
-    return render_template("admin.html", students=students, subjects=subjects, present_today=present)
+
+    students = q(
+        """
+        SELECT *
+        FROM students
+        ORDER BY name
+        """,
+        fetch=True
+    )
+
+    subjects = q(
+        """
+        SELECT *
+        FROM subjects
+        ORDER BY name
+        """,
+        fetch=True
+    )
+
+    today = str(date.today())
+
+    present = q(
+        """
+        SELECT COUNT(*) AS c
+        FROM attendance a
+
+        JOIN classes c
+            ON c.id = a.class_id
+
+        WHERE c.class_date=:d
+        AND a.status='Present'
+        """,
+        {"d": today},
+        True,
+        True
+    )["c"]
+
+    return render_template(
+        "admin.html",
+        students=students,
+        subjects=subjects,
+        present_today=present
+    )
+
+
+# =========================================================
+# STUDENT DASHBOARD
+# =========================================================
+
 @app.route("/student")
 @login_required
 def student_dashboard():
 
     u = current_user()
 
-    if u["role"] != "student" or not u["student_id"]:
-        return redirect(url_for("admin_dashboard"))
+    if (
+        u["role"] != "student"
+        or not u["student_id"]
+    ):
+
+        return redirect(
+            url_for("admin_dashboard")
+        )
 
 
-    # Student information
+    # -----------------------------------------------------
+    # STUDENT INFORMATION
+    # -----------------------------------------------------
+
     s = q(
-        "SELECT * FROM students WHERE id=:id",
+        """
+        SELECT *
+        FROM students
+        WHERE id=:id
+        """,
         {"id": u["student_id"]},
         True,
         True
     )
 
+
     if not s:
+
         session.clear()
-        return redirect(url_for("login"))
+
+        return redirect(
+            url_for("login")
+        )
 
 
-    # Total classes conducted
+    # -----------------------------------------------------
+    # TOTAL CLASSES
+    # -----------------------------------------------------
+
     total = q(
-        "SELECT COUNT(*) AS c FROM classes",
+        """
+        SELECT COUNT(*) AS c
+        FROM classes
+        """,
         fetch=True,
         one=True
     )["c"]
 
 
-    # Classes attended
+    # -----------------------------------------------------
+    # PRESENT CLASSES
+    # -----------------------------------------------------
+
     present = q(
         """
         SELECT COUNT(*) AS c
+
         FROM attendance
+
         WHERE student_id=:sid
+
         AND status='Present'
         """,
         {"sid": s["id"]},
@@ -224,21 +556,35 @@ def student_dashboard():
     )["c"]
 
 
-    # Attendance percentage
+    # -----------------------------------------------------
+    # ATTENDANCE PERCENTAGE
+    # -----------------------------------------------------
+
     pct = (
-        round((present / total) * 100, 1)
+        round(
+            (present / total) * 100,
+            1
+        )
         if total
         else 0
     )
 
 
-    # Complete attendance history
-    # Includes both PRESENT and ABSENT classes.
+    # -----------------------------------------------------
+    # COMPLETE ATTENDANCE HISTORY
+    #
+    # Every class appears.
+    # If there is no attendance record,
+    # status becomes Absent.
+    # -----------------------------------------------------
+
     history = q(
         """
         SELECT
+
             sub.code,
             sub.name,
+
             c.class_date,
             c.start_time,
 
@@ -256,9 +602,11 @@ def student_dashboard():
 
         LEFT JOIN attendance a
             ON a.class_id = c.id
+
             AND a.student_id = :sid
 
         ORDER BY
+
             c.class_date DESC,
             c.start_time DESC
         """,
@@ -269,38 +617,80 @@ def student_dashboard():
 
     return render_template(
         "student.html",
+
         student=s,
+
         present=present,
+
         total=total,
+
         pct=pct,
+
         history=history
     )
+
+
+# =========================================================
+# REGISTER PAGE
+# =========================================================
+
 @app.route("/register")
 @admin_required
-def register_page(): return render_template("register.html")
+def register_page():
+
+    return render_template(
+        "register.html"
+    )
+
+
+# =========================================================
+# ATTENDANCE PAGE
+# =========================================================
 
 @app.route("/attendance")
 @login_required
 def attendance_page():
-    subjects=q("SELECT * FROM subjects ORDER BY name", fetch=True)
-    return render_template("attendance.html", subjects=subjects)
+
+    subjects = q(
+        """
+        SELECT *
+        FROM subjects
+        ORDER BY name
+        """,
+        fetch=True
+    )
+
+    return render_template(
+        "attendance.html",
+        subjects=subjects
+    )
+
+
+# =========================================================
+# REPORTS
+# =========================================================
 
 @app.route("/reports")
 @admin_required
 def reports():
-    rows = q("""
+
+    rows = q(
+        """
         SELECT
+
             s.id,
             s.roll_no,
             s.name,
             s.department,
 
-            COUNT(c.id) AS total_classes,
+            COUNT(c.id)
+                AS total_classes,
 
             COALESCE(
                 SUM(
                     CASE
-                        WHEN a.status = 'Present' THEN 1
+                        WHEN a.status='Present'
+                        THEN 1
                         ELSE 0
                     END
                 ),
@@ -310,87 +700,226 @@ def reports():
         FROM students s
 
         LEFT JOIN classes c
-            ON 1 = 1
+            ON 1=1
 
         LEFT JOIN attendance a
-            ON a.student_id = s.id
-            AND a.class_id = c.id
+            ON a.student_id=s.id
+
+            AND a.class_id=c.id
 
         GROUP BY
+
             s.id,
             s.roll_no,
             s.name,
             s.department
 
         ORDER BY s.name
-    """, fetch=True)
+        """,
+        fetch=True
+    )
+
 
     result = []
+
 
     for r in rows:
 
         d = dict(r)
 
+        total_classes = d[
+            "total_classes"
+        ]
+
+        present = d[
+            "present"
+        ]
+
+
         d["percentage"] = (
+
             round(
-                (d["present"] / d["total_classes"]) * 100,
+                (present / total_classes)
+                * 100,
                 1
             )
-            if d["total_classes"]
+
+            if total_classes
+
             else 0
         )
 
+
         result.append(d)
+
 
     return render_template(
         "reports.html",
         rows=result
     )
 
-@app.route("/subjects", methods=["POST"])
+
+# =========================================================
+# CREATE SUBJECT
+# =========================================================
+
+@app.route(
+    "/subjects",
+    methods=["POST"]
+)
 @admin_required
 def create_subject():
-    data=request.get_json(force=True)
-    if not data.get("code") or not data.get("name"):
-        return jsonify(ok=False,error="Subject code and name are required."),400
-    try:
-        q("INSERT INTO subjects(code,name) VALUES(:c,:n)", {"c":data["code"].strip(),"n":data["name"].strip()})
-    except IntegrityError:
-        return jsonify(ok=False,error="Subject code already exists."),409
-    return jsonify(ok=True)
 
-@app.route("/classes", methods=["POST"])
+    data = request.get_json(
+        force=True
+    )
+
+
+    code = (
+        data.get("code") or ""
+    ).strip()
+
+    name = (
+        data.get("name") or ""
+    ).strip()
+
+
+    if not code or not name:
+
+        return jsonify(
+            ok=False,
+            error=(
+                "Subject code and "
+                "name are required."
+            )
+        ), 400
+
+
+    try:
+
+        q(
+            """
+            INSERT INTO subjects(
+                code,
+                name
+            )
+            VALUES(
+                :c,
+                :n
+            )
+            """,
+            {
+                "c": code,
+                "n": name
+            }
+        )
+
+
+    except IntegrityError:
+
+        return jsonify(
+            ok=False,
+            error=(
+                "Subject code already exists."
+            )
+        ), 409
+
+
+    return jsonify(
+        ok=True,
+        message=(
+            "Subject created successfully."
+        )
+    )
+
+
+# =========================================================
+# CREATE CLASS
+# =========================================================
+
+@app.route(
+    "/classes",
+    methods=["POST"]
+)
 @admin_required
 def create_class():
 
-    data = request.get_json(force=True)
+    data = request.get_json(
+        force=True
+    )
 
-    subject_id = data.get("subject_id")
-    class_date = data.get("class_date")
-    start_time = data.get("start_time")
 
-    if not subject_id or not class_date or not start_time:
+    subject_id = data.get(
+        "subject_id"
+    )
+
+    class_date = data.get(
+        "class_date"
+    )
+
+    start_time = data.get(
+        "start_time"
+    )
+
+
+    # -----------------------------------------------------
+    # VALIDATION
+    # -----------------------------------------------------
+
+    if (
+        not subject_id
+        or not class_date
+        or not start_time
+    ):
+
         return jsonify(
             ok=False,
-            error="Subject, date and time are required."
+            error=(
+                "Subject, date and "
+                "time are required."
+            )
         ), 400
+
 
     try:
 
-        subject_id = int(subject_id)
-
-        subject = q(
-            "SELECT id FROM subjects WHERE id=:id",
-            {"id": subject_id},
-            fetch=True,
-            one=True
+        subject_id = int(
+            subject_id
         )
 
+
+        # -------------------------------------------------
+        # CHECK SUBJECT
+        # -------------------------------------------------
+
+        subject = q(
+            """
+            SELECT id
+            FROM subjects
+            WHERE id=:id
+            """,
+            {
+                "id": subject_id
+            },
+            True,
+            True
+        )
+
+
         if not subject:
+
             return jsonify(
                 ok=False,
-                error="Selected subject does not exist."
+                error=(
+                    "Selected subject "
+                    "does not exist."
+                )
             ), 400
+
+
+        # -------------------------------------------------
+        # CREATE CLASS
+        # -------------------------------------------------
 
         q(
             """
@@ -412,16 +941,26 @@ def create_class():
             }
         )
 
+
         return jsonify(
             ok=True,
-            message="Class created successfully."
+            message=(
+                "Class created successfully."
+            )
         )
 
+
     except IntegrityError:
+
         return jsonify(
             ok=False,
-            error="A class for this subject, date and time already exists."
+            error=(
+                "A class for this "
+                "subject, date and time "
+                "already exists."
+            )
         ), 409
+
 
     except Exception as e:
 
@@ -430,104 +969,560 @@ def create_class():
             error=str(e)
         ), 400
 
-@app.route("/api/students", methods=["POST"])
+
+# =========================================================
+# REGISTER STUDENT
+# =========================================================
+
+@app.route(
+    "/api/students",
+    methods=["POST"]
+)
 @admin_required
 def create_student():
-    data=request.get_json(force=True)
-    if not data.get("roll_no") or not data.get("name") or not isinstance(data.get("embeddings"),list) or len(data["embeddings"])<1:
-        return jsonify(ok=False,error="Roll number, name and at least one face sample are required."),400
-    try:
-        sid=q("""INSERT INTO students(roll_no,name,email,department,face_embeddings)
-                 VALUES(:r,:n,:e,:d,:f) RETURNING id""",
-              {"r":data["roll_no"].strip(),"n":data["name"].strip(),"e":data.get("email","").strip(),
-               "d":data.get("department","").strip(),"f":json.dumps(data["embeddings"])}, fetch=True, one=True)["id"]
-        # SQLite RETURNING is supported on modern SQLite; fallback if needed.
-    except Exception:
-        try:
-            q("""INSERT INTO students(roll_no,name,email,department,face_embeddings)
-                 VALUES(:r,:n,:e,:d,:f)""",
-              {"r":data["roll_no"].strip(),"n":data["name"].strip(),"e":data.get("email","").strip(),
-               "d":data.get("department","").strip(),"f":json.dumps(data["embeddings"])})
-            sid=q("SELECT id FROM students WHERE roll_no=:r",{"r":data["roll_no"]},True,True)["id"]
-        except IntegrityError:
-            return jsonify(ok=False,error="Roll number already exists."),409
-    # Create student login from roll number if not already used.
-    password=data.get("password") or "student123"
-    try:
-        q("""INSERT INTO users(username,password_hash,role,student_id)
-             VALUES(:u,:p,'student',:sid)""",
-          {"u":data["roll_no"].strip(),"p":generate_password_hash(password),"sid":sid})
-    except IntegrityError:
-        pass
-    return jsonify(ok=True, student_id=sid, login_username=data["roll_no"].strip(), temporary_password=password)
 
-@app.route("/api/recognition-data")
+    data = request.get_json(
+        force=True
+    )
+
+
+    embeddings = data.get(
+        "embeddings"
+    )
+
+
+    # -----------------------------------------------------
+    # REQUIRE EXACTLY AT LEAST 3 SAMPLES
+    # -----------------------------------------------------
+
+    if (
+        not data.get("roll_no")
+        or not data.get("name")
+        or not isinstance(
+            embeddings,
+            list
+        )
+        or len(embeddings) < 3
+    ):
+
+        return jsonify(
+            ok=False,
+            error=(
+                "Roll number, name and "
+                "3 face samples are required."
+            )
+        ), 400
+
+
+    roll_no = (
+        data.get("roll_no")
+        .strip()
+    )
+
+    name = (
+        data.get("name")
+        .strip()
+    )
+
+    email = (
+        data.get("email", "")
+        .strip()
+    )
+
+    department = (
+        data.get("department", "")
+        .strip()
+    )
+
+
+    # -----------------------------------------------------
+    # SAVE STUDENT
+    # -----------------------------------------------------
+
+    try:
+
+        sid = q(
+            """
+            INSERT INTO students(
+                roll_no,
+                name,
+                email,
+                department,
+                face_embeddings
+            )
+
+            VALUES(
+                :r,
+                :n,
+                :e,
+                :d,
+                :f
+            )
+
+            RETURNING id
+            """,
+            {
+                "r": roll_no,
+                "n": name,
+                "e": email,
+                "d": department,
+                "f": json.dumps(
+                    embeddings
+                )
+            },
+            fetch=True,
+            one=True
+        )["id"]
+
+
+    except Exception:
+
+        try:
+
+            q(
+                """
+                INSERT INTO students(
+                    roll_no,
+                    name,
+                    email,
+                    department,
+                    face_embeddings
+                )
+
+                VALUES(
+                    :r,
+                    :n,
+                    :e,
+                    :d,
+                    :f
+                )
+                """,
+                {
+                    "r": roll_no,
+                    "n": name,
+                    "e": email,
+                    "d": department,
+                    "f": json.dumps(
+                        embeddings
+                    )
+                }
+            )
+
+
+            sid = q(
+                """
+                SELECT id
+                FROM students
+                WHERE roll_no=:r
+                """,
+                {
+                    "r": roll_no
+                },
+                True,
+                True
+            )["id"]
+
+
+        except IntegrityError:
+
+            return jsonify(
+                ok=False,
+                error=(
+                    "Roll number already exists."
+                )
+            ), 409
+
+
+    # -----------------------------------------------------
+    # CREATE STUDENT LOGIN
+    # -----------------------------------------------------
+
+    password = (
+        data.get("password")
+        or "student123"
+    )
+
+
+    try:
+
+        q(
+            """
+            INSERT INTO users(
+                username,
+                password_hash,
+                role,
+                student_id
+            )
+
+            VALUES(
+                :u,
+                :p,
+                'student',
+                :sid
+            )
+            """,
+            {
+                "u": roll_no,
+                "p": generate_password_hash(
+                    password
+                ),
+                "sid": sid
+            }
+        )
+
+
+    except IntegrityError:
+
+        # Login already exists.
+        pass
+
+
+    return jsonify(
+        ok=True,
+        student_id=sid,
+        login_username=roll_no,
+        temporary_password=password
+    )
+
+
+# =========================================================
+# FACE RECOGNITION DATA
+# =========================================================
+
+@app.route(
+    "/api/recognition-data"
+)
 @login_required
 def recognition_data():
-    rows=q("SELECT id,roll_no,name,face_embeddings FROM students", fetch=True)
-    return jsonify([{"id":r["id"],"roll_no":r["roll_no"],"name":r["name"],
-                     "embeddings":json.loads(r["face_embeddings"])} for r in rows])
 
-@app.route("/api/mark-attendance", methods=["POST"])
+    rows = q(
+        """
+        SELECT
+            id,
+            roll_no,
+            name,
+            face_embeddings
+
+        FROM students
+        """,
+        fetch=True
+    )
+
+
+    return jsonify(
+        [
+            {
+                "id": r["id"],
+                "roll_no": r["roll_no"],
+                "name": r["name"],
+                "embeddings": json.loads(
+                    r["face_embeddings"]
+                )
+            }
+
+            for r in rows
+        ]
+    )
+
+
+# =========================================================
+# MARK ATTENDANCE
+# =========================================================
+
+@app.route(
+    "/api/mark-attendance",
+    methods=["POST"]
+)
 @login_required
 def mark_attendance():
-    data=request.get_json(force=True)
-    student_id=int(data.get("student_id",0)); class_id=int(data.get("class_id",0))
-    u=current_user()
-    if u["role"]=="student" and u["student_id"]!=student_id:
-        return jsonify(ok=False,error="You can only mark your own attendance."),403
-    s=q("SELECT * FROM students WHERE id=:id",{"id":student_id},True,True)
-    c=q("""SELECT c.*,sub.code,sub.name subject_name FROM classes c JOIN subjects sub ON sub.id=c.subject_id
-           WHERE c.id=:id""",{"id":class_id},True,True)
-    if not s or not c: return jsonify(ok=False,error="Student or class not found."),404
+
+    data = request.get_json(
+        force=True
+    )
+
+
+    student_id = int(
+        data.get(
+            "student_id",
+            0
+        )
+    )
+
+    class_id = int(
+        data.get(
+            "class_id",
+            0
+        )
+    )
+
+
+    u = current_user()
+
+
+    # -----------------------------------------------------
+    # STUDENT CAN ONLY MARK OWN ATTENDANCE
+    # -----------------------------------------------------
+
+    if (
+        u["role"] == "student"
+        and u["student_id"] != student_id
+    ):
+
+        return jsonify(
+            ok=False,
+            error=(
+                "You can only mark "
+                "your own attendance."
+            )
+        ), 403
+
+
+    # -----------------------------------------------------
+    # CHECK STUDENT
+    # -----------------------------------------------------
+
+    s = q(
+        """
+        SELECT *
+        FROM students
+        WHERE id=:id
+        """,
+        {
+            "id": student_id
+        },
+        True,
+        True
+    )
+
+
+    # -----------------------------------------------------
+    # CHECK CLASS
+    # -----------------------------------------------------
+
+    c = q(
+        """
+        SELECT
+            c.*,
+            sub.code,
+            sub.name AS subject_name
+
+        FROM classes c
+
+        JOIN subjects sub
+            ON sub.id=c.subject_id
+
+        WHERE c.id=:id
+        """,
+        {
+            "id": class_id
+        },
+        True,
+        True
+    )
+
+
+    if not s or not c:
+
+        return jsonify(
+            ok=False,
+            error=(
+                "Student or class "
+                "not found."
+            )
+        ), 404
+
+
+    # -----------------------------------------------------
+    # INSERT ATTENDANCE
+    # -----------------------------------------------------
+
     try:
-        q("""INSERT INTO attendance(student_id,class_id,status) VALUES(:s,:c,'Present')""",
-          {"s":student_id,"c":class_id})
-        return jsonify(ok=True,already=False,message="Attendance recorded.",student=s["name"],
-                       roll_no=s["roll_no"],subject=c["subject_name"],date=str(c["class_date"]))
+
+        q(
+            """
+            INSERT INTO attendance(
+                student_id,
+                class_id,
+                status
+            )
+
+            VALUES(
+                :s,
+                :c,
+                'Present'
+            )
+            """,
+            {
+                "s": student_id,
+                "c": class_id
+            }
+        )
+
+
+        return jsonify(
+            ok=True,
+            already=False,
+            message=(
+                "Attendance recorded."
+            ),
+            student=s["name"],
+            roll_no=s["roll_no"],
+            subject=c["subject_name"],
+            date=str(
+                c["class_date"]
+            )
+        )
+
+
     except IntegrityError:
-        return jsonify(ok=True,already=True,message="Attendance already marked for this class.",
-                       student=s["name"],roll_no=s["roll_no"],subject=c["subject_name"])
+
+        return jsonify(
+            ok=True,
+            already=True,
+            message=(
+                "Attendance already "
+                "marked for this class."
+            ),
+            student=s["name"],
+            roll_no=s["roll_no"],
+            subject=c["subject_name"]
+        )
+
+
+# =========================================================
+# CLASSES API
+# =========================================================
 
 @app.route("/api/classes")
 @login_required
 def api_classes():
-    rows = q("""
+
+    rows = q(
+        """
         SELECT
+
             c.id,
             c.subject_id,
-            CAST(c.class_date AS TEXT) AS class_date,
-            CAST(c.start_time AS TEXT) AS start_time,
+
+            CAST(
+                c.class_date AS TEXT
+            ) AS class_date,
+
+            CAST(
+                c.start_time AS TEXT
+            ) AS start_time,
+
             s.code,
             s.name
-        FROM classes c
-        JOIN subjects s ON s.id = c.subject_id
-        ORDER BY c.class_date DESC, c.start_time DESC
-    """, fetch=True)
 
-    return jsonify([
-        {
-            "id": r["id"],
-            "subject_id": r["subject_id"],
-            "class_date": r["class_date"],
-            "start_time": r["start_time"],
-            "code": r["code"],
-            "name": r["name"]
-        }
-        for r in rows
-    ])
+        FROM classes c
+
+        JOIN subjects s
+            ON s.id=c.subject_id
+
+        ORDER BY
+
+            c.class_date DESC,
+            c.start_time DESC
+        """,
+        fetch=True
+    )
+
+
+    return jsonify(
+        [
+            {
+                "id": r["id"],
+                "subject_id": r[
+                    "subject_id"
+                ],
+                "class_date": str(
+                    r["class_date"]
+                ),
+                "start_time": str(
+                    r["start_time"]
+                ),
+                "code": r["code"],
+                "name": r["name"]
+            }
+
+            for r in rows
+        ]
+    )
+
+
+# =========================================================
+# ATTENDANCE API
+# =========================================================
 
 @app.route("/api/attendance")
 @admin_required
 def api_attendance():
-    rows=q("""SELECT s.roll_no,s.name,sub.code subject_code,sub.name subject,
-                     c.class_date,c.start_time,a.status,a.marked_at
-              FROM attendance a JOIN students s ON s.id=a.student_id
-              JOIN classes c ON c.id=a.class_id JOIN subjects sub ON sub.id=c.subject_id
-              ORDER BY c.class_date DESC,c.start_time DESC""", fetch=True)
-    return jsonify([dict(r) for r in rows])
+
+    rows = q(
+        """
+        SELECT
+
+            s.roll_no,
+            s.name,
+
+            sub.code AS subject_code,
+            sub.name AS subject,
+
+            c.class_date,
+            c.start_time,
+
+            a.status,
+            a.marked_at
+
+        FROM attendance a
+
+        JOIN students s
+            ON s.id=a.student_id
+
+        JOIN classes c
+            ON c.id=a.class_id
+
+        JOIN subjects sub
+            ON sub.id=c.subject_id
+
+        ORDER BY
+
+            c.class_date DESC,
+            c.start_time DESC
+        """,
+        fetch=True
+    )
+
+
+    return jsonify(
+        [
+            dict(r)
+            for r in rows
+        ]
+    )
+
+
+# =========================================================
+# INITIALIZE DATABASE
+# =========================================================
 
 init_db()
 
-if __name__=="__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT",5000)), debug=False)
+
+# =========================================================
+# RUN APPLICATION
+# =========================================================
+
+if __name__ == "__main__":
+
+    app.run(
+        host="0.0.0.0",
+        port=int(
+            os.environ.get(
+                "PORT",
+                5000
+            )
+        ),
+        debug=False
+    )
