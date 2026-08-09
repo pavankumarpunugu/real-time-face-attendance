@@ -1,0 +1,268 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="page-head">
+
+    <div>
+        <h1>Admin Dashboard</h1>
+        <p class="muted">
+            Students, subjects, classes and attendance.
+        </p>
+    </div>
+
+</div>
+
+
+<div class="cards">
+
+    <div class="card">
+        <span>Students</span>
+        <strong>{{ students|length }}</strong>
+    </div>
+
+    <div class="card">
+        <span>Present Today</span>
+        <strong>{{ present_today }}</strong>
+    </div>
+
+    <div class="card">
+        <span>Subjects</span>
+        <strong>{{ subjects|length }}</strong>
+    </div>
+
+</div>
+
+
+<div class="grid2">
+
+    <!-- CREATE SUBJECT -->
+
+    <div class="panel">
+
+        <h2>Create Subject</h2>
+
+        <input
+            id="scode"
+            placeholder="Code e.g. CS301"
+        >
+
+        <input
+            id="sname"
+            placeholder="Subject name"
+        >
+
+        <button
+            class="primary"
+            onclick="createSubject()"
+        >
+            Create Subject
+        </button>
+
+        <div
+            id="subjectMsg"
+            class="status"
+        ></div>
+
+    </div>
+
+
+    <!-- CREATE CLASS -->
+
+    <div class="panel">
+
+        <h2>Create Class Session</h2>
+
+        <select id="subject">
+
+            <option value="">
+                Select subject
+            </option>
+
+            {% for s in subjects %}
+
+            <option value="{{ s.id }}">
+
+                {{ s.code }} — {{ s.name }}
+
+            </option>
+
+            {% endfor %}
+
+        </select>
+
+
+        <input
+            id="cdate"
+            type="date"
+        >
+
+        <input
+            id="ctime"
+            type="time"
+        >
+
+
+        <button
+            class="primary"
+            onclick="createClass()"
+        >
+            Create Class
+        </button>
+
+        <div
+            id="classMsg"
+            class="status"
+        ></div>
+
+    </div>
+
+</div>
+
+
+<!-- STUDENTS -->
+
+<div class="panel">
+
+    <h2>Students</h2>
+
+    <div class="table-wrap">
+
+        <table>
+
+            <thead>
+
+                <tr>
+                    <th>Roll</th>
+                    <th>Name</th>
+                    <th>Department</th>
+                    <th>Email</th>
+                </tr>
+
+            </thead>
+
+
+            <tbody>
+
+                {% for s in students %}
+
+                <tr>
+
+                    <td>
+                        {{ s.roll_no }}
+                    </td>
+
+                    <td>
+                        {{ s.name }}
+                    </td>
+
+                    <td>
+                        {{ s.department or '-' }}
+                    </td>
+
+                    <td>
+                        {{ s.email or '-' }}
+                    </td>
+
+                </tr>
+
+                {% else %}
+
+                <tr>
+
+                    <td colspan="4">
+                        No students yet.
+                    </td>
+
+                </tr>
+
+                {% endfor %}
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</div>
+
+{% endblock %}
+
+
+{% block scripts %}
+
+<script>
+
+async function createSubject() {
+
+    const response = await fetch(
+        "/subjects",
+        {
+            method: "POST",
+
+            headers: {
+                "Content-Type":
+                    "application/json"
+            },
+
+            body: JSON.stringify({
+                code: scode.value,
+                name: sname.value
+            })
+        }
+    );
+
+
+    const data = await response.json();
+
+
+    subjectMsg.textContent =
+        data.ok
+        ? "Subject created. Refresh the page."
+        : data.error;
+
+}
+
+
+async function createClass() {
+
+    const response = await fetch(
+        "/classes",
+        {
+            method: "POST",
+
+            headers: {
+                "Content-Type":
+                    "application/json"
+            },
+
+            body: JSON.stringify({
+
+                subject_id:
+                    subject.value,
+
+                class_date:
+                    cdate.value,
+
+                start_time:
+                    ctime.value
+
+            })
+        }
+    );
+
+
+    const data =
+        await response.json();
+
+
+    classMsg.textContent =
+        data.ok
+        ? "Class created."
+        : data.error;
+
+}
+
+</script>
+
+{% endblock %}
