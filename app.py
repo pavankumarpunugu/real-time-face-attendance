@@ -833,6 +833,135 @@ def create_subject():
     )
 
 
+
+# =========================================================
+# UPDATE SUBJECT
+# =========================================================
+
+@app.route(
+    "/subjects/<int:subject_id>",
+    methods=["PUT"]
+)
+@admin_required
+def update_subject(subject_id):
+
+    data = request.get_json(force=True)
+
+    code = (data.get("code") or "").strip()
+    name = (data.get("name") or "").strip()
+
+    if not code or not name:
+        return jsonify(
+            ok=False,
+            error="Subject code and name are required."
+        ), 400
+
+    subject = q(
+        """
+        SELECT id
+        FROM subjects
+        WHERE id=:id
+        """,
+        {"id": subject_id},
+        True,
+        True
+    )
+
+    if not subject:
+        return jsonify(
+            ok=False,
+            error="Subject not found."
+        ), 404
+
+    try:
+        q(
+            """
+            UPDATE subjects
+            SET code=:code,
+                name=:name
+            WHERE id=:id
+            """,
+            {
+                "code": code,
+                "name": name,
+                "id": subject_id
+            }
+        )
+
+        return jsonify(
+            ok=True,
+            message="Subject updated successfully."
+        )
+
+    except IntegrityError:
+        return jsonify(
+            ok=False,
+            error="Another subject already uses this code."
+        ), 409
+
+
+# =========================================================
+# DELETE SUBJECT
+# =========================================================
+
+@app.route(
+    "/subjects/<int:subject_id>",
+    methods=["DELETE"]
+)
+@admin_required
+def delete_subject(subject_id):
+
+    subject = q(
+        """
+        SELECT id, code, name
+        FROM subjects
+        WHERE id=:id
+        """,
+        {"id": subject_id},
+        True,
+        True
+    )
+
+    if not subject:
+        return jsonify(
+            ok=False,
+            error="Subject not found."
+        ), 404
+
+    class_count = q(
+        """
+        SELECT COUNT(*) AS c
+        FROM classes
+        WHERE subject_id=:sid
+        """,
+        {"sid": subject_id},
+        True,
+        True
+    )["c"]
+
+    if class_count > 0:
+        return jsonify(
+            ok=False,
+            error=(
+                "This subject has class sessions. "
+                "Delete those class sessions first."
+            )
+        ), 409
+
+    q(
+        """
+        DELETE FROM subjects
+        WHERE id=:id
+        """,
+        {"id": subject_id}
+    )
+
+    return jsonify(
+        ok=True,
+        message="Subject deleted successfully."
+    )
+
+
 # =========================================================
 # CREATE CLASS
 # =========================================================
@@ -1446,6 +1575,87 @@ def api_classes():
                 "name": r["name"]
             }
 
+            for r in rows
+        ]
+    )
+
+
+
+# =========================================================
+# CLASS-WISE ATTENDANCE API
+# =========================================================
+
+@app.route("/api/class-attendance/<int:class_id>")
+@admin_required
+def class_attendance(class_id):
+
+    class_info = q(
+        """
+        SELECT
+            c.id,
+            c.class_date,
+            c.start_time,
+            s.code,
+            s.name
+        FROM classes c
+        JOIN subjects s
+            ON s.id=c.subject_id
+        WHERE c.id=:id
+        """,
+        {"id": class_id},
+        True,
+        True
+    )
+
+    if not class_info:
+        return jsonify(
+            ok=False,
+            error="Class not found."
+        ), 404
+
+    rows = q(
+        """
+        SELECT
+            st.id,
+            st.roll_no,
+            st.name,
+            st.department,
+            COALESCE(
+                a.status,
+                'Absent'
+            ) AS status,
+            a.marked_at
+        FROM students st
+        LEFT JOIN attendance a
+            ON a.student_id=st.id
+            AND a.class_id=:cid
+        ORDER BY st.roll_no
+        """,
+        {"cid": class_id},
+        fetch=True
+    )
+
+    return jsonify(
+        ok=True,
+        class_info={
+            "id": class_info["id"],
+            "code": class_info["code"],
+            "name": class_info["name"],
+            "class_date": str(class_info["class_date"]),
+            "start_time": str(class_info["start_time"])
+        },
+        students=[
+            {
+                "roll_no": r["roll_no"],
+                "name": r["name"],
+                "department": r["department"],
+                "status": r["status"],
+                "marked_at": (
+                    str(r["marked_at"])
+                    if r["marked_at"]
+                    else None
+                )
+            }
             for r in rows
         ]
     )
