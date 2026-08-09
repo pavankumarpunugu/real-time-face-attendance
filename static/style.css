@@ -358,3 +358,266 @@ td {
         flex-direction: column;
     }
 }
+/* =========================================
+   STUDENT DASHBOARD
+   ========================================= */
+
+.student-hero {
+    background: linear-gradient(
+        135deg,
+        #101828,
+        #175cd3
+    );
+
+    color: #ffffff;
+
+    border-radius: 20px;
+
+    padding: 30px;
+
+    margin-bottom: 24px;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    gap: 20px;
+}
+
+
+.student-hero h1 {
+    margin: 5px 0;
+
+    font-size: 32px;
+}
+
+
+.student-hero .muted {
+    color: #d0d5dd;
+}
+
+
+.eyebrow {
+    font-size: 12px;
+
+    font-weight: 800;
+
+    letter-spacing: 1.5px;
+
+    opacity: 0.8;
+}
+
+
+/* STAT CARDS */
+
+.attendance-cards {
+    margin-bottom: 24px;
+}
+
+
+.stat-card {
+    position: relative;
+
+    overflow: hidden;
+}
+
+
+.stat-card strong {
+    font-size: 34px;
+}
+
+
+.stat-card small {
+    display: block;
+
+    margin-top: 7px;
+
+    color: #667085;
+}
+
+
+/* PROGRESS */
+
+.progress {
+    width: 100%;
+
+    height: 8px;
+
+    background: #eaecf0;
+
+    border-radius: 999px;
+
+    margin-top: 15px;
+
+    overflow: hidden;
+}
+
+
+.progress-fill {
+    height: 100%;
+
+    background: #175cd3;
+
+    border-radius: 999px;
+
+    transition: width 0.5s ease;
+}
+
+
+.large-progress {
+    width: 100%;
+
+    height: 14px;
+
+    background: #eaecf0;
+
+    border-radius: 999px;
+
+    overflow: hidden;
+
+    margin-top: 20px;
+}
+
+
+.large-progress-fill {
+    height: 100%;
+
+    background: #175cd3;
+
+    border-radius: 999px;
+
+    transition: width 0.5s ease;
+}
+
+
+.progress-labels {
+    display: flex;
+
+    justify-content: space-between;
+
+    margin-top: 10px;
+
+    color: #667085;
+
+    font-size: 14px;
+}
+
+
+/* SECTION HEADER */
+
+.section-title {
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    gap: 20px;
+
+    margin-bottom: 10px;
+}
+
+
+.section-title h2 {
+    margin-bottom: 5px;
+}
+
+
+.section-title p {
+    margin-top: 0;
+}
+
+
+.attendance-number {
+    font-size: 28px;
+
+    font-weight: 800;
+
+    color: #175cd3;
+}
+
+
+/* STATUS BADGES */
+
+.status-badge {
+    display: inline-flex;
+
+    align-items: center;
+
+    gap: 5px;
+
+    padding: 6px 10px;
+
+    border-radius: 999px;
+
+    font-size: 13px;
+
+    font-weight: 700;
+}
+
+
+.status-badge.present {
+    background: #ecfdf3;
+
+    color: #027a48;
+}
+
+
+.status-badge.absent {
+    background: #fef3f2;
+
+    color: #b42318;
+}
+
+
+/* EMPTY STATE */
+
+.empty-state {
+    display: flex;
+
+    flex-direction: column;
+
+    align-items: center;
+
+    justify-content: center;
+
+    padding: 35px;
+
+    color: #667085;
+
+    gap: 6px;
+}
+
+
+/* MOBILE */
+
+@media (max-width: 760px) {
+
+    .student-hero {
+        align-items: flex-start;
+
+        flex-direction: column;
+
+        padding: 22px;
+    }
+
+
+    .student-hero h1 {
+        font-size: 26px;
+    }
+
+
+    .section-title {
+        align-items: flex-start;
+
+        flex-direction: column;
+    }
+
+
+    .attendance-number {
+        font-size: 24px;
+    }
+
+}
