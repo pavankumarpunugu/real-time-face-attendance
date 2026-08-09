@@ -2,12 +2,9 @@
 
 {% block content %}
 
-<!-- STUDENT HERO -->
-
 <div class="student-hero">
 
     <div>
-
         <div class="eyebrow">
             STUDENT DASHBOARD
         </div>
@@ -23,9 +20,7 @@
                 · {{ student.department }}
             {% endif %}
         </p>
-
     </div>
-
 
     <a
         class="primary button"
@@ -37,10 +32,7 @@
 </div>
 
 
-<!-- STAT CARDS -->
-
 <div class="cards attendance-cards">
-
 
     <div class="card stat-card">
 
@@ -97,11 +89,8 @@
 
     </div>
 
-
 </div>
 
-
-<!-- ATTENDANCE OVERVIEW -->
 
 <div class="panel">
 
@@ -118,7 +107,6 @@
             </p>
 
         </div>
-
 
         <div class="attendance-number">
             {{ pct }}%
@@ -152,8 +140,6 @@
 </div>
 
 
-<!-- ATTENDANCE HISTORY -->
-
 <div class="panel">
 
     <div class="section-title">
@@ -181,21 +167,10 @@
 
                 <tr>
 
-                    <th>
-                        Subject
-                    </th>
-
-                    <th>
-                        Date
-                    </th>
-
-                    <th>
-                        Time
-                    </th>
-
-                    <th>
-                        Status
-                    </th>
+                    <th>Subject</th>
+                    <th>Date</th>
+                    <th>Time</th>
+                    <th>Status</th>
 
                 </tr>
 
@@ -222,37 +197,33 @@
 
                     </td>
 
-
                     <td>
                         {{ h.class_date }}
                     </td>
-
 
                     <td>
                         {{ h.start_time }}
                     </td>
 
-
                     <td>
 
                         {% if h.status == 'Present' %}
 
-                            <span class="status-badge present">
-                                ✓ Present
-                            </span>
+                        <span class="status-badge present">
+                            ✓ Present
+                        </span>
 
                         {% else %}
 
-                            <span class="status-badge absent">
-                                ✕ Absent
-                            </span>
+                        <span class="status-badge absent">
+                            ✕ Absent
+                        </span>
 
                         {% endif %}
 
                     </td>
 
                 </tr>
-
 
                 {% else %}
 
