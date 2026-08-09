@@ -1,3 +1,15 @@
+
+between HTML sections. Those **must not be there**.
+
+So let's fix both completely. **Do not patch individual lines. Replace each file entirely.**
+
+---
+
+# 1. `static/style.css`
+
+Delete everything currently inside `style.css` and paste **exactly this**:
+
+```css
 * {
     box-sizing: border-box;
 }
@@ -262,9 +274,7 @@ td {
     border-bottom: 1px solid #eaecf0;
 }
 
-/* =========================================
-   STUDENT DASHBOARD
-   ========================================= */
+/* STUDENT DASHBOARD */
 
 .student-hero {
     background: linear-gradient(135deg, #101828, #175cd3);
@@ -418,7 +428,6 @@ td {
 /* MOBILE */
 
 @media (max-width: 760px) {
-
     .grid2,
     .cards {
         grid-template-columns: 1fr;
