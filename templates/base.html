@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<title>FaceAttend</title>
+
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+
+<header class="topbar">
+
+  <a class="brand" href="{{ url_for('home') }}">
+    FaceAttend
+  </a>
+
+  <nav>
+
+    {% set u = current_user() %}
+
+    {% if u %}
+
+      {% if u.role == 'admin' %}
+
+        <a href="{{ url_for('admin_dashboard') }}">
+          Dashboard
+        </a>
+
+        <a href="{{ url_for('register_page') }}">
+          Register Student
+        </a>
+
+        <a href="{{ url_for('attendance_page') }}">
+          Take Attendance
+        </a>
+
+        <a href="{{ url_for('reports') }}">
+          Reports
+        </a>
+
+      {% else %}
+
+        <a href="{{ url_for('student_dashboard') }}">
+          My Dashboard
+        </a>
+
+        <a href="{{ url_for('attendance_page') }}">
+          Take Attendance
+        </a>
+
+      {% endif %}
+
+      <a href="{{ url_for('logout') }}">
+        Logout
+      </a>
+
+    {% endif %}
+
+  </nav>
+
+</header>
+
+<main class="container">
+
+  {% block content %}
+  {% endblock %}
+
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+
+{% block scripts %}
+{% endblock %}
+
+</body>
+</html>
