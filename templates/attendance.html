@@ -35,6 +35,8 @@
         <button
             id="start"
             class="primary"
+            type="button"
+            disabled
         >
             Start Camera
         </button>
@@ -44,7 +46,7 @@
             id="result"
             class="result-box"
         >
-            Select a class and start the camera.
+            Loading available classes...
         </div>
 
     </div>
@@ -76,19 +78,16 @@ const MODEL_URL =
     "https://justadudewhohacks.github.io/face-api.js/models";
 
 
-const video =
+const videoEl =
     document.getElementById("video");
 
-
-const select =
+const selectEl =
     document.getElementById("classSelect");
 
-
-const result =
+const resultEl =
     document.getElementById("result");
 
-
-const start =
+const startBtn =
     document.getElementById("start");
 
 
@@ -98,15 +97,18 @@ let students = [];
 
 let running = false;
 
+let modelsLoaded = false;
+
 
 /*
     Lower distance = better match.
-
-    This is an initial MVP threshold.
 */
 const THRESHOLD = 0.50;
 
 
+/* ------------------------------------------------ */
+/* DISTANCE */
+/* ------------------------------------------------ */
 
 function distance(a, b) {
 
@@ -133,67 +135,317 @@ function distance(a, b) {
 }
 
 
+/* ------------------------------------------------ */
+/* LOAD CLASSES */
+/* ------------------------------------------------ */
 
-async function loadModels() {
+async function loadClasses() {
 
-    await Promise.all([
+    try {
 
-        faceapi.nets.tinyFaceDetector
-            .loadFromUri(MODEL_URL),
-
-        faceapi.nets.faceLandmark68Net
-            .loadFromUri(MODEL_URL),
-
-        faceapi.nets.faceRecognitionNet
-            .loadFromUri(MODEL_URL)
-
-    ]);
+        resultEl.textContent =
+            "Loading available classes...";
 
 
-    students =
-        await (
+        const response =
             await fetch(
-                "/api/recognition-data"
-            )
-        ).json();
+                "/api/classes",
+                {
+                    method: "GET",
+                    credentials: "same-origin"
+                }
+            );
 
 
-    const classes =
-        await (
-            await fetch(
-                "/api/classes"
-            )
-        ).json();
+        if (!response.ok) {
+
+            throw new Error(
+                `Server returned ${response.status}`
+            );
+
+        }
 
 
-    select.innerHTML =
-        '<option value="">Select class</option>'
-        +
-        classes.map(
-            c =>
-                `<option value="${c.id}">
-                    ${c.code} — ${c.name} — ${c.class_date} ${c.start_time}
-                </option>`
-        ).join("");
+        const classes =
+            await response.json();
+
+
+        selectEl.innerHTML = "";
+
+
+        if (
+            !Array.isArray(classes) ||
+            classes.length === 0
+        ) {
+
+            const option =
+                document.createElement("option");
+
+            option.value = "";
+
+            option.textContent =
+                "No classes available";
+
+            selectEl.appendChild(
+                option
+            );
+
+
+            resultEl.textContent =
+                "No class sessions found. Create a subject and class from the Admin Dashboard first.";
+
+            startBtn.disabled =
+                true;
+
+            return;
+
+        }
+
+
+        const firstOption =
+            document.createElement("option");
+
+        firstOption.value = "";
+
+        firstOption.textContent =
+            "Select class";
+
+        selectEl.appendChild(
+            firstOption
+        );
+
+
+        classes.forEach(
+            function (c) {
+
+                const option =
+                    document.createElement(
+                        "option"
+                    );
+
+
+                option.value =
+                    c.id;
+
+
+                option.textContent =
+                    `${c.code} — ${c.name} — ${c.class_date} ${c.start_time}`;
+
+
+                selectEl.appendChild(
+                    option
+                );
+
+            }
+        );
+
+
+        resultEl.textContent =
+            "Select a class and start the camera.";
+
+
+    }
+
+    catch (error) {
+
+        console.error(
+            "Class loading error:",
+            error
+        );
+
+
+        selectEl.innerHTML =
+            "";
+
+
+        const option =
+            document.createElement(
+                "option"
+            );
+
+
+        option.value =
+            "";
+
+        option.textContent =
+            "Failed to load classes";
+
+
+        selectEl.appendChild(
+            option
+        );
+
+
+        resultEl.textContent =
+            "Failed to load classes: "
+            + error.message;
+
+
+        startBtn.disabled =
+            true;
+
+    }
 
 }
 
 
+/* ------------------------------------------------ */
+/* CLASS SELECTION */
+/* ------------------------------------------------ */
 
-function findBestMatch(descriptor) {
+selectEl.addEventListener(
+    "change",
+    function () {
 
-    let best = null;
+        if (selectEl.value) {
+
+            startBtn.disabled =
+                false;
+
+            resultEl.textContent =
+                "Class selected. Click Start Camera.";
+
+        }
+
+        else {
+
+            startBtn.disabled =
+                true;
+
+            resultEl.textContent =
+                "Please select a class.";
+
+        }
+
+    }
+);
+
+
+/* ------------------------------------------------ */
+/* LOAD FACE MODELS + STUDENTS */
+/* ------------------------------------------------ */
+
+async function loadRecognitionData() {
+
+    if (!modelsLoaded) {
+
+        resultEl.textContent =
+            "Loading face recognition models...";
+
+
+        await Promise.all([
+
+            faceapi.nets.tinyFaceDetector
+                .loadFromUri(
+                    MODEL_URL
+                ),
+
+            faceapi.nets.faceLandmark68Net
+                .loadFromUri(
+                    MODEL_URL
+                ),
+
+            faceapi.nets.faceRecognitionNet
+                .loadFromUri(
+                    MODEL_URL
+                )
+
+        ]);
+
+
+        modelsLoaded =
+            true;
+
+    }
+
+
+    resultEl.textContent =
+        "Loading registered students...";
+
+
+    const response =
+        await fetch(
+            "/api/recognition-data",
+            {
+                method: "GET",
+                credentials: "same-origin"
+            }
+        );
+
+
+    if (!response.ok) {
+
+        throw new Error(
+            `Recognition data request failed: ${response.status}`
+        );
+
+    }
+
+
+    students =
+        await response.json();
+
+
+    if (
+        !Array.isArray(students) ||
+        students.length === 0
+    ) {
+
+        throw new Error(
+            "No registered students found. Register a student first."
+        );
+
+    }
+
+}
+
+
+/* ------------------------------------------------ */
+/* FIND BEST MATCH */
+/* ------------------------------------------------ */
+
+function findBestMatch(
+    descriptor
+) {
+
+    let best =
+        null;
 
     let bestDistance =
         Infinity;
 
 
-    for (const student of students) {
+    for (
+        const student
+        of students
+    ) {
+
+        if (
+            !Array.isArray(
+                student.embeddings
+            )
+        ) {
+
+            continue;
+
+        }
+
 
         for (
             const embedding
             of student.embeddings
         ) {
+
+            if (
+                !Array.isArray(
+                    embedding
+                )
+            ) {
+
+                continue;
+
+            }
+
 
             const d =
                 distance(
@@ -220,15 +472,25 @@ function findBestMatch(descriptor) {
 
 
     return {
-        best,
-        bestDistance
+
+        best:
+            best,
+
+        bestDistance:
+            bestDistance
+
     };
 
 }
 
 
+/* ------------------------------------------------ */
+/* MARK ATTENDANCE */
+/* ------------------------------------------------ */
 
-async function markAttendance(studentId) {
+async function markAttendance(
+    studentId
+) {
 
     const response =
         await fetch(
@@ -237,9 +499,14 @@ async function markAttendance(studentId) {
 
                 method: "POST",
 
+                credentials:
+                    "same-origin",
+
                 headers: {
+
                     "Content-Type":
                         "application/json"
+
                 },
 
                 body:
@@ -250,7 +517,7 @@ async function markAttendance(studentId) {
 
                         class_id:
                             Number(
-                                select.value
+                                selectEl.value
                             )
 
                     })
@@ -259,18 +526,119 @@ async function markAttendance(studentId) {
         );
 
 
-    return await response.json();
+    const data =
+        await response.json();
+
+
+    if (!response.ok) {
+
+        throw new Error(
+            data.error ||
+            `Server returned ${response.status}`
+        );
+
+    }
+
+
+    return data;
 
 }
 
 
+/* ------------------------------------------------ */
+/* START CAMERA */
+/* ------------------------------------------------ */
 
-start.onclick = async function() {
+startBtn.addEventListener(
+    "click",
+    async function () {
 
-    if (!select.value) {
+        if (!selectEl.value) {
 
-        result.textContent =
-            "Please select a class first.";
+            resultEl.textContent =
+                "Please select a class first.";
+
+            return;
+
+        }
+
+
+        try {
+
+            startBtn.disabled =
+                true;
+
+
+            await loadRecognitionData();
+
+
+            resultEl.textContent =
+                "Requesting camera permission...";
+
+
+            stream =
+                await navigator
+                    .mediaDevices
+                    .getUserMedia({
+
+                        video: {
+
+                            facingMode:
+                                "user"
+
+                        },
+
+                        audio:
+                            false
+
+                    });
+
+
+            videoEl.srcObject =
+                stream;
+
+
+            running =
+                true;
+
+
+            resultEl.textContent =
+                "Camera ready. Look directly at the camera.";
+
+
+            scan();
+
+        }
+
+        catch (error) {
+
+            console.error(
+                "Attendance start error:",
+                error
+            );
+
+
+            resultEl.textContent =
+                "Unable to start attendance: "
+                + error.message;
+
+
+            startBtn.disabled =
+                false;
+
+        }
+
+    }
+);
+
+
+/* ------------------------------------------------ */
+/* FACE SCAN */
+/* ------------------------------------------------ */
+
+async function scan() {
+
+    if (!running) {
 
         return;
 
@@ -279,178 +647,175 @@ start.onclick = async function() {
 
     try {
 
-        start.disabled =
-            true;
+        const detected =
+            await faceapi
+                .detectSingleFace(
+
+                    videoEl,
+
+                    new faceapi
+                        .TinyFaceDetectorOptions({
+
+                            inputSize:
+                                224,
+
+                            scoreThreshold:
+                                0.5
+
+                        })
+
+                )
+                .withFaceLandmarks()
+                .withFaceDescriptor();
 
 
-        result.textContent =
-            "Loading face recognition models...";
+        if (!detected) {
+
+            resultEl.textContent =
+                "Looking for a face...";
 
 
-        await loadModels();
+            setTimeout(
+                scan,
+                350
+            );
 
 
-        stream =
-            await navigator.mediaDevices
-                .getUserMedia({
+            return;
 
-                    video: {
-                        facingMode: "user"
-                    },
-
-                    audio: false
-
-                });
+        }
 
 
-        video.srcObject =
-            stream;
+        const descriptor =
+            Array.from(
+                detected.descriptor
+            );
 
 
-        running =
-            true;
+        const match =
+            findBestMatch(
+                descriptor
+            );
 
 
-        result.textContent =
-            "Camera ready. Look directly at the camera.";
+        if (
+            match.best &&
+            match.bestDistance <=
+                THRESHOLD
+        ) {
+
+            running =
+                false;
 
 
-        scan();
+            resultEl.textContent =
+                `Face matched: ${match.best.name}. Recording attendance...`;
 
+
+            const data =
+                await markAttendance(
+                    match.best.id
+                );
+
+
+            resultEl.textContent =
+                data.message;
+
+
+            stopCamera();
+
+
+            startBtn.disabled =
+                false;
+
+
+            startBtn.textContent =
+                "Take Again";
+
+
+            return;
+
+        }
+
+
+        resultEl.textContent =
+            "Face not recognized. Please look at the camera.";
+
+
+        setTimeout(
+            scan,
+            900
+        );
 
     }
 
     catch (error) {
 
-        result.textContent =
-            "Camera error: "
-            + error.message;
-
-
-        start.disabled =
-            false;
-
-    }
-
-};
-
-
-
-async function scan() {
-
-    if (!running) {
-        return;
-    }
-
-
-    const detected =
-        await faceapi
-            .detectSingleFace(
-
-                video,
-
-                new faceapi
-                    .TinyFaceDetectorOptions({
-
-                        inputSize: 224,
-
-                        scoreThreshold: 0.5
-
-                    })
-
-            )
-            .withFaceLandmarks()
-            .withFaceDescriptor();
-
-
-    if (!detected) {
-
-        result.textContent =
-            "Looking for a face...";
-
-
-        setTimeout(
-            scan,
-            350
+        console.error(
+            "Face recognition error:",
+            error
         );
 
-
-        return;
-
-    }
-
-
-    const descriptor =
-        Array.from(
-            detected.descriptor
-        );
-
-
-    const match =
-        findBestMatch(
-            descriptor
-        );
-
-
-    if (
-        match.best &&
-        match.bestDistance <=
-            THRESHOLD
-    ) {
 
         running =
             false;
 
 
-        result.textContent =
-            `Face matched: ${match.best.name}. Recording attendance...`;
+        resultEl.textContent =
+            "Recognition error: "
+            + error.message;
 
 
-        const data =
-            await markAttendance(
-                match.best.id
-            );
+        stopCamera();
 
 
-        result.textContent =
-            data.message;
-
-
-        if (stream) {
-
-            stream
-                .getTracks()
-                .forEach(
-                    track =>
-                        track.stop()
-                );
-
-        }
-
-
-        start.disabled =
+        startBtn.disabled =
             false;
-
-
-        start.textContent =
-            "Take Again";
-
-
-        return;
 
     }
 
-
-    result.textContent =
-        "Face not recognized. Please try again.";
+}
 
 
-    setTimeout(
-        scan,
-        900
-    );
+/* ------------------------------------------------ */
+/* STOP CAMERA */
+/* ------------------------------------------------ */
+
+function stopCamera() {
+
+    if (stream) {
+
+        stream
+            .getTracks()
+            .forEach(
+                function (track) {
+
+                    track.stop();
+
+                }
+            );
+
+
+        stream =
+            null;
+
+    }
 
 }
+
+
+/* ------------------------------------------------ */
+/* INITIAL PAGE LOAD */
+/* ------------------------------------------------ */
+
+document.addEventListener(
+    "DOMContentLoaded",
+    function () {
+
+        loadClasses();
+
+    }
+);
 
 </script>
 
