@@ -1,15 +1,3 @@
-
-between HTML sections. Those **must not be there**.
-
-So let's fix both completely. **Do not patch individual lines. Replace each file entirely.**
-
----
-
-# 1. `static/style.css`
-
-Delete everything currently inside `style.css` and paste **exactly this**:
-
-```css
 * {
     box-sizing: border-box;
 }
