@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="page-head">
+
+    <div>
+        <h1>Attendance Reports</h1>
+
+        <p class="muted">
+            Overall attendance based on class sessions.
+        </p>
+    </div>
+
+</div>
+
+
+<div class="panel">
+
+    <div class="table-wrap">
+
+        <table>
+
+            <thead>
+
+                <tr>
+                    <th>Roll</th>
+                    <th>Name</th>
+                    <th>Department</th>
+                    <th>Present</th>
+                    <th>Total</th>
+                    <th>Percentage</th>
+                </tr>
+
+            </thead>
+
+
+            <tbody>
+
+                {% for r in rows %}
+
+                <tr>
+
+                    <td>
+                        {{ r.roll_no }}
+                    </td>
+
+                    <td>
+                        {{ r.name }}
+                    </td>
+
+                    <td>
+                        {{ r.department or '-' }}
+                    </td>
+
+                    <td>
+                        {{ r.present }}
+                    </td>
+
+                    <td>
+                        {{ r.total_classes }}
+                    </td>
+
+                    <td>
+                        <b>
+                            {{ r.percentage }}%
+                        </b>
+                    </td>
+
+                </tr>
+
+                {% else %}
+
+                <tr>
+
+                    <td colspan="6">
+                        No attendance data yet.
+                    </td>
+
+                </tr>
+
+                {% endfor %}
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</div>
+
+{% endblock %}
