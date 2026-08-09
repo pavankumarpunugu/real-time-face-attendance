@@ -288,18 +288,64 @@ def attendance_page():
 @app.route("/reports")
 @admin_required
 def reports():
-    rows=q("""SELECT s.id,s.roll_no,s.name,s.department,
-                     COUNT(c.id) total_classes,
-                     COALESCE(SUM(CASE WHEN a.status='Present' THEN 1 ELSE 0 END),0) present
-              FROM students s CROSS JOIN (SELECT 1) x
-              LEFT JOIN attendance a ON a.student_id=s.id
-              LEFT JOIN classes c ON c.id=a.class_id
-              GROUP BY s.id,s.roll_no,s.name,s.department ORDER BY s.name""", fetch=True)
-    result=[]
+    rows = q("""
+        SELECT
+            s.id,
+            s.roll_no,
+            s.name,
+            s.department,
+
+            COUNT(c.id) AS total_classes,
+
+            COALESCE(
+                SUM(
+                    CASE
+                        WHEN a.status = 'Present' THEN 1
+                        ELSE 0
+                    END
+                ),
+                0
+            ) AS present
+
+        FROM students s
+
+        LEFT JOIN classes c
+            ON 1 = 1
+
+        LEFT JOIN attendance a
+            ON a.student_id = s.id
+            AND a.class_id = c.id
+
+        GROUP BY
+            s.id,
+            s.roll_no,
+            s.name,
+            s.department
+
+        ORDER BY s.name
+    """, fetch=True)
+
+    result = []
+
     for r in rows:
-        d=dict(r); d["percentage"]=round((d["present"]/d["total_classes"])*100,1) if d["total_classes"] else 0
+
+        d = dict(r)
+
+        d["percentage"] = (
+            round(
+                (d["present"] / d["total_classes"]) * 100,
+                1
+            )
+            if d["total_classes"]
+            else 0
+        )
+
         result.append(d)
-    return render_template("reports.html", rows=result)
+
+    return render_template(
+        "reports.html",
+        rows=result
+    )
 
 @app.route("/subjects", methods=["POST"])
 @admin_required
@@ -316,13 +362,73 @@ def create_subject():
 @app.route("/classes", methods=["POST"])
 @admin_required
 def create_class():
-    data=request.get_json(force=True)
+
+    data = request.get_json(force=True)
+
+    subject_id = data.get("subject_id")
+    class_date = data.get("class_date")
+    start_time = data.get("start_time")
+
+    if not subject_id or not class_date or not start_time:
+        return jsonify(
+            ok=False,
+            error="Subject, date and time are required."
+        ), 400
+
     try:
-        q("""INSERT INTO classes(subject_id,class_date,start_time)
-             VALUES(:sid,:d,:t)""", {"sid":int(data["subject_id"]),"d":data["class_date"],"t":data["start_time"]})
-        return jsonify(ok=True)
+
+        subject_id = int(subject_id)
+
+        subject = q(
+            "SELECT id FROM subjects WHERE id=:id",
+            {"id": subject_id},
+            fetch=True,
+            one=True
+        )
+
+        if not subject:
+            return jsonify(
+                ok=False,
+                error="Selected subject does not exist."
+            ), 400
+
+        q(
+            """
+            INSERT INTO classes(
+                subject_id,
+                class_date,
+                start_time
+            )
+            VALUES(
+                :sid,
+                :d,
+                :t
+            )
+            """,
+            {
+                "sid": subject_id,
+                "d": class_date,
+                "t": start_time
+            }
+        )
+
+        return jsonify(
+            ok=True,
+            message="Class created successfully."
+        )
+
+    except IntegrityError:
+        return jsonify(
+            ok=False,
+            error="A class for this subject, date and time already exists."
+        ), 409
+
     except Exception as e:
-        return jsonify(ok=False,error=str(e)),400
+
+        return jsonify(
+            ok=False,
+            error=str(e)
+        ), 400
 
 @app.route("/api/students", methods=["POST"])
 @admin_required
