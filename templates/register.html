@@ -66,6 +66,7 @@
         <button
             id="start"
             class="secondary"
+            type="button"
         >
             Start Camera
         </button>
@@ -74,6 +75,7 @@
         <button
             id="capture"
             class="primary"
+            type="button"
             disabled
         >
             Capture Sample
@@ -83,6 +85,7 @@
         <button
             id="save"
             class="success"
+            type="button"
             disabled
         >
             Save Student
@@ -100,7 +103,9 @@
         <div
             id="status"
             class="status"
-        ></div>
+        >
+            Click Start Camera to begin.
+        </div>
 
     </div>
 
@@ -125,28 +130,84 @@
 
 {% block scripts %}
 
+<!-- FACE-API.JS -->
+
+<script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+
+
 <script>
 
 const MODEL_URL =
     "https://justadudewhohacks.github.io/face-api.js/models";
 
 
-let stream = null;
+/* ELEMENTS */
 
-let embeddings = [];
-
-
-const video =
+const videoEl =
     document.getElementById("video");
 
 const statusEl =
     document.getElementById("status");
 
+const rollEl =
+    document.getElementById("roll");
+
+const nameEl =
+    document.getElementById("name");
+
+const emailEl =
+    document.getElementById("email");
+
+const departmentEl =
+    document.getElementById("department");
+
+const passwordEl =
+    document.getElementById("password");
+
+const startBtn =
+    document.getElementById("start");
+
+const captureBtn =
+    document.getElementById("capture");
+
+const saveBtn =
+    document.getElementById("save");
+
+const samplesEl =
+    document.getElementById("samples");
+
+
+/* VARIABLES */
+
+let stream = null;
+
+let embeddings = [];
+
+let modelsLoaded = false;
+
+
+/* STATUS */
+
+function setStatus(message) {
+
+    statusEl.textContent =
+        message;
+
+}
+
+
+/* LOAD FACE MODELS */
 
 async function loadModels() {
 
-    statusEl.textContent =
-        "Loading face models...";
+    if (modelsLoaded) {
+        return;
+    }
+
+
+    setStatus(
+        "Loading face recognition models..."
+    );
 
 
     await Promise.all([
@@ -162,205 +223,414 @@ async function loadModels() {
 
     ]);
 
+
+    modelsLoaded = true;
+
+
+    setStatus(
+        "Face recognition models loaded."
+    );
+
 }
 
 
-start.onclick = async function() {
+/* START CAMERA */
 
-    try {
+startBtn.addEventListener(
+    "click",
+    async function () {
 
-        await loadModels();
+        try {
 
-
-        stream =
-            await navigator.mediaDevices
-                .getUserMedia({
-
-                    video: {
-                        facingMode: "user"
-                    },
-
-                    audio: false
-
-                });
+            startBtn.disabled =
+                true;
 
 
-        video.srcObject =
-            stream;
+            await loadModels();
 
 
-        capture.disabled =
-            false;
+            setStatus(
+                "Requesting camera permission..."
+            );
 
 
-        start.disabled =
-            true;
+            stream =
+                await navigator
+                    .mediaDevices
+                    .getUserMedia({
+
+                        video: {
+                            facingMode: "user"
+                        },
+
+                        audio: false
+
+                    });
 
 
-        statusEl.textContent =
-            "Camera ready. Look at the camera.";
+            videoEl.srcObject =
+                stream;
 
 
-    } catch (error) {
-
-        statusEl.textContent =
-            "Camera/model error: "
-            + error.message;
-
-    }
-
-};
+            captureBtn.disabled =
+                false;
 
 
-capture.onclick = async function() {
+            setStatus(
+                "Camera ready. Look directly at the camera."
+            );
 
-    const result =
-        await faceapi
-            .detectSingleFace(
+        }
 
-                video,
+        catch (error) {
 
-                new faceapi
-                    .TinyFaceDetectorOptions({
-
-                        inputSize: 224,
-
-                        scoreThreshold: 0.5
-
-                    })
-
-            )
-            .withFaceLandmarks()
-            .withFaceDescriptor();
+            console.error(
+                "Camera error:",
+                error
+            );
 
 
-    if (!result) {
+            startBtn.disabled =
+                false;
 
-        statusEl.textContent =
-            "No clear face detected. Look straight at the camera.";
 
-        return;
+            setStatus(
+                "Camera error: "
+                + error.message
+            );
+
+        }
 
     }
+);
 
 
-    embeddings.push(
-        Array.from(result.descriptor)
-    );
+/* CAPTURE FACE SAMPLE */
+
+captureBtn.addEventListener(
+    "click",
+    async function () {
+
+        try {
+
+            captureBtn.disabled =
+                true;
 
 
-    samples.textContent =
-        `Samples: ${embeddings.length} / 3`;
+            setStatus(
+                "Detecting face..."
+            );
 
 
-    if (embeddings.length >= 3) {
+            const result =
+                await faceapi
+                    .detectSingleFace(
 
-        capture.disabled =
-            true;
+                        videoEl,
 
+                        new faceapi
+                            .TinyFaceDetectorOptions({
 
-        save.disabled =
-            false;
+                                inputSize: 224,
 
+                                scoreThreshold: 0.5
 
-        statusEl.textContent =
-            "Three samples captured. Save the student.";
+                            })
 
-    }
-
-    else {
-
-        statusEl.textContent =
-            `Sample ${embeddings.length} captured. Slightly change your angle and capture again.`;
-
-    }
-
-};
+                    )
+                    .withFaceLandmarks()
+                    .withFaceDescriptor();
 
 
-save.onclick = async function() {
+            if (!result) {
 
-    const payload = {
-
-        roll_no:
-            roll.value,
-
-        name:
-            name.value,
-
-        email:
-            email.value,
-
-        department:
-            department.value,
-
-        password:
-            password.value,
-
-        embeddings:
-            embeddings
-
-    };
+                setStatus(
+                    "No face detected. Look directly at the camera."
+                );
 
 
-    if (
-        !payload.roll_no ||
-        !payload.name ||
-        embeddings.length < 3
-    ) {
-
-        statusEl.textContent =
-            "Complete the fields and capture 3 samples.";
-
-        return;
-
-    }
+                captureBtn.disabled =
+                    false;
 
 
-    const response =
-        await fetch(
-
-            "/api/students",
-
-            {
-
-                method: "POST",
-
-                headers: {
-                    "Content-Type":
-                        "application/json"
-                },
-
-                body:
-                    JSON.stringify(payload)
+                return;
 
             }
 
-        );
+
+            /* SAVE FACE EMBEDDING */
+
+            embeddings.push(
+                Array.from(
+                    result.descriptor
+                )
+            );
 
 
-    const data =
-        await response.json();
+            samplesEl.textContent =
+                `Samples: ${embeddings.length} / 3`;
 
 
-    if (data.ok) {
+            if (
+                embeddings.length >= 3
+            ) {
 
-        statusEl.textContent =
-            `Registered. Student login: ${data.login_username} / ${data.temporary_password}`;
+                captureBtn.disabled =
+                    true;
 
-        save.disabled =
-            true;
+
+                saveBtn.disabled =
+                    false;
+
+
+                setStatus(
+                    "3 samples captured. Click Save Student."
+                );
+
+            }
+
+            else {
+
+                setStatus(
+                    `Sample ${embeddings.length} captured. Change your face angle slightly and capture again.`
+                );
+
+
+                captureBtn.disabled =
+                    false;
+
+            }
+
+        }
+
+        catch (error) {
+
+            console.error(
+                "Capture error:",
+                error
+            );
+
+
+            captureBtn.disabled =
+                false;
+
+
+            setStatus(
+                "Capture error: "
+                + error.message
+            );
+
+        }
 
     }
+);
 
-    else {
 
-        statusEl.textContent =
-            data.error;
+/* SAVE STUDENT */
+
+saveBtn.addEventListener(
+    "click",
+    async function () {
+
+        try {
+
+            /* VALIDATION */
+
+            if (
+                !rollEl.value.trim()
+            ) {
+
+                setStatus(
+                    "Please enter Roll Number."
+                );
+
+                return;
+
+            }
+
+
+            if (
+                !nameEl.value.trim()
+            ) {
+
+                setStatus(
+                    "Please enter Student Name."
+                );
+
+                return;
+
+            }
+
+
+            if (
+                embeddings.length < 3
+            ) {
+
+                setStatus(
+                    "Please capture 3 face samples first."
+                );
+
+                return;
+
+            }
+
+
+            saveBtn.disabled =
+                true;
+
+
+            setStatus(
+                "Saving student..."
+            );
+
+
+            /* DATA */
+
+            const payload = {
+
+                roll_no:
+                    rollEl.value.trim(),
+
+                name:
+                    nameEl.value.trim(),
+
+                email:
+                    emailEl.value.trim(),
+
+                department:
+                    departmentEl.value.trim(),
+
+                password:
+                    passwordEl.value,
+
+                embeddings:
+                    embeddings
+
+            };
+
+
+            console.log(
+                "Sending student:",
+                payload
+            );
+
+
+            /* SEND TO FLASK */
+
+            const response =
+                await fetch(
+                    "/api/students",
+                    {
+
+                        method: "POST",
+
+                        headers: {
+
+                            "Content-Type":
+                                "application/json"
+
+                        },
+
+                        body:
+                            JSON.stringify(
+                                payload
+                            )
+
+                    }
+                );
+
+
+            /* READ SERVER RESPONSE */
+
+            const responseText =
+                await response.text();
+
+
+            let data;
+
+
+            try {
+
+                data =
+                    JSON.parse(
+                        responseText
+                    );
+
+            }
+
+            catch {
+
+                throw new Error(
+                    `Server returned HTTP ${response.status}: ${responseText}`
+                );
+
+            }
+
+
+            /* SERVER ERROR */
+
+            if (
+                !response.ok ||
+                !data.ok
+            ) {
+
+                throw new Error(
+                    data.error ||
+                    `Server error: ${response.status}`
+                );
+
+            }
+
+
+            /* SUCCESS */
+
+            setStatus(
+                "Student registered successfully! " +
+                "Login: " +
+                data.login_username
+            );
+
+
+            saveBtn.disabled =
+                true;
+
+
+            /* STOP CAMERA */
+
+            if (stream) {
+
+                stream
+                    .getTracks()
+                    .forEach(
+                        track =>
+                            track.stop()
+                    );
+
+            }
+
+        }
+
+        catch (error) {
+
+            console.error(
+                "Save student error:",
+                error
+            );
+
+
+            saveBtn.disabled =
+                false;
+
+
+            setStatus(
+                "Save failed: "
+                + error.message
+            );
+
+        }
 
     }
-
-};
+);
 
 </script>
 
