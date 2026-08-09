@@ -179,24 +179,102 @@ def admin_dashboard():
                  JOIN classes c ON c.id=a.class_id
                  WHERE c.class_date=:d AND a.status='Present'""", {"d":today}, True, True)["c"]
     return render_template("admin.html", students=students, subjects=subjects, present_today=present)
-
 @app.route("/student")
 @login_required
 def student_dashboard():
-    u=current_user()
-    if u["role"]!="student" or not u["student_id"]: return redirect(url_for("admin_dashboard"))
-    s=q("SELECT * FROM students WHERE id=:id", {"id":u["student_id"]}, True, True)
-    total=q("SELECT COUNT(*) c FROM classes", fetch=True, one=True)["c"]
-    present=q("""SELECT COUNT(*) c FROM attendance WHERE student_id=:sid AND status='Present'""",
-             {"sid":s["id"]}, True, True)["c"]
-    pct=round((present/total)*100,1) if total else 0
-    history=q("""SELECT sub.code, sub.name, c.class_date, c.start_time, a.status, a.marked_at
-                FROM attendance a JOIN classes c ON c.id=a.class_id
-                JOIN subjects sub ON sub.id=c.subject_id
-                WHERE a.student_id=:sid ORDER BY c.class_date DESC, c.start_time DESC""",
-              {"sid":s["id"]}, fetch=True)
-    return render_template("student.html", student=s, present=present, total=total, pct=pct, history=history)
 
+    u = current_user()
+
+    if u["role"] != "student" or not u["student_id"]:
+        return redirect(url_for("admin_dashboard"))
+
+
+    # Student information
+    s = q(
+        "SELECT * FROM students WHERE id=:id",
+        {"id": u["student_id"]},
+        True,
+        True
+    )
+
+    if not s:
+        session.clear()
+        return redirect(url_for("login"))
+
+
+    # Total classes conducted
+    total = q(
+        "SELECT COUNT(*) AS c FROM classes",
+        fetch=True,
+        one=True
+    )["c"]
+
+
+    # Classes attended
+    present = q(
+        """
+        SELECT COUNT(*) AS c
+        FROM attendance
+        WHERE student_id=:sid
+        AND status='Present'
+        """,
+        {"sid": s["id"]},
+        True,
+        True
+    )["c"]
+
+
+    # Attendance percentage
+    pct = (
+        round((present / total) * 100, 1)
+        if total
+        else 0
+    )
+
+
+    # Complete attendance history
+    # Includes both PRESENT and ABSENT classes.
+    history = q(
+        """
+        SELECT
+            sub.code,
+            sub.name,
+            c.class_date,
+            c.start_time,
+
+            COALESCE(
+                a.status,
+                'Absent'
+            ) AS status,
+
+            a.marked_at
+
+        FROM classes c
+
+        JOIN subjects sub
+            ON sub.id = c.subject_id
+
+        LEFT JOIN attendance a
+            ON a.class_id = c.id
+            AND a.student_id = :sid
+
+        ORDER BY
+            c.class_date DESC,
+            c.start_time DESC
+        """,
+        {"sid": s["id"]},
+        fetch=True
+    )
+
+
+    return render_template(
+        "student.html",
+        student=s,
+        present=present,
+        total=total,
+        pct=pct,
+        history=history
+    )
 @app.route("/register")
 @admin_required
 def register_page(): return render_template("register.html")
