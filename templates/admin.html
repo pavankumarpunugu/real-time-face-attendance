@@ -25,13 +25,11 @@
         <small>Registered students</small>
     </div>
 
-
     <div class="card stat-card">
         <span>Present Today</span>
         <strong>{{ present_today }}</strong>
         <small>Attendance marked today</small>
     </div>
-
 
     <div class="card stat-card">
         <span>Subjects</span>
@@ -46,46 +44,33 @@
 
 <div class="panel">
 
-    <div class="section-title">
+    <h2>Create Subject</h2>
 
-        <div>
-            <h2>Create Subject</h2>
-
-            <p class="muted">
-                Add a new subject to the attendance system.
-            </p>
-        </div>
-
-    </div>
-
+    <p class="muted">
+        Add a new subject to the system.
+    </p>
 
     <div class="grid2">
 
         <div>
-
             <label>Subject Code</label>
 
             <input
                 id="scode"
                 placeholder="e.g. CS301"
             >
-
         </div>
 
-
         <div>
-
             <label>Subject Name</label>
 
             <input
                 id="sname"
                 placeholder="e.g. Python Programming"
             >
-
         </div>
 
     </div>
-
 
     <button
         class="primary"
@@ -93,7 +78,6 @@
     >
         Create Subject
     </button>
-
 
     <div
         id="subjectMsg"
@@ -107,18 +91,12 @@
 
 <div class="panel">
 
-    <div class="section-title">
+    <h2>Subject Management</h2>
 
-        <div>
-            <h2>Subject Management</h2>
-
-            <p class="muted">
-                Edit or remove subjects.
-            </p>
-        </div>
-
-    </div>
-
+    <p class="muted">
+        Edit subjects or permanently remove a subject and all
+        of its class sessions and attendance records.
+    </p>
 
     <div class="table-wrap">
 
@@ -134,7 +112,6 @@
 
             </thead>
 
-
             <tbody>
 
                 {% for s in subjects %}
@@ -147,32 +124,30 @@
                         </strong>
                     </td>
 
-
                     <td>
                         {{ s.name }}
                     </td>
-
 
                     <td>
 
                         <button
                             class="secondary"
-                            onclick="editSubject(
+                            onclick='editSubject(
                                 {{ s.id }},
-                                '{{ s.code|e }}',
-                                '{{ s.name|e }}'
-                            )"
+                                {{ s.code|tojson }},
+                                {{ s.name|tojson }}
+                            )'
                         >
                             Edit
                         </button>
 
-
                         <button
                             class="danger"
-                            onclick="deleteSubject(
+                            onclick='deleteSubject(
                                 {{ s.id }},
-                                '{{ s.name|e }}'
-                            )"
+                                {{ s.code|tojson }},
+                                {{ s.name|tojson }}
+                            )'
                         >
                             Delete
                         </button>
@@ -181,7 +156,6 @@
 
                 </tr>
 
-
                 {% else %}
 
                 <tr>
@@ -189,11 +163,15 @@
                     <td colspan="3">
 
                         <div class="empty-state">
-                            <strong>No subjects yet</strong>
+
+                            <strong>
+                                No subjects yet
+                            </strong>
 
                             <span>
                                 Create your first subject above.
                             </span>
+
                         </div>
 
                     </td>
@@ -215,20 +193,11 @@
 
 <div class="panel">
 
-    <div class="section-title">
+    <h2>Create Class Session</h2>
 
-        <div>
-
-            <h2>Create Class Session</h2>
-
-            <p class="muted">
-                Schedule a class for attendance.
-            </p>
-
-        </div>
-
-    </div>
-
+    <p class="muted">
+        Schedule a class session for attendance.
+    </p>
 
     <label>Subject</label>
 
@@ -238,13 +207,10 @@
             Select subject
         </option>
 
-
         {% for s in subjects %}
 
         <option value="{{ s.id }}">
-
             {{ s.code }} — {{ s.name }}
-
         </option>
 
         {% endfor %}
@@ -264,7 +230,6 @@
             >
 
         </div>
-
 
         <div>
 
@@ -287,7 +252,6 @@
         Create Class
     </button>
 
-
     <div
         id="classMsg"
         class="status"
@@ -296,24 +260,60 @@
 </div>
 
 
+<!-- CLASS SESSIONS -->
+
+<div class="panel">
+
+    <h2>Class Sessions</h2>
+
+    <p class="muted">
+        Manage scheduled class sessions.
+        Deleting a session also deletes its attendance records.
+    </p>
+
+    <div class="table-wrap">
+
+        <table>
+
+            <thead>
+
+                <tr>
+                    <th>Subject</th>
+                    <th>Date</th>
+                    <th>Time</th>
+                    <th>Actions</th>
+                </tr>
+
+            </thead>
+
+            <tbody id="classSessionsBody">
+
+                <tr>
+
+                    <td colspan="4">
+                        Loading classes...
+                    </td>
+
+                </tr>
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</div>
+
+
 <!-- CLASS-WISE ATTENDANCE -->
 
 <div class="panel">
 
-    <div class="section-title">
+    <h2>Class-wise Attendance</h2>
 
-        <div>
-
-            <h2>Class-wise Attendance</h2>
-
-            <p class="muted">
-                View attendance for a specific class session.
-            </p>
-
-        </div>
-
-    </div>
-
+    <p class="muted">
+        View Present / Absent students for a specific class.
+    </p>
 
     <label>Select Class</label>
 
@@ -342,7 +342,7 @@
 
     <div
         id="classAttendanceResult"
-        style="margin-top: 20px;"
+        style="margin-top:20px;"
     ></div>
 
 </div>
@@ -352,20 +352,11 @@
 
 <div class="panel">
 
-    <div class="section-title">
+    <h2>Students</h2>
 
-        <div>
-
-            <h2>Students</h2>
-
-            <p class="muted">
-                Registered students in the system.
-            </p>
-
-        </div>
-
-    </div>
-
+    <p class="muted">
+        Registered students in the system.
+    </p>
 
     <div class="table-wrap">
 
@@ -374,16 +365,13 @@
             <thead>
 
                 <tr>
-
                     <th>Roll</th>
                     <th>Name</th>
                     <th>Department</th>
                     <th>Email</th>
-
                 </tr>
 
             </thead>
-
 
             <tbody>
 
@@ -397,23 +385,19 @@
                         </strong>
                     </td>
 
-
                     <td>
                         {{ s.name }}
                     </td>
 
-
                     <td>
                         {{ s.department or '-' }}
                     </td>
-
 
                     <td>
                         {{ s.email or '-' }}
                     </td>
 
                 </tr>
-
 
                 {% else %}
 
@@ -454,7 +438,6 @@
 
 <script>
 
-
 /* =====================================================
    CREATE SUBJECT
 ===================================================== */
@@ -462,24 +445,13 @@
 async function createSubject() {
 
     const code =
-        document
-            .getElementById("scode")
-            .value
-            .trim();
-
+        document.getElementById("scode").value.trim();
 
     const name =
-        document
-            .getElementById("sname")
-            .value
-            .trim();
-
+        document.getElementById("sname").value.trim();
 
     const message =
-        document.getElementById(
-            "subjectMsg"
-        );
-
+        document.getElementById("subjectMsg");
 
     if (!code || !name) {
 
@@ -489,35 +461,30 @@ async function createSubject() {
         return;
     }
 
-
     message.textContent =
         "Creating subject...";
 
-
     try {
 
-        const response =
-            await fetch(
-                "/subjects",
-                {
-                    method: "POST",
+        const response = await fetch(
+            "/subjects",
+            {
+                method: "POST",
 
-                    headers: {
-                        "Content-Type":
-                            "application/json"
-                    },
+                headers: {
+                    "Content-Type":
+                        "application/json"
+                },
 
-                    body: JSON.stringify({
-                        code: code,
-                        name: name
-                    })
-                }
-            );
-
+                body: JSON.stringify({
+                    code: code,
+                    name: name
+                })
+            }
+        );
 
         const data =
             await response.json();
-
 
         if (!response.ok || !data.ok) {
 
@@ -527,35 +494,19 @@ async function createSubject() {
             );
         }
 
-
         message.textContent =
             "Subject created successfully.";
 
-        document.getElementById(
-            "scode"
-        ).value = "";
-
-        document.getElementById(
-            "sname"
-        ).value = "";
-
-
         setTimeout(
-            function() {
-                window.location.reload();
-            },
+            () => window.location.reload(),
             700
         );
 
-    }
-
-    catch (error) {
+    } catch (error) {
 
         message.textContent =
-            "Error: " +
-            error.message;
+            "Error: " + error.message;
     }
-
 }
 
 
@@ -575,11 +526,9 @@ async function editSubject(
             oldCode
         );
 
-
     if (code === null) {
         return;
     }
-
 
     const name =
         prompt(
@@ -587,19 +536,15 @@ async function editSubject(
             oldName
         );
 
-
     if (name === null) {
         return;
     }
 
-
     const cleanCode =
         code.trim();
 
-
     const cleanName =
         name.trim();
-
 
     if (!cleanCode || !cleanName) {
 
@@ -609,7 +554,6 @@ async function editSubject(
 
         return;
     }
-
 
     try {
 
@@ -625,21 +569,14 @@ async function editSubject(
                     },
 
                     body: JSON.stringify({
-
-                        code:
-                            cleanCode,
-
-                        name:
-                            cleanName
-
+                        code: cleanCode,
+                        name: cleanName
                     })
                 }
             );
 
-
         const data =
             await response.json();
-
 
         if (!response.ok || !data.ok) {
 
@@ -649,25 +586,20 @@ async function editSubject(
             );
         }
 
-
         alert(
             data.message ||
             "Subject updated successfully."
         );
 
-
         window.location.reload();
 
-    }
-
-    catch (error) {
+    } catch (error) {
 
         alert(
             "Update failed: " +
             error.message
         );
     }
-
 }
 
 
@@ -677,21 +609,30 @@ async function editSubject(
 
 async function deleteSubject(
     subjectId,
+    subjectCode,
     subjectName
 ) {
 
     const confirmed =
         confirm(
-            `Delete subject "${subjectName}"?\n\n` +
-            `This is only possible if the subject ` +
-            `has no class sessions.`
-        );
+            "DELETE SUBJECT?\n\n" +
+            subjectCode +
+            " — " +
+            subjectName +
+            "\n\n" +
 
+            "This will permanently delete:\n" +
+            "• The subject\n" +
+            "• All class sessions for this subject\n" +
+            "• All attendance records for those sessions\n\n" +
+
+            "This action cannot be undone.\n\n" +
+            "Continue?"
+        );
 
     if (!confirmed) {
         return;
     }
-
 
     try {
 
@@ -703,10 +644,8 @@ async function deleteSubject(
                 }
             );
 
-
         const data =
             await response.json();
-
 
         if (!response.ok || !data.ok) {
 
@@ -716,25 +655,20 @@ async function deleteSubject(
             );
         }
 
-
         alert(
             data.message ||
-            "Subject deleted successfully."
+            "Subject and related data deleted."
         );
-
 
         window.location.reload();
 
-    }
-
-    catch (error) {
+    } catch (error) {
 
         alert(
             "Delete failed: " +
             error.message
         );
     }
-
 }
 
 
@@ -745,28 +679,16 @@ async function deleteSubject(
 async function createClass() {
 
     const subject =
-        document
-            .getElementById("subject")
-            .value;
-
+        document.getElementById("subject").value;
 
     const classDate =
-        document
-            .getElementById("cdate")
-            .value;
-
+        document.getElementById("cdate").value;
 
     const startTime =
-        document
-            .getElementById("ctime")
-            .value;
-
+        document.getElementById("ctime").value;
 
     const message =
-        document.getElementById(
-            "classMsg"
-        );
-
+        document.getElementById("classMsg");
 
     if (
         !subject ||
@@ -780,10 +702,8 @@ async function createClass() {
         return;
     }
 
-
     message.textContent =
         "Creating class...";
-
 
     try {
 
@@ -813,10 +733,8 @@ async function createClass() {
                 }
             );
 
-
         const data =
             await response.json();
-
 
         if (!response.ok || !data.ok) {
 
@@ -826,32 +744,24 @@ async function createClass() {
             );
         }
 
-
         message.textContent =
             "Class created successfully.";
-
 
         document.getElementById(
             "cdate"
         ).value = "";
 
-
         document.getElementById(
             "ctime"
         ).value = "";
 
+        await loadClassOptions();
 
-        loadClassOptions();
-
-    }
-
-    catch (error) {
+    } catch (error) {
 
         message.textContent =
-            "Error: " +
-            error.message;
+            "Error: " + error.message;
     }
-
 }
 
 
@@ -866,6 +776,10 @@ async function loadClassOptions() {
             "attendanceClass"
         );
 
+    const tableBody =
+        document.getElementById(
+            "classSessionsBody"
+        );
 
     try {
 
@@ -878,10 +792,8 @@ async function loadClassOptions() {
                 }
             );
 
-
         const classes =
             await response.json();
-
 
         if (!response.ok) {
 
@@ -891,23 +803,19 @@ async function loadClassOptions() {
         }
 
 
+        /* ATTENDANCE SELECT */
+
         select.innerHTML = "";
 
-
         const first =
-            document.createElement(
-                "option"
-            );
-
+            document.createElement("option");
 
         first.value = "";
-
 
         first.textContent =
             classes.length
                 ? "Select class session"
                 : "No classes available";
-
 
         select.appendChild(first);
 
@@ -916,65 +824,264 @@ async function loadClassOptions() {
             function(c) {
 
                 const option =
-                    document.createElement(
-                        "option"
-                    );
-
+                    document.createElement("option");
 
                 option.value =
                     c.id;
-
 
                 option.textContent =
                     `${c.code} — ${c.name} — ` +
                     `${c.class_date} ${c.start_time}`;
 
-
-                select.appendChild(
-                    option
-                );
+                select.appendChild(option);
 
             }
         );
 
-    }
 
-    catch (error) {
+        /* CLASS TABLE */
 
-        select.innerHTML =
-            `<option value="">
+        tableBody.innerHTML = "";
+
+        if (!classes.length) {
+
+            tableBody.innerHTML = `
+
+                <tr>
+
+                    <td colspan="4">
+
+                        <div class="empty-state">
+
+                            <strong>
+                                No class sessions yet
+                            </strong>
+
+                            <span>
+                                Create a class session above.
+                            </span>
+
+                        </div>
+
+                    </td>
+
+                </tr>
+
+            `;
+
+            return;
+        }
+
+
+        classes.forEach(
+            function(c) {
+
+                const row =
+                    document.createElement("tr");
+
+                row.innerHTML = `
+
+                    <td>
+
+                        <strong>
+                            ${escapeHtml(c.code)}
+                        </strong>
+
+                        <br>
+
+                        <span class="muted">
+                            ${escapeHtml(c.name)}
+                        </span>
+
+                    </td>
+
+
+                    <td>
+                        ${escapeHtml(c.class_date)}
+                    </td>
+
+
+                    <td>
+                        ${escapeHtml(c.start_time)}
+                    </td>
+
+
+                    <td>
+
+                        <button
+                            class="secondary"
+                            onclick="viewAttendance(${c.id})"
+                        >
+                            View Attendance
+                        </button>
+
+
+                        <button
+                            class="danger"
+                            onclick='deleteClass(
+                                ${c.id},
+                                ${JSON.stringify(
+                                    c.code +
+                                    " — " +
+                                    c.name
+                                )},
+                                ${JSON.stringify(
+                                    c.class_date +
+                                    " " +
+                                    c.start_time
+                                )}
+                            )'
+                        >
+                            Delete
+                        </button>
+
+                    </td>
+
+                `;
+
+                tableBody.appendChild(row);
+
+            }
+        );
+
+    } catch (error) {
+
+        select.innerHTML = `
+
+            <option value="">
                 Failed to load classes
-            </option>`;
-    }
+            </option>
 
+        `;
+
+        tableBody.innerHTML = `
+
+            <tr>
+
+                <td colspan="4">
+                    Failed to load classes.
+                </td>
+
+            </tr>
+
+        `;
+    }
 }
 
 
 /* =====================================================
-   VIEW CLASS ATTENDANCE
+   DELETE CLASS SESSION
+===================================================== */
+
+async function deleteClass(
+    classId,
+    className,
+    classDateTime
+) {
+
+    const confirmed =
+        confirm(
+            "DELETE CLASS SESSION?\n\n" +
+            className +
+            "\n" +
+            classDateTime +
+            "\n\n" +
+
+            "This will permanently delete:\n" +
+            "• The class session\n" +
+            "• All attendance records for this session\n\n" +
+
+            "This action cannot be undone.\n\n" +
+            "Continue?"
+        );
+
+    if (!confirmed) {
+        return;
+    }
+
+    try {
+
+        const response =
+            await fetch(
+                `/classes/${classId}`,
+                {
+                    method: "DELETE"
+                }
+            );
+
+        const data =
+            await response.json();
+
+        if (!response.ok || !data.ok) {
+
+            throw new Error(
+                data.error ||
+                "Failed to delete class."
+            );
+        }
+
+        alert(
+            data.message ||
+            "Class session deleted."
+        );
+
+        await loadClassOptions();
+
+    } catch (error) {
+
+        alert(
+            "Delete failed: " +
+            error.message
+        );
+    }
+}
+
+
+/* =====================================================
+   VIEW ATTENDANCE
+===================================================== */
+
+function viewAttendance(classId) {
+
+    const select =
+        document.getElementById(
+            "attendanceClass"
+        );
+
+    select.value =
+        String(classId);
+
+    loadClassAttendance();
+
+    document.getElementById(
+        "classAttendanceResult"
+    ).scrollIntoView({
+        behavior: "smooth",
+        block: "start"
+    });
+}
+
+
+/* =====================================================
+   CLASS-WISE ATTENDANCE
 ===================================================== */
 
 async function loadClassAttendance() {
 
     const classId =
-        document
-            .getElementById(
-                "attendanceClass"
-            )
-            .value;
-
+        document.getElementById(
+            "attendanceClass"
+        ).value;
 
     const message =
         document.getElementById(
             "classAttendanceMsg"
         );
 
-
     const result =
         document.getElementById(
             "classAttendanceResult"
         );
-
 
     if (!classId) {
 
@@ -986,13 +1093,10 @@ async function loadClassAttendance() {
         return;
     }
 
-
     message.textContent =
         "Loading attendance...";
 
-
     result.innerHTML = "";
-
 
     try {
 
@@ -1005,10 +1109,8 @@ async function loadClassAttendance() {
                 }
             );
 
-
         const data =
             await response.json();
-
 
         if (!response.ok || !data.ok) {
 
@@ -1018,30 +1120,22 @@ async function loadClassAttendance() {
             );
         }
 
-
         const info =
             data.class_info;
-
 
         const students =
             data.students;
 
-
         const present =
             students.filter(
-                function(s) {
-                    return s.status === "Present";
-                }
+                s => s.status === "Present"
             ).length;
-
 
         const total =
             students.length;
 
-
         const absent =
             total - present;
-
 
         const percentage =
             total
@@ -1055,18 +1149,41 @@ async function loadClassAttendance() {
             <div class="cards">
 
                 <div class="card stat-card">
-                    <span>Present</span>
-                    <strong>${present}</strong>
+
+                    <span>
+                        Present
+                    </span>
+
+                    <strong>
+                        ${present}
+                    </strong>
+
                 </div>
 
-                <div class="card stat-card">
-                    <span>Absent</span>
-                    <strong>${absent}</strong>
-                </div>
 
                 <div class="card stat-card">
-                    <span>Attendance</span>
-                    <strong>${percentage}%</strong>
+
+                    <span>
+                        Absent
+                    </span>
+
+                    <strong>
+                        ${absent}
+                    </strong>
+
+                </div>
+
+
+                <div class="card stat-card">
+
+                    <span>
+                        Attendance
+                    </span>
+
+                    <strong>
+                        ${percentage}%
+                    </strong>
+
                 </div>
 
             </div>
@@ -1077,13 +1194,23 @@ async function loadClassAttendance() {
                 <div>
 
                     <h2>
-                        ${info.code} — ${info.name}
+                        ${escapeHtml(info.code)}
+                        —
+                        ${escapeHtml(info.name)}
                     </h2>
 
                     <p class="muted">
-                        ${info.class_date}
+
+                        ${escapeHtml(
+                            info.class_date
+                        )}
+
                         ·
-                        ${info.start_time}
+
+                        ${escapeHtml(
+                            info.start_time
+                        )}
+
                     </p>
 
                 </div>
@@ -1098,19 +1225,33 @@ async function loadClassAttendance() {
                     <thead>
 
                         <tr>
-                            <th>Roll</th>
-                            <th>Name</th>
-                            <th>Department</th>
-                            <th>Status</th>
+
+                            <th>
+                                Roll
+                            </th>
+
+                            <th>
+                                Name
+                            </th>
+
+                            <th>
+                                Department
+                            </th>
+
+                            <th>
+                                Status
+                            </th>
+
                         </tr>
 
                     </thead>
 
                     <tbody>
+
         `;
 
 
-        if (students.length === 0) {
+        if (!students.length) {
 
             html += `
 
@@ -1148,18 +1289,32 @@ async function loadClassAttendance() {
                     <tr>
 
                         <td>
+
                             <strong>
-                                ${student.roll_no}
+                                ${escapeHtml(
+                                    String(
+                                        student.roll_no
+                                    )
+                                )}
                             </strong>
+
                         </td>
 
-                        <td>
-                            ${student.name}
-                        </td>
 
                         <td>
-                            ${student.department || "-"}
+                            ${escapeHtml(
+                                student.name
+                            )}
                         </td>
+
+
+                        <td>
+                            ${escapeHtml(
+                                student.department ||
+                                "-"
+                            )}
+                        </td>
+
 
                         <td>
 
@@ -1200,26 +1355,38 @@ async function loadClassAttendance() {
                 </table>
 
             </div>
+
         `;
 
 
         result.innerHTML =
             html;
 
-
         message.textContent =
             "Attendance loaded successfully.";
 
-    }
-
-    catch (error) {
+    } catch (error) {
 
         message.textContent =
-            "Error: " +
-            error.message;
+            "Error: " + error.message;
 
+        result.innerHTML = "";
     }
+}
 
+
+/* =====================================================
+   HTML ESCAPE
+===================================================== */
+
+function escapeHtml(value) {
+
+    return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
 }
 
 
