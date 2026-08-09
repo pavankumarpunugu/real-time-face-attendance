@@ -308,10 +308,30 @@ def mark_attendance():
 @app.route("/api/classes")
 @login_required
 def api_classes():
-    rows=q("""SELECT c.id,c.subject_id,c.class_date,c.start_time,s.code,s.name
-              FROM classes c JOIN subjects s ON s.id=c.subject_id
-              ORDER BY c.class_date DESC,c.start_time DESC""", fetch=True)
-    return jsonify([dict(r) for r in rows])
+    rows = q("""
+        SELECT
+            c.id,
+            c.subject_id,
+            CAST(c.class_date AS TEXT) AS class_date,
+            CAST(c.start_time AS TEXT) AS start_time,
+            s.code,
+            s.name
+        FROM classes c
+        JOIN subjects s ON s.id = c.subject_id
+        ORDER BY c.class_date DESC, c.start_time DESC
+    """, fetch=True)
+
+    return jsonify([
+        {
+            "id": r["id"],
+            "subject_id": r["subject_id"],
+            "class_date": r["class_date"],
+            "start_time": r["start_time"],
+            "code": r["code"],
+            "name": r["name"]
+        }
+        for r in rows
+    ])
 
 @app.route("/api/attendance")
 @admin_required
