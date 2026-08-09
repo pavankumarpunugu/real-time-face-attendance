@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="login-card">
+
+    <h1>FaceAttend</h1>
+
+    <p class="muted">
+        Real-time face recognition attendance
+    </p>
+
+    {% if error %}
+        <div class="error">
+            {{ error }}
+        </div>
+    {% endif %}
+
+    <form method="post">
+
+        <label>Username</label>
+
+        <input
+            name="username"
+            required
+            autofocus
+        >
+
+        <label>Password</label>
+
+        <input
+            name="password"
+            type="password"
+            required
+        >
+
+        <button class="primary full">
+            Login
+        </button>
+
+    </form>
+
+    <div class="hint">
+        Demo admin:
+        <b>admin</b> /
+        <b>admin123</b>
+    </div>
+
+</div>
+
+{% endblock %}
