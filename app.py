@@ -1399,6 +1399,185 @@ def create_student():
 
 
 # =========================================================
+# UPDATE STUDENT
+# =========================================================
+
+@app.route(
+    "/api/students/<int:student_id>",
+    methods=["PUT"]
+)
+@admin_required
+def update_student(student_id):
+
+    data = request.get_json(force=True)
+
+    roll_no = (
+        data.get("roll_no") or ""
+    ).strip()
+
+    name = (
+        data.get("name") or ""
+    ).strip()
+
+    email = (
+        data.get("email") or ""
+    ).strip()
+
+    department = (
+        data.get("department") or ""
+    ).strip()
+
+    if not roll_no or not name:
+        return jsonify(
+            ok=False,
+            error="Roll number and name are required."
+        ), 400
+
+    student = q(
+        """
+        SELECT id
+        FROM students
+        WHERE id=:id
+        """,
+        {"id": student_id},
+        True,
+        True
+    )
+
+    if not student:
+        return jsonify(
+            ok=False,
+            error="Student not found."
+        ), 404
+
+    try:
+        q(
+            """
+            UPDATE students
+            SET
+                roll_no=:roll,
+                name=:name,
+                email=:email,
+                department=:department
+            WHERE id=:id
+            """,
+            {
+                "roll": roll_no,
+                "name": name,
+                "email": email,
+                "department": department,
+                "id": student_id
+            }
+        )
+
+        q(
+            """
+            UPDATE users
+            SET username=:username
+            WHERE student_id=:sid
+            AND role='student'
+            """,
+            {
+                "username": roll_no,
+                "sid": student_id
+            }
+        )
+
+        return jsonify(
+            ok=True,
+            message="Student details updated successfully."
+        )
+
+    except IntegrityError:
+        return jsonify(
+            ok=False,
+            error="Another student already uses this roll number."
+        ), 409
+
+    except Exception as e:
+        return jsonify(
+            ok=False,
+            error=f"Update failed: {str(e)}"
+        ), 500
+
+
+# =========================================================
+# DELETE STUDENT + ATTENDANCE + LOGIN
+# =========================================================
+
+@app.route(
+    "/api/students/<int:student_id>",
+    methods=["DELETE"]
+)
+@admin_required
+def delete_student(student_id):
+
+    student = q(
+        """
+        SELECT
+            id,
+            roll_no,
+            name
+        FROM students
+        WHERE id=:id
+        """,
+        {"id": student_id},
+        True,
+        True
+    )
+
+    if not student:
+        return jsonify(
+            ok=False,
+            error="Student not found."
+        ), 404
+
+    try:
+        # Delete attendance records first.
+        q(
+            """
+            DELETE FROM attendance
+            WHERE student_id=:sid
+            """,
+            {"sid": student_id}
+        )
+
+        # Delete student login.
+        q(
+            """
+            DELETE FROM users
+            WHERE student_id=:sid
+            AND role='student'
+            """,
+            {"sid": student_id}
+        )
+
+        # Delete student profile, including stored
+        # face embeddings.
+        q(
+            """
+            DELETE FROM students
+            WHERE id=:id
+            """,
+            {"id": student_id}
+        )
+
+        return jsonify(
+            ok=True,
+            message=(
+                f"Student {student['roll_no']} "
+                "and all related attendance data were deleted."
+            )
+        )
+
+    except Exception as e:
+        return jsonify(
+            ok=False,
+            error=f"Delete failed: {str(e)}"
+        ), 500
+
+
+# =========================================================
 # FACE RECOGNITION DATA
 # =========================================================
 
