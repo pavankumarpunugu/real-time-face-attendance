@@ -1629,77 +1629,108 @@ def api_classes():
 @app.route(
     "/api/class-attendance/<int:class_id>"
 )
-@login_required
 def class_attendance(class_id):
 
-    u = current_user()
+    try:
+        # This API must return JSON, never an HTML login redirect.
+        u = current_user()
 
-    if not u or u["role"] != "admin":
+        if not u:
+            return jsonify(
+                ok=False,
+                error="Admin login session not found."
+            ), 401
+
+        if u["role"] != "admin":
+            return jsonify(
+                ok=False,
+                error="Admin access required."
+            ), 403
+
+        class_info = q(
+            """
+            SELECT
+                c.id,
+                c.class_date,
+                c.start_time,
+                s.code,
+                s.name
+            FROM classes c
+            JOIN subjects s
+                ON s.id=c.subject_id
+            WHERE c.id=:id
+            """,
+            {
+                "id": class_id
+            },
+            True,
+            True
+        )
+
+        if not class_info:
+            return jsonify(
+                ok=False,
+                error="Class not found."
+            ), 404
+
+        students = q(
+            """
+            SELECT
+                s.id,
+                s.roll_no,
+                s.name,
+                s.department,
+                COALESCE(
+                    a.status,
+                    'Absent'
+                ) AS status,
+                a.marked_at
+            FROM students s
+            LEFT JOIN attendance a
+                ON a.student_id=s.id
+                AND a.class_id=:cid
+            ORDER BY s.name
+            """,
+            {
+                "cid": class_id
+            },
+            fetch=True
+        )
+
+        return jsonify(
+            ok=True,
+            class_info={
+                "id": class_info["id"],
+                "class_date": str(class_info["class_date"]),
+                "start_time": str(class_info["start_time"]),
+                "code": class_info["code"],
+                "name": class_info["name"]
+            },
+            students=[
+                {
+                    "id": s["id"],
+                    "roll_no": s["roll_no"],
+                    "name": s["name"],
+                    "department": s["department"],
+                    "status": s["status"],
+                    "marked_at": (
+                        str(s["marked_at"])
+                        if s["marked_at"] is not None
+                        else None
+                    )
+                }
+                for s in students
+            ]
+        )
+
+    except Exception as e:
+        app.logger.exception(
+            "Class attendance API error"
+        )
         return jsonify(
             ok=False,
-            error="Admin access required."
-        ), 403
-
-    class_info = q(
-        """
-        SELECT
-            c.id,
-            c.class_date,
-            c.start_time,
-            s.code,
-            s.name
-        FROM classes c
-        JOIN subjects s
-            ON s.id=c.subject_id
-        WHERE c.id=:id
-        """,
-        {
-            "id": class_id
-        },
-        True,
-        True
-    )
-
-    if not class_info:
-
-        return jsonify(
-            ok=False,
-            error="Class not found."
-        ), 404
-
-    students = q(
-        """
-        SELECT
-            s.id,
-            s.roll_no,
-            s.name,
-            s.department,
-            COALESCE(
-                a.status,
-                'Absent'
-            ) AS status
-        FROM students s
-        LEFT JOIN attendance a
-            ON a.student_id=s.id
-            AND a.class_id=:cid
-        ORDER BY s.name
-        """,
-        {
-            "cid": class_id
-        },
-        fetch=True
-    )
-
-    return jsonify(
-        ok=True,
-        class_info=dict(
-            class_info
-        ),
-        students=[
-            dict(s)
-            for s in students
-        ]
-    )
+            error=f"Class attendance error: {str(e)}"
+        ), 500
 
 
 # =========================================================
