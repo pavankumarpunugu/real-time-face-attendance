@@ -820,3 +820,57 @@ tbody tr:hover {
         min-width: 650px;
     }
 }
+/* =========================================
+   ATTENDANCE CAMERA UI
+========================================= */
+
+.camera-wrapper {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    min-height: 390px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.camera-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
+
+.face-frame {
+    width: 190px;
+    height: 240px;
+    border: 3px solid rgba(255, 255, 255, 0.75);
+    border-radius: 45%;
+    box-shadow:
+        0 0 0 9999px rgba(0, 0, 0, 0.12);
+}
+
+.attendance-help {
+    margin-top: 22px;
+    padding: 16px;
+    border-radius: 12px;
+    background: #f8fafc;
+    border: 1px solid #eaecf0;
+}
+
+.attendance-help strong {
+    display: block;
+    margin-bottom: 8px;
+}
+
+.attendance-help ul {
+    margin: 0;
+    padding-left: 20px;
+    color: #667085;
+}
+
+.attendance-help li {
+    margin: 6px 0;
+}
