@@ -3,15 +3,23 @@
 {% block content %}
 
 <div class="page-head">
-    <div>
-        <div class="eyebrow">ADMIN DASHBOARD</div>
 
-        <h1>Attendance Management</h1>
+    <div>
+
+        <div class="eyebrow">
+            ADMIN DASHBOARD
+        </div>
+
+        <h1>
+            Attendance Management
+        </h1>
 
         <p class="muted">
             Students, subjects, classes and attendance.
         </p>
+
     </div>
+
 </div>
 
 
@@ -47,27 +55,35 @@
     <h2>Create Subject</h2>
 
     <p class="muted">
-        Add a new subject to the system.
+        Add a new subject.
     </p>
 
     <div class="grid2">
 
         <div>
-            <label>Subject Code</label>
+
+            <label>
+                Subject Code
+            </label>
 
             <input
                 id="scode"
-                placeholder="e.g. CS301"
+                placeholder="CS301"
             >
+
         </div>
 
         <div>
-            <label>Subject Name</label>
+
+            <label>
+                Subject Name
+            </label>
 
             <input
                 id="sname"
-                placeholder="e.g. Python Programming"
+                placeholder="Python Programming"
             >
+
         </div>
 
     </div>
@@ -87,16 +103,13 @@
 </div>
 
 
-<!-- SUBJECT MANAGEMENT -->
+<!-- SUBJECTS -->
 
 <div class="panel">
 
-    <h2>Subject Management</h2>
-
-    <p class="muted">
-        Edit subjects or permanently remove a subject and all
-        of its class sessions and attendance records.
-    </p>
+    <h2>
+        Subject Management
+    </h2>
 
     <div class="table-wrap">
 
@@ -105,9 +118,19 @@
             <thead>
 
                 <tr>
-                    <th>Code</th>
-                    <th>Subject</th>
-                    <th>Actions</th>
+
+                    <th>
+                        Code
+                    </th>
+
+                    <th>
+                        Subject
+                    </th>
+
+                    <th>
+                        Actions
+                    </th>
+
                 </tr>
 
             </thead>
@@ -161,19 +184,7 @@
                 <tr>
 
                     <td colspan="3">
-
-                        <div class="empty-state">
-
-                            <strong>
-                                No subjects yet
-                            </strong>
-
-                            <span>
-                                Create your first subject above.
-                            </span>
-
-                        </div>
-
+                        No subjects yet.
                     </td>
 
                 </tr>
@@ -193,13 +204,17 @@
 
 <div class="panel">
 
-    <h2>Create Class Session</h2>
+    <h2>
+        Create Class Session
+    </h2>
 
     <p class="muted">
-        Schedule a class session for attendance.
+        Schedule a class for attendance.
     </p>
 
-    <label>Subject</label>
+    <label>
+        Subject
+    </label>
 
     <select id="subject">
 
@@ -222,7 +237,9 @@
 
         <div>
 
-            <label>Date</label>
+            <label>
+                Date
+            </label>
 
             <input
                 id="cdate"
@@ -233,7 +250,9 @@
 
         <div>
 
-            <label>Start Time</label>
+            <label>
+                Time
+            </label>
 
             <input
                 id="ctime"
@@ -264,12 +283,9 @@
 
 <div class="panel">
 
-    <h2>Class Sessions</h2>
-
-    <p class="muted">
-        Manage scheduled class sessions.
-        Deleting a session also deletes its attendance records.
-    </p>
+    <h2>
+        Class Sessions
+    </h2>
 
     <div class="table-wrap">
 
@@ -278,10 +294,23 @@
             <thead>
 
                 <tr>
-                    <th>Subject</th>
-                    <th>Date</th>
-                    <th>Time</th>
-                    <th>Actions</th>
+
+                    <th>
+                        Subject
+                    </th>
+
+                    <th>
+                        Date
+                    </th>
+
+                    <th>
+                        Time
+                    </th>
+
+                    <th>
+                        Actions
+                    </th>
+
                 </tr>
 
             </thead>
@@ -305,17 +334,13 @@
 </div>
 
 
-<!-- CLASS-WISE ATTENDANCE -->
+<!-- CLASS ATTENDANCE -->
 
 <div class="panel">
 
-    <h2>Class-wise Attendance</h2>
-
-    <p class="muted">
-        View Present / Absent students for a specific class.
-    </p>
-
-    <label>Select Class</label>
+    <h2>
+        Class-wise Attendance
+    </h2>
 
     <select id="attendanceClass">
 
@@ -325,7 +350,6 @@
 
     </select>
 
-
     <button
         class="primary"
         onclick="loadClassAttendance()"
@@ -333,12 +357,10 @@
         View Attendance
     </button>
 
-
     <div
         id="classAttendanceMsg"
         class="status"
     ></div>
-
 
     <div
         id="classAttendanceResult"
@@ -352,10 +374,12 @@
 
 <div class="panel">
 
-    <h2>Students</h2>
+    <h2>
+        Students
+    </h2>
 
     <p class="muted">
-        Registered students in the system.
+        Manage registered students.
     </p>
 
     <div class="table-wrap">
@@ -365,10 +389,27 @@
             <thead>
 
                 <tr>
-                    <th>Roll</th>
-                    <th>Name</th>
-                    <th>Department</th>
-                    <th>Email</th>
+
+                    <th>
+                        Roll
+                    </th>
+
+                    <th>
+                        Name
+                    </th>
+
+                    <th>
+                        Department
+                    </th>
+
+                    <th>
+                        Email
+                    </th>
+
+                    <th>
+                        Actions
+                    </th>
+
                 </tr>
 
             </thead>
@@ -397,26 +438,40 @@
                         {{ s.email or '-' }}
                     </td>
 
+                    <td>
+
+                        <button
+                            class="secondary"
+                            onclick='editStudent(
+                                {{ s.id }},
+                                {{ s.name|tojson }},
+                                {{ s.email|tojson }},
+                                {{ s.department|tojson }}
+                            )'
+                        >
+                            Edit
+                        </button>
+
+                        <button
+                            class="danger"
+                            onclick='deleteStudent(
+                                {{ s.id }},
+                                {{ s.name|tojson }}
+                            )'
+                        >
+                            Delete
+                        </button>
+
+                    </td>
+
                 </tr>
 
                 {% else %}
 
                 <tr>
 
-                    <td colspan="4">
-
-                        <div class="empty-state">
-
-                            <strong>
-                                No students yet
-                            </strong>
-
-                            <span>
-                                Registered students will appear here.
-                            </span>
-
-                        </div>
-
+                    <td colspan="5">
+                        No students yet.
                     </td>
 
                 </tr>
@@ -438,119 +493,23 @@
 
 <script>
 
-/* =====================================================
-   CREATE SUBJECT
-===================================================== */
-
 async function createSubject() {
 
     const code =
-        document.getElementById("scode").value.trim();
+        document.getElementById("scode")
+        .value.trim();
 
     const name =
-        document.getElementById("sname").value.trim();
+        document.getElementById("sname")
+        .value.trim();
 
-    const message =
+    const msg =
         document.getElementById("subjectMsg");
 
     if (!code || !name) {
 
-        message.textContent =
-            "Enter both subject code and subject name.";
-
-        return;
-    }
-
-    message.textContent =
-        "Creating subject...";
-
-    try {
-
-        const response = await fetch(
-            "/subjects",
-            {
-                method: "POST",
-
-                headers: {
-                    "Content-Type":
-                        "application/json"
-                },
-
-                body: JSON.stringify({
-                    code: code,
-                    name: name
-                })
-            }
-        );
-
-        const data =
-            await response.json();
-
-        if (!response.ok || !data.ok) {
-
-            throw new Error(
-                data.error ||
-                "Failed to create subject."
-            );
-        }
-
-        message.textContent =
-            "Subject created successfully.";
-
-        setTimeout(
-            () => window.location.reload(),
-            700
-        );
-
-    } catch (error) {
-
-        message.textContent =
-            "Error: " + error.message;
-    }
-}
-
-
-/* =====================================================
-   EDIT SUBJECT
-===================================================== */
-
-async function editSubject(
-    subjectId,
-    oldCode,
-    oldName
-) {
-
-    const code =
-        prompt(
-            "Enter subject code:",
-            oldCode
-        );
-
-    if (code === null) {
-        return;
-    }
-
-    const name =
-        prompt(
-            "Enter subject name:",
-            oldName
-        );
-
-    if (name === null) {
-        return;
-    }
-
-    const cleanCode =
-        code.trim();
-
-    const cleanName =
-        name.trim();
-
-    if (!cleanCode || !cleanName) {
-
-        alert(
-            "Subject code and name are required."
-        );
+        msg.textContent =
+            "Enter subject code and name.";
 
         return;
     }
@@ -559,18 +518,16 @@ async function editSubject(
 
         const response =
             await fetch(
-                `/subjects/${subjectId}`,
+                "/subjects",
                 {
-                    method: "PUT",
-
+                    method: "POST",
                     headers: {
                         "Content-Type":
                             "application/json"
                     },
-
                     body: JSON.stringify({
-                        code: cleanCode,
-                        name: cleanName
+                        code: code,
+                        name: name
                     })
                 }
             );
@@ -581,64 +538,108 @@ async function editSubject(
         if (!response.ok || !data.ok) {
 
             throw new Error(
-                data.error ||
-                "Failed to update subject."
+                data.error
+                || "Failed."
             );
         }
 
-        alert(
-            data.message ||
-            "Subject updated successfully."
-        );
-
-        window.location.reload();
+        location.reload();
 
     } catch (error) {
 
-        alert(
-            "Update failed: " +
-            error.message
-        );
+        msg.textContent =
+            error.message;
     }
 }
 
 
-/* =====================================================
-   DELETE SUBJECT
-===================================================== */
-
-async function deleteSubject(
-    subjectId,
-    subjectCode,
-    subjectName
+async function editSubject(
+    id,
+    oldCode,
+    oldName
 ) {
 
-    const confirmed =
-        confirm(
-            "DELETE SUBJECT?\n\n" +
-            subjectCode +
-            " — " +
-            subjectName +
-            "\n\n" +
-
-            "This will permanently delete:\n" +
-            "• The subject\n" +
-            "• All class sessions for this subject\n" +
-            "• All attendance records for those sessions\n\n" +
-
-            "This action cannot be undone.\n\n" +
-            "Continue?"
+    const code =
+        prompt(
+            "Subject code:",
+            oldCode
         );
 
-    if (!confirmed) {
-        return;
-    }
+    if (code === null) return;
+
+    const name =
+        prompt(
+            "Subject name:",
+            oldName
+        );
+
+    if (name === null) return;
 
     try {
 
         const response =
             await fetch(
-                `/subjects/${subjectId}`,
+                `/subjects/${id}`,
+                {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
+                    body: JSON.stringify({
+                        code: code.trim(),
+                        name: name.trim()
+                    })
+                }
+            );
+
+        const data =
+            await response.json();
+
+        if (!response.ok || !data.ok) {
+
+            throw new Error(
+                data.error
+                || "Update failed."
+            );
+        }
+
+        location.reload();
+
+    } catch (error) {
+
+        alert(error.message);
+    }
+}
+
+
+async function deleteSubject(
+    id,
+    code,
+    name
+) {
+
+    const ok =
+        confirm(
+            "DELETE SUBJECT?\n\n" +
+            code +
+            " — " +
+            name +
+            "\n\n" +
+            "This will delete:\n" +
+            "• Subject\n" +
+            "• All class sessions\n" +
+            "• All attendance records\n\n" +
+            "This cannot be undone."
+        );
+
+    if (!ok) return;
+
+    try {
+
+        const response =
+            await fetch(
+                `/subjects/${id}`,
                 {
                     method: "DELETE"
                 }
@@ -650,45 +651,43 @@ async function deleteSubject(
         if (!response.ok || !data.ok) {
 
             throw new Error(
-                data.error ||
-                "Failed to delete subject."
+                data.error
+                || "Delete failed."
             );
         }
 
-        alert(
-            data.message ||
-            "Subject and related data deleted."
-        );
+        alert(data.message);
 
-        window.location.reload();
+        location.reload();
 
     } catch (error) {
 
-        alert(
-            "Delete failed: " +
-            error.message
-        );
+        alert(error.message);
     }
 }
 
 
-/* =====================================================
-   CREATE CLASS
-===================================================== */
-
 async function createClass() {
 
     const subject =
-        document.getElementById("subject").value;
+        document.getElementById(
+            "subject"
+        ).value;
 
     const classDate =
-        document.getElementById("cdate").value;
+        document.getElementById(
+            "cdate"
+        ).value;
 
     const startTime =
-        document.getElementById("ctime").value;
+        document.getElementById(
+            "ctime"
+        ).value;
 
-    const message =
-        document.getElementById("classMsg");
+    const msg =
+        document.getElementById(
+            "classMsg"
+        );
 
     if (
         !subject ||
@@ -696,14 +695,11 @@ async function createClass() {
         !startTime
     ) {
 
-        message.textContent =
-            "Select a subject and enter date and time.";
+        msg.textContent =
+            "Select subject, date and time.";
 
         return;
     }
-
-    message.textContent =
-        "Creating class...";
 
     try {
 
@@ -712,23 +708,14 @@ async function createClass() {
                 "/classes",
                 {
                     method: "POST",
-
                     headers: {
                         "Content-Type":
                             "application/json"
                     },
-
                     body: JSON.stringify({
-
-                        subject_id:
-                            subject,
-
-                        class_date:
-                            classDate,
-
-                        start_time:
-                            startTime
-
+                        subject_id: subject,
+                        class_date: classDate,
+                        start_time: startTime
                     })
                 }
             );
@@ -739,172 +726,96 @@ async function createClass() {
         if (!response.ok || !data.ok) {
 
             throw new Error(
-                data.error ||
-                "Failed to create class."
+                data.error
+                || "Failed."
             );
         }
 
-        message.textContent =
-            "Class created successfully.";
+        msg.textContent =
+            "Class created.";
 
-        document.getElementById(
-            "cdate"
-        ).value = "";
-
-        document.getElementById(
-            "ctime"
-        ).value = "";
-
-        await loadClassOptions();
+        await loadClasses();
 
     } catch (error) {
 
-        message.textContent =
-            "Error: " + error.message;
+        msg.textContent =
+            error.message;
     }
 }
 
 
-/* =====================================================
-   LOAD CLASSES
-===================================================== */
+async function loadClasses() {
 
-async function loadClassOptions() {
+    const body =
+        document.getElementById(
+            "classSessionsBody"
+        );
 
     const select =
         document.getElementById(
             "attendanceClass"
         );
 
-    const tableBody =
-        document.getElementById(
-            "classSessionsBody"
-        );
-
     try {
 
         const response =
             await fetch(
-                "/api/classes",
-                {
-                    credentials:
-                        "same-origin"
-                }
+                "/api/classes"
             );
 
         const classes =
             await response.json();
 
-        if (!response.ok) {
+        body.innerHTML = "";
 
-            throw new Error(
-                "Failed to load classes."
-            );
-        }
-
-
-        /* ATTENDANCE SELECT */
-
-        select.innerHTML = "";
-
-        const first =
-            document.createElement("option");
-
-        first.value = "";
-
-        first.textContent =
-            classes.length
-                ? "Select class session"
-                : "No classes available";
-
-        select.appendChild(first);
-
+        select.innerHTML =
+            `<option value="">
+                Select class session
+            </option>`;
 
         classes.forEach(
             function(c) {
 
                 const option =
-                    document.createElement("option");
+                    document.createElement(
+                        "option"
+                    );
 
-                option.value =
-                    c.id;
+                option.value = c.id;
 
                 option.textContent =
                     `${c.code} — ${c.name} — ` +
                     `${c.class_date} ${c.start_time}`;
 
-                select.appendChild(option);
+                select.appendChild(
+                    option
+                );
 
-            }
-        );
-
-
-        /* CLASS TABLE */
-
-        tableBody.innerHTML = "";
-
-        if (!classes.length) {
-
-            tableBody.innerHTML = `
-
-                <tr>
-
-                    <td colspan="4">
-
-                        <div class="empty-state">
-
-                            <strong>
-                                No class sessions yet
-                            </strong>
-
-                            <span>
-                                Create a class session above.
-                            </span>
-
-                        </div>
-
-                    </td>
-
-                </tr>
-
-            `;
-
-            return;
-        }
-
-
-        classes.forEach(
-            function(c) {
 
                 const row =
-                    document.createElement("tr");
+                    document.createElement(
+                        "tr"
+                    );
 
                 row.innerHTML = `
 
                     <td>
-
                         <strong>
                             ${escapeHtml(c.code)}
                         </strong>
-
                         <br>
-
                         <span class="muted">
                             ${escapeHtml(c.name)}
                         </span>
-
                     </td>
-
 
                     <td>
                         ${escapeHtml(c.class_date)}
                     </td>
 
-
                     <td>
                         ${escapeHtml(c.start_time)}
                     </td>
-
 
                     <td>
 
@@ -912,98 +823,65 @@ async function loadClassOptions() {
                             class="secondary"
                             onclick="viewAttendance(${c.id})"
                         >
-                            View Attendance
+                            View
                         </button>
-
 
                         <button
                             class="danger"
-                            onclick='deleteClass(
-                                ${c.id},
-                                ${JSON.stringify(
-                                    c.code +
-                                    " — " +
-                                    c.name
-                                )},
-                                ${JSON.stringify(
-                                    c.class_date +
-                                    " " +
-                                    c.start_time
-                                )}
-                            )'
+                            onclick="deleteClass(${c.id})"
                         >
                             Delete
                         </button>
 
                     </td>
-
                 `;
 
-                tableBody.appendChild(row);
+                body.appendChild(row);
 
             }
         );
 
+        if (!classes.length) {
+
+            body.innerHTML = `
+                <tr>
+                    <td colspan="4">
+                        No class sessions yet.
+                    </td>
+                </tr>
+            `;
+
+        }
+
     } catch (error) {
 
-        select.innerHTML = `
-
-            <option value="">
-                Failed to load classes
-            </option>
-
-        `;
-
-        tableBody.innerHTML = `
-
+        body.innerHTML = `
             <tr>
-
                 <td colspan="4">
                     Failed to load classes.
                 </td>
-
             </tr>
-
         `;
+
     }
 }
 
 
-/* =====================================================
-   DELETE CLASS SESSION
-===================================================== */
+async function deleteClass(id) {
 
-async function deleteClass(
-    classId,
-    className,
-    classDateTime
-) {
-
-    const confirmed =
+    const ok =
         confirm(
-            "DELETE CLASS SESSION?\n\n" +
-            className +
-            "\n" +
-            classDateTime +
-            "\n\n" +
-
-            "This will permanently delete:\n" +
-            "• The class session\n" +
-            "• All attendance records for this session\n\n" +
-
-            "This action cannot be undone.\n\n" +
-            "Continue?"
+            "Delete this class session?\n\n" +
+            "Its attendance records will also be deleted."
         );
 
-    if (!confirmed) {
-        return;
-    }
+    if (!ok) return;
 
     try {
 
         const response =
             await fetch(
-                `/classes/${classId}`,
+                `/classes/${id}`,
                 {
                     method: "DELETE"
                 }
@@ -1015,33 +893,23 @@ async function deleteClass(
         if (!response.ok || !data.ok) {
 
             throw new Error(
-                data.error ||
-                "Failed to delete class."
+                data.error
+                || "Delete failed."
             );
         }
 
-        alert(
-            data.message ||
-            "Class session deleted."
-        );
+        alert(data.message);
 
-        await loadClassOptions();
+        await loadClasses();
 
     } catch (error) {
 
-        alert(
-            "Delete failed: " +
-            error.message
-        );
+        alert(error.message);
     }
 }
 
 
-/* =====================================================
-   VIEW ATTENDANCE
-===================================================== */
-
-function viewAttendance(classId) {
+function viewAttendance(id) {
 
     const select =
         document.getElementById(
@@ -1049,31 +917,26 @@ function viewAttendance(classId) {
         );
 
     select.value =
-        String(classId);
+        String(id);
 
     loadClassAttendance();
 
     document.getElementById(
         "classAttendanceResult"
     ).scrollIntoView({
-        behavior: "smooth",
-        block: "start"
+        behavior: "smooth"
     });
 }
 
 
-/* =====================================================
-   CLASS-WISE ATTENDANCE
-===================================================== */
-
 async function loadClassAttendance() {
 
-    const classId =
+    const id =
         document.getElementById(
             "attendanceClass"
         ).value;
 
-    const message =
+    const msg =
         document.getElementById(
             "classAttendanceMsg"
         );
@@ -1083,30 +946,22 @@ async function loadClassAttendance() {
             "classAttendanceResult"
         );
 
-    if (!classId) {
+    if (!id) {
 
-        message.textContent =
-            "Select a class first.";
-
-        result.innerHTML = "";
+        msg.textContent =
+            "Select a class.";
 
         return;
     }
 
-    message.textContent =
-        "Loading attendance...";
-
-    result.innerHTML = "";
+    msg.textContent =
+        "Loading...";
 
     try {
 
         const response =
             await fetch(
-                `/api/class-attendance/${classId}`,
-                {
-                    credentials:
-                        "same-origin"
-                }
+                `/api/class-attendance/${id}`
             );
 
         const data =
@@ -1115,108 +970,58 @@ async function loadClassAttendance() {
         if (!response.ok || !data.ok) {
 
             throw new Error(
-                data.error ||
-                "Failed to load attendance."
+                data.error
             );
         }
-
-        const info =
-            data.class_info;
 
         const students =
             data.students;
 
         const present =
             students.filter(
-                s => s.status === "Present"
+                s =>
+                    s.status === "Present"
             ).length;
 
-        const total =
-            students.length;
-
         const absent =
-            total - present;
+            students.length -
+            present;
 
         const percentage =
-            total
-                ? ((present / total) * 100)
-                    .toFixed(1)
+            students.length
+                ? (
+                    present /
+                    students.length *
+                    100
+                ).toFixed(1)
                 : "0.0";
-
 
         let html = `
 
             <div class="cards">
 
-                <div class="card stat-card">
-
-                    <span>
-                        Present
-                    </span>
-
+                <div class="card">
+                    <span>Present</span>
                     <strong>
                         ${present}
                     </strong>
-
                 </div>
 
-
-                <div class="card stat-card">
-
-                    <span>
-                        Absent
-                    </span>
-
+                <div class="card">
+                    <span>Absent</span>
                     <strong>
                         ${absent}
                     </strong>
-
                 </div>
 
-
-                <div class="card stat-card">
-
-                    <span>
-                        Attendance
-                    </span>
-
+                <div class="card">
+                    <span>Attendance</span>
                     <strong>
                         ${percentage}%
                     </strong>
-
                 </div>
 
             </div>
-
-
-            <div class="section-title">
-
-                <div>
-
-                    <h2>
-                        ${escapeHtml(info.code)}
-                        —
-                        ${escapeHtml(info.name)}
-                    </h2>
-
-                    <p class="muted">
-
-                        ${escapeHtml(
-                            info.class_date
-                        )}
-
-                        ·
-
-                        ${escapeHtml(
-                            info.start_time
-                        )}
-
-                    </p>
-
-                </div>
-
-            </div>
-
 
             <div class="table-wrap">
 
@@ -1225,101 +1030,48 @@ async function loadClassAttendance() {
                     <thead>
 
                         <tr>
-
-                            <th>
-                                Roll
-                            </th>
-
-                            <th>
-                                Name
-                            </th>
-
-                            <th>
-                                Department
-                            </th>
-
-                            <th>
-                                Status
-                            </th>
-
+                            <th>Roll</th>
+                            <th>Name</th>
+                            <th>Department</th>
+                            <th>Status</th>
                         </tr>
 
                     </thead>
 
                     <tbody>
-
         `;
 
-
-        if (!students.length) {
-
-            html += `
-
-                <tr>
-
-                    <td colspan="4">
-
-                        <div class="empty-state">
-
-                            <strong>
-                                No students found
-                            </strong>
-
-                        </div>
-
-                    </td>
-
-                </tr>
-
-            `;
-
-        }
-
-
         students.forEach(
-            function(student) {
-
-                const isPresent =
-                    student.status ===
-                    "Present";
-
+            function(s) {
 
                 html += `
 
                     <tr>
 
                         <td>
-
-                            <strong>
-                                ${escapeHtml(
-                                    String(
-                                        student.roll_no
-                                    )
-                                )}
-                            </strong>
-
-                        </td>
-
-
-                        <td>
                             ${escapeHtml(
-                                student.name
+                                s.roll_no
                             )}
                         </td>
 
-
                         <td>
                             ${escapeHtml(
-                                student.department ||
-                                "-"
+                                s.name
                             )}
                         </td>
 
+                        <td>
+                            ${escapeHtml(
+                                s.department
+                                || "-"
+                            )}
+                        </td>
 
                         <td>
 
                             ${
-                                isPresent
+                                s.status ===
+                                "Present"
 
                                 ? `
                                     <span
@@ -1327,15 +1079,14 @@ async function loadClassAttendance() {
                                     >
                                         ✓ Present
                                     </span>
-                                  `
-
+                                `
                                 : `
                                     <span
                                         class="status-badge absent"
                                     >
                                         ✕ Absent
                                     </span>
-                                  `
+                                `
                             }
 
                         </td>
@@ -1347,58 +1098,199 @@ async function loadClassAttendance() {
             }
         );
 
-
         html += `
-
                     </tbody>
-
                 </table>
-
             </div>
-
         `;
-
 
         result.innerHTML =
             html;
 
-        message.textContent =
-            "Attendance loaded successfully.";
+        msg.textContent =
+            "Attendance loaded.";
 
     } catch (error) {
 
-        message.textContent =
-            "Error: " + error.message;
+        msg.textContent =
+            error.message;
 
-        result.innerHTML = "";
     }
 }
 
 
-/* =====================================================
-   HTML ESCAPE
-===================================================== */
+async function editStudent(
+    id,
+    oldName,
+    oldEmail,
+    oldDepartment
+) {
+
+    const name =
+        prompt(
+            "Student name:",
+            oldName
+        );
+
+    if (name === null) return;
+
+    const email =
+        prompt(
+            "Email:",
+            oldEmail || ""
+        );
+
+    if (email === null) return;
+
+    const department =
+        prompt(
+            "Department:",
+            oldDepartment || ""
+        );
+
+    if (department === null) return;
+
+    const password =
+        prompt(
+            "New password (leave blank to keep current):"
+        );
+
+    if (password === null) return;
+
+    try {
+
+        const response =
+            await fetch(
+                `/api/students/${id}`,
+                {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
+                    body: JSON.stringify({
+
+                        name:
+                            name.trim(),
+
+                        email:
+                            email.trim(),
+
+                        department:
+                            department.trim(),
+
+                        password:
+                            password.trim()
+
+                    })
+                }
+            );
+
+        const data =
+            await response.json();
+
+        if (!response.ok || !data.ok) {
+
+            throw new Error(
+                data.error
+                || "Update failed."
+            );
+        }
+
+        alert(data.message);
+
+        location.reload();
+
+    } catch (error) {
+
+        alert(error.message);
+    }
+}
+
+
+async function deleteStudent(
+    id,
+    name
+) {
+
+    const ok =
+        confirm(
+            "DELETE STUDENT?\n\n" +
+            name +
+            "\n\n" +
+            "This will permanently delete:\n" +
+            "• Student account\n" +
+            "• Face recognition data\n" +
+            "• Login account\n" +
+            "• Attendance records\n\n" +
+            "This cannot be undone."
+        );
+
+    if (!ok) return;
+
+    try {
+
+        const response =
+            await fetch(
+                `/api/students/${id}`,
+                {
+                    method: "DELETE"
+                }
+            );
+
+        const data =
+            await response.json();
+
+        if (!response.ok || !data.ok) {
+
+            throw new Error(
+                data.error
+                || "Delete failed."
+            );
+        }
+
+        alert(data.message);
+
+        location.reload();
+
+    } catch (error) {
+
+        alert(error.message);
+    }
+}
+
 
 function escapeHtml(value) {
 
     return String(value ?? "")
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
+        .replaceAll(
+            "&",
+            "&amp;"
+        )
+        .replaceAll(
+            "<",
+            "&lt;"
+        )
+        .replaceAll(
+            ">",
+            "&gt;"
+        )
+        .replaceAll(
+            '"',
+            "&quot;"
+        )
+        .replaceAll(
+            "'",
+            "&#039;"
+        );
 }
 
-
-/* =====================================================
-   INITIAL LOAD
-===================================================== */
 
 document.addEventListener(
     "DOMContentLoaded",
     function() {
 
-        loadClassOptions();
+        loadClasses();
 
     }
 );
