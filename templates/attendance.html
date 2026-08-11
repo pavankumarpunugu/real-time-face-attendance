@@ -5,11 +5,17 @@
 <div class="page-head">
 
     <div>
+
+        <div class="eyebrow">
+            FACE ATTENDANCE
+        </div>
+
         <h1>Take Attendance</h1>
 
         <p class="muted">
             Choose a class, then verify your face.
         </p>
+
     </div>
 
 </div>
@@ -21,7 +27,10 @@
 
     <div class="panel">
 
-        <label>Class Session</label>
+        <label>
+            Class Session
+        </label>
+
 
         <select id="classSelect">
 
@@ -42,11 +51,26 @@
         </button>
 
 
+        <!-- ATTENDANCE RESULT -->
+
         <div
             id="result"
             class="result-box"
         >
-            Loading available classes...
+
+            <div
+                id="resultIcon"
+                class="result-icon"
+            ></div>
+
+
+            <div
+                id="resultText"
+                class="result-text"
+            >
+                Loading available classes...
+            </div>
+
         </div>
 
     </div>
@@ -67,6 +91,7 @@
 
 </div>
 
+
 {% endblock %}
 
 
@@ -74,21 +99,33 @@
 
 <script>
 
+
 const MODEL_URL =
     "https://justadudewhohacks.github.io/face-api.js/models";
 
 
 const videoEl =
-    document.getElementById("video");
+    document.getElementById(
+        "video"
+    );
+
 
 const selectEl =
-    document.getElementById("classSelect");
+    document.getElementById(
+        "classSelect"
+    );
+
 
 const resultEl =
-    document.getElementById("result");
+    document.getElementById(
+        "result"
+    );
+
 
 const startBtn =
-    document.getElementById("start");
+    document.getElementById(
+        "start"
+    );
 
 
 let stream = null;
@@ -107,26 +144,111 @@ let scanning = false;
 
     Lower value = stricter matching.
 */
+
 const THRESHOLD = 0.55;
+
 
 
 /* ================================================= */
 /* STATUS */
 /* ================================================= */
 
-function setStatus(message) {
+function setStatus(
+    message,
+    type = "normal"
+) {
 
-    resultEl.textContent =
+    const iconEl =
+        document.getElementById(
+            "resultIcon"
+        );
+
+
+    const textEl =
+        document.getElementById(
+            "resultText"
+        );
+
+
+    /*
+        Reset result box.
+    */
+
+    resultEl.className =
+        "result-box";
+
+
+    iconEl.className =
+        "result-icon";
+
+
+    iconEl.textContent =
+        "";
+
+
+    textEl.textContent =
         message;
 
+
+    /*
+        SUCCESS
+    */
+
+    if (
+        type === "success"
+    ) {
+
+        resultEl.classList.add(
+            "result-success"
+        );
+
+
+        iconEl.classList.add(
+            "success-icon"
+        );
+
+
+        iconEl.textContent =
+            "✓";
+
+    }
+
+
+    /*
+        ERROR
+    */
+
+    else if (
+        type === "error"
+    ) {
+
+        resultEl.classList.add(
+            "result-error"
+        );
+
+
+        iconEl.classList.add(
+            "error-icon"
+        );
+
+
+        iconEl.textContent =
+            "✕";
+
+    }
+
 }
+
 
 
 /* ================================================= */
 /* DISTANCE */
 /* ================================================= */
 
-function distance(a, b) {
+function distance(
+    a,
+    b
+) {
 
     if (
         !Array.isArray(a) ||
@@ -151,6 +273,7 @@ function distance(a, b) {
         const difference =
             a[i] - b[i];
 
+
         sum +=
             difference * difference;
 
@@ -160,6 +283,7 @@ function distance(a, b) {
     return Math.sqrt(sum);
 
 }
+
 
 
 /* ================================================= */
@@ -180,7 +304,8 @@ async function loadClasses() {
                 "/api/classes",
                 {
                     method: "GET",
-                    credentials: "same-origin"
+                    credentials:
+                        "same-origin"
                 }
             );
 
@@ -208,13 +333,18 @@ async function loadClasses() {
         ) {
 
             const option =
-                document.createElement("option");
+                document.createElement(
+                    "option"
+                );
+
 
             option.value =
                 "";
 
+
             option.textContent =
                 "No classes available";
+
 
             selectEl.appendChild(
                 option
@@ -226,7 +356,8 @@ async function loadClasses() {
 
 
             setStatus(
-                "No class sessions found. Create a class from the Admin Dashboard."
+                "No class sessions found. Create a class from the Admin Dashboard.",
+                "error"
             );
 
 
@@ -236,13 +367,18 @@ async function loadClasses() {
 
 
         const firstOption =
-            document.createElement("option");
+            document.createElement(
+                "option"
+            );
+
 
         firstOption.value =
             "";
 
+
         firstOption.textContent =
             "Select class";
+
 
         selectEl.appendChild(
             firstOption
@@ -280,6 +416,7 @@ async function loadClasses() {
 
     }
 
+
     catch (error) {
 
         console.error(
@@ -301,6 +438,7 @@ async function loadClasses() {
         option.value =
             "";
 
+
         option.textContent =
             "Failed to load classes";
 
@@ -316,12 +454,14 @@ async function loadClasses() {
 
         setStatus(
             "Failed to load classes: " +
-            error.message
+            error.message,
+            "error"
         );
 
     }
 
 }
+
 
 
 /* ================================================= */
@@ -346,6 +486,7 @@ selectEl.addEventListener(
 
         }
 
+
         else {
 
             startBtn.disabled =
@@ -362,13 +503,16 @@ selectEl.addEventListener(
 );
 
 
+
 /* ================================================= */
 /* LOAD FACE MODELS */
 /* ================================================= */
 
 async function loadModels() {
 
-    if (modelsLoaded) {
+    if (
+        modelsLoaded
+    ) {
 
         return;
 
@@ -387,10 +531,12 @@ async function loadModels() {
                 MODEL_URL
             ),
 
+
         faceapi.nets.faceLandmark68Net
             .loadFromUri(
                 MODEL_URL
             ),
+
 
         faceapi.nets.faceRecognitionNet
             .loadFromUri(
@@ -411,6 +557,7 @@ async function loadModels() {
 }
 
 
+
 /* ================================================= */
 /* LOAD REGISTERED STUDENTS */
 /* ================================================= */
@@ -427,7 +574,8 @@ async function loadStudents() {
             "/api/recognition-data",
             {
                 method: "GET",
-                credentials: "same-origin"
+                credentials:
+                    "same-origin"
             }
         );
 
@@ -465,6 +613,7 @@ async function loadStudents() {
 }
 
 
+
 /* ================================================= */
 /* FIND BEST MATCH */
 /* ================================================= */
@@ -475,6 +624,7 @@ function findBestMatch(
 
     let best =
         null;
+
 
     let bestDistance =
         Infinity;
@@ -526,6 +676,7 @@ function findBestMatch(
                 bestDistance =
                     d;
 
+
                 best =
                     student;
 
@@ -549,6 +700,7 @@ function findBestMatch(
 }
 
 
+
 /* ================================================= */
 /* MARK ATTENDANCE */
 /* ================================================= */
@@ -565,8 +717,10 @@ async function markAttendance(
                 method:
                     "POST",
 
+
                 credentials:
                     "same-origin",
+
 
                 headers: {
 
@@ -575,11 +729,13 @@ async function markAttendance(
 
                 },
 
+
                 body:
                     JSON.stringify({
 
                         student_id:
                             studentId,
+
 
                         class_id:
                             Number(
@@ -608,6 +764,7 @@ async function markAttendance(
 
     }
 
+
     catch {
 
         throw new Error(
@@ -617,7 +774,9 @@ async function markAttendance(
     }
 
 
-    if (!response.ok) {
+    if (
+        !response.ok
+    ) {
 
         throw new Error(
             data.error ||
@@ -630,6 +789,7 @@ async function markAttendance(
     return data;
 
 }
+
 
 
 /* ================================================= */
@@ -668,9 +828,11 @@ function waitForVideoReady() {
                         timeout
                     );
 
+
                     resolve();
 
                 }
+
 
                 else {
 
@@ -692,6 +854,7 @@ function waitForVideoReady() {
 }
 
 
+
 /* ================================================= */
 /* START CAMERA */
 /* ================================================= */
@@ -705,8 +868,10 @@ startBtn.addEventListener(
         ) {
 
             setStatus(
-                "Please select a class first."
+                "Please select a class first.",
+                "error"
             );
+
 
             return;
 
@@ -754,15 +919,18 @@ startBtn.addEventListener(
                             facingMode:
                                 "user",
 
+
                             width: {
                                 ideal: 640
                             },
+
 
                             height: {
                                 ideal: 480
                             }
 
                         },
+
 
                         audio:
                             false
@@ -807,6 +975,7 @@ startBtn.addEventListener(
 
         }
 
+
         catch (error) {
 
             console.error(
@@ -825,7 +994,8 @@ startBtn.addEventListener(
 
             setStatus(
                 "Unable to start attendance: " +
-                error.message
+                error.message,
+                "error"
             );
 
 
@@ -839,6 +1009,7 @@ startBtn.addEventListener(
 
     }
 );
+
 
 
 /* ================================================= */
@@ -880,6 +1051,7 @@ async function scan() {
                             inputSize:
                                 320,
 
+
                             scoreThreshold:
                                 0.35
 
@@ -890,18 +1062,23 @@ async function scan() {
                 .withFaceDescriptor();
 
 
-        if (!detected) {
+        if (
+            !detected
+        ) {
 
             scanning =
                 false;
 
 
             setStatus(
-                "No face detected. Look directly at the camera."
+                "No face detected. Look directly at the camera.",
+                "error"
             );
 
 
-            if (running) {
+            if (
+                running
+            ) {
 
                 setTimeout(
                     scan,
@@ -947,6 +1124,10 @@ async function scan() {
         );
 
 
+        /*
+            SUCCESSFUL MATCH
+        */
+
         if (
             match.best &&
             match.bestDistance <=
@@ -972,8 +1153,14 @@ async function scan() {
                 );
 
 
+            /*
+                GREEN SUCCESS ✓
+            */
+
             setStatus(
-                data.message
+                data.message ||
+                "Attendance recorded successfully.",
+                "success"
             );
 
 
@@ -993,6 +1180,10 @@ async function scan() {
         }
 
 
+        /*
+            FACE NOT RECOGNIZED
+        */
+
         scanning =
             false;
 
@@ -1004,11 +1195,14 @@ async function scan() {
 
 
         setStatus(
-            `Face not recognized. Match distance: ${distanceText}`
+            `Face not recognized. Match distance: ${distanceText}`,
+            "error"
         );
 
 
-        if (running) {
+        if (
+            running
+        ) {
 
             setTimeout(
                 scan,
@@ -1018,6 +1212,7 @@ async function scan() {
         }
 
     }
+
 
     catch (error) {
 
@@ -1035,9 +1230,14 @@ async function scan() {
             false;
 
 
+        /*
+            RED ERROR ✕
+        */
+
         setStatus(
             "Face scanner error: " +
-            error.message
+            error.message,
+            "error"
         );
 
 
@@ -1052,13 +1252,16 @@ async function scan() {
 }
 
 
+
 /* ================================================= */
 /* STOP CAMERA */
 /* ================================================= */
 
 function stopCamera() {
 
-    if (stream) {
+    if (
+        stream
+    ) {
 
         stream
             .getTracks()
@@ -1077,6 +1280,7 @@ function stopCamera() {
     }
 
 }
+
 
 
 /* ================================================= */
