@@ -1629,8 +1629,16 @@ def api_classes():
 @app.route(
     "/api/class-attendance/<int:class_id>"
 )
-@admin_required
+@login_required
 def class_attendance(class_id):
+
+    u = current_user()
+
+    if not u or u["role"] != "admin":
+        return jsonify(
+            ok=False,
+            error="Admin access required."
+        ), 403
 
     class_info = q(
         """
