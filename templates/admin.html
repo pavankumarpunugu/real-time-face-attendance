@@ -28,21 +28,53 @@
 <div class="cards">
 
     <div class="card stat-card">
-        <span>Students</span>
-        <strong>{{ students|length }}</strong>
-        <small>Registered students</small>
+
+        <span>
+            Students
+        </span>
+
+        <strong>
+            {{ students|length }}
+        </strong>
+
+        <small>
+            Registered students
+        </small>
+
     </div>
 
-    <div class="card stat-card">
-        <span>Present Today</span>
-        <strong>{{ present_today }}</strong>
-        <small>Attendance marked today</small>
-    </div>
 
     <div class="card stat-card">
-        <span>Subjects</span>
-        <strong>{{ subjects|length }}</strong>
-        <small>Available subjects</small>
+
+        <span>
+            Present Today
+        </span>
+
+        <strong>
+            {{ present_today }}
+        </strong>
+
+        <small>
+            Attendance marked today
+        </small>
+
+    </div>
+
+
+    <div class="card stat-card">
+
+        <span>
+            Subjects
+        </span>
+
+        <strong>
+            {{ subjects|length }}
+        </strong>
+
+        <small>
+            Available subjects
+        </small>
+
     </div>
 
 </div>
@@ -52,11 +84,14 @@
 
 <div class="panel">
 
-    <h2>Create Subject</h2>
+    <h2>
+        Create Subject
+    </h2>
 
     <p class="muted">
         Add a new subject.
     </p>
+
 
     <div class="grid2">
 
@@ -73,6 +108,7 @@
 
         </div>
 
+
         <div>
 
             <label>
@@ -88,12 +124,14 @@
 
     </div>
 
+
     <button
         class="primary"
         onclick="createSubject()"
     >
         Create Subject
     </button>
+
 
     <div
         id="subjectMsg"
@@ -110,6 +148,7 @@
     <h2>
         Subject Management
     </h2>
+
 
     <div class="table-wrap">
 
@@ -135,6 +174,7 @@
 
             </thead>
 
+
             <tbody>
 
                 {% for s in subjects %}
@@ -142,14 +182,18 @@
                 <tr>
 
                     <td>
+
                         <strong>
                             {{ s.code }}
                         </strong>
+
                     </td>
+
 
                     <td>
                         {{ s.name }}
                     </td>
+
 
                     <td>
 
@@ -163,6 +207,7 @@
                         >
                             Edit
                         </button>
+
 
                         <button
                             class="danger"
@@ -178,6 +223,7 @@
                     </td>
 
                 </tr>
+
 
                 {% else %}
 
@@ -212,15 +258,18 @@
         Schedule a class for attendance.
     </p>
 
+
     <label>
         Subject
     </label>
+
 
     <select id="subject">
 
         <option value="">
             Select subject
         </option>
+
 
         {% for s in subjects %}
 
@@ -248,6 +297,7 @@
 
         </div>
 
+
         <div>
 
             <label>
@@ -271,6 +321,7 @@
         Create Class
     </button>
 
+
     <div
         id="classMsg"
         class="status"
@@ -286,6 +337,7 @@
     <h2>
         Class Sessions
     </h2>
+
 
     <div class="table-wrap">
 
@@ -315,6 +367,7 @@
 
             </thead>
 
+
             <tbody id="classSessionsBody">
 
                 <tr>
@@ -342,6 +395,7 @@
         Class-wise Attendance
     </h2>
 
+
     <select id="attendanceClass">
 
         <option value="">
@@ -350,6 +404,7 @@
 
     </select>
 
+
     <button
         class="primary"
         onclick="loadClassAttendance()"
@@ -357,10 +412,12 @@
         View Attendance
     </button>
 
+
     <div
         id="classAttendanceMsg"
         class="status"
     ></div>
+
 
     <div
         id="classAttendanceResult"
@@ -381,6 +438,7 @@
     <p class="muted">
         Manage registered students.
     </p>
+
 
     <div class="table-wrap">
 
@@ -414,6 +472,7 @@
 
             </thead>
 
+
             <tbody>
 
                 {% for s in students %}
@@ -421,22 +480,28 @@
                 <tr>
 
                     <td>
+
                         <strong>
                             {{ s.roll_no }}
                         </strong>
+
                     </td>
+
 
                     <td>
                         {{ s.name }}
                     </td>
 
+
                     <td>
                         {{ s.department or '-' }}
                     </td>
 
+
                     <td>
                         {{ s.email or '-' }}
                     </td>
+
 
                     <td>
 
@@ -452,6 +517,7 @@
                             Edit
                         </button>
 
+
                         <button
                             class="danger"
                             onclick='deleteStudent(
@@ -465,6 +531,7 @@
                     </td>
 
                 </tr>
+
 
                 {% else %}
 
@@ -486,6 +553,7 @@
 
 </div>
 
+
 {% endblock %}
 
 
@@ -493,18 +561,26 @@
 
 <script>
 
+
+/* =========================================================
+   CREATE SUBJECT
+========================================================= */
+
 async function createSubject() {
 
     const code =
         document.getElementById("scode")
         .value.trim();
 
+
     const name =
         document.getElementById("sname")
         .value.trim();
 
+
     const msg =
         document.getElementById("subjectMsg");
+
 
     if (!code || !name) {
 
@@ -512,7 +588,9 @@ async function createSubject() {
             "Enter subject code and name.";
 
         return;
+
     }
+
 
     try {
 
@@ -521,37 +599,52 @@ async function createSubject() {
                 "/subjects",
                 {
                     method: "POST",
+
                     headers: {
                         "Content-Type":
                             "application/json"
                     },
-                    body: JSON.stringify({
-                        code: code,
-                        name: name
-                    })
+
+                    body:
+                        JSON.stringify({
+                            code: code,
+                            name: name
+                        })
                 }
             );
+
 
         const data =
             await response.json();
 
+
         if (!response.ok || !data.ok) {
 
             throw new Error(
-                data.error
-                || "Failed."
+                data.error ||
+                "Failed."
             );
+
         }
+
 
         location.reload();
 
-    } catch (error) {
+    }
+
+    catch (error) {
 
         msg.textContent =
             error.message;
+
     }
+
 }
 
+
+/* =========================================================
+   EDIT SUBJECT
+========================================================= */
 
 async function editSubject(
     id,
@@ -565,7 +658,10 @@ async function editSubject(
             oldCode
         );
 
-    if (code === null) return;
+
+    if (code === null)
+        return;
+
 
     const name =
         prompt(
@@ -573,7 +669,21 @@ async function editSubject(
             oldName
         );
 
-    if (name === null) return;
+
+    if (name === null)
+        return;
+
+
+    if (!code.trim() || !name.trim()) {
+
+        alert(
+            "Subject code and name are required."
+        );
+
+        return;
+
+    }
+
 
     try {
 
@@ -582,36 +692,56 @@ async function editSubject(
                 `/subjects/${id}`,
                 {
                     method: "PUT",
+
                     headers: {
                         "Content-Type":
                             "application/json"
                     },
-                    body: JSON.stringify({
-                        code: code.trim(),
-                        name: name.trim()
-                    })
+
+                    body:
+                        JSON.stringify({
+                            code:
+                                code.trim(),
+
+                            name:
+                                name.trim()
+                        })
                 }
             );
+
 
         const data =
             await response.json();
 
+
         if (!response.ok || !data.ok) {
 
             throw new Error(
-                data.error
-                || "Update failed."
+                data.error ||
+                "Update failed."
             );
+
         }
+
 
         location.reload();
 
-    } catch (error) {
-
-        alert(error.message);
     }
+
+    catch (error) {
+
+        alert(
+            error.message
+        );
+
+    }
+
 }
 
+
+/* =========================================================
+   DELETE SUBJECT
+========================================================= */
 
 async function deleteSubject(
     id,
@@ -633,7 +763,10 @@ async function deleteSubject(
             "This cannot be undone."
         );
 
-    if (!ok) return;
+
+    if (!ok)
+        return;
+
 
     try {
 
@@ -645,27 +778,44 @@ async function deleteSubject(
                 }
             );
 
+
         const data =
             await response.json();
+
 
         if (!response.ok || !data.ok) {
 
             throw new Error(
-                data.error
-                || "Delete failed."
+                data.error ||
+                "Delete failed."
             );
+
         }
 
-        alert(data.message);
+
+        alert(
+            data.message
+        );
+
 
         location.reload();
 
-    } catch (error) {
-
-        alert(error.message);
     }
+
+    catch (error) {
+
+        alert(
+            error.message
+        );
+
+    }
+
 }
 
+
+/* =========================================================
+   CREATE CLASS
+========================================================= */
 
 async function createClass() {
 
@@ -674,20 +824,24 @@ async function createClass() {
             "subject"
         ).value;
 
+
     const classDate =
         document.getElementById(
             "cdate"
         ).value;
+
 
     const startTime =
         document.getElementById(
             "ctime"
         ).value;
 
+
     const msg =
         document.getElementById(
             "classMsg"
         );
+
 
     if (
         !subject ||
@@ -699,7 +853,9 @@ async function createClass() {
             "Select subject, date and time.";
 
         return;
+
     }
+
 
     try {
 
@@ -708,41 +864,62 @@ async function createClass() {
                 "/classes",
                 {
                     method: "POST",
+
                     headers: {
                         "Content-Type":
                             "application/json"
                     },
-                    body: JSON.stringify({
-                        subject_id: subject,
-                        class_date: classDate,
-                        start_time: startTime
-                    })
+
+                    body:
+                        JSON.stringify({
+                            subject_id:
+                                subject,
+
+                            class_date:
+                                classDate,
+
+                            start_time:
+                                startTime
+                        })
                 }
             );
+
 
         const data =
             await response.json();
 
+
         if (!response.ok || !data.ok) {
 
             throw new Error(
-                data.error
-                || "Failed."
+                data.error ||
+                "Failed."
             );
+
         }
 
+
         msg.textContent =
-            "Class created.";
+            "Class created successfully.";
+
 
         await loadClasses();
 
-    } catch (error) {
+    }
+
+    catch (error) {
 
         msg.textContent =
             error.message;
+
     }
+
 }
 
+
+/* =========================================================
+   LOAD CLASS SESSIONS
+========================================================= */
 
 async function loadClasses() {
 
@@ -751,27 +928,80 @@ async function loadClasses() {
             "classSessionsBody"
         );
 
+
     const select =
         document.getElementById(
             "attendanceClass"
         );
 
+
     try {
 
         const response =
             await fetch(
-                "/api/classes"
+                "/api/classes",
+                {
+                    credentials:
+                        "same-origin"
+                }
             );
 
-        const classes =
-            await response.json();
 
-        body.innerHTML = "";
+        /*
+         * Read text first.
+         *
+         * This prevents:
+         * Unexpected token '<'
+         *
+         * when Flask returns HTML.
+         */
+
+        const text =
+            await response.text();
+
+
+        let classes;
+
+
+        try {
+
+            classes =
+                JSON.parse(text);
+
+        }
+
+        catch (error) {
+
+            console.error(
+                "Class API returned:",
+                text
+            );
+
+            throw new Error(
+                "Unable to load classes. Server returned an invalid response."
+            );
+
+        }
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                "Failed to load classes."
+            );
+
+        }
+
+
+        body.innerHTML =
+            "";
+
 
         select.innerHTML =
             `<option value="">
                 Select class session
             </option>`;
+
 
         classes.forEach(
             function(c) {
@@ -781,11 +1011,15 @@ async function loadClasses() {
                         "option"
                     );
 
-                option.value = c.id;
+
+                option.value =
+                    c.id;
+
 
                 option.textContent =
                     `${c.code} — ${c.name} — ` +
                     `${c.class_date} ${c.start_time}`;
+
 
                 select.appendChild(
                     option
@@ -797,25 +1031,33 @@ async function loadClasses() {
                         "tr"
                     );
 
+
                 row.innerHTML = `
 
                     <td>
+
                         <strong>
                             ${escapeHtml(c.code)}
                         </strong>
+
                         <br>
+
                         <span class="muted">
                             ${escapeHtml(c.name)}
                         </span>
+
                     </td>
+
 
                     <td>
                         ${escapeHtml(c.class_date)}
                     </td>
 
+
                     <td>
                         ${escapeHtml(c.start_time)}
                     </td>
+
 
                     <td>
 
@@ -826,6 +1068,7 @@ async function loadClasses() {
                             View
                         </button>
 
+
                         <button
                             class="danger"
                             onclick="deleteClass(${c.id})"
@@ -834,38 +1077,69 @@ async function loadClasses() {
                         </button>
 
                     </td>
+
                 `;
 
-                body.appendChild(row);
+
+                body.appendChild(
+                    row
+                );
 
             }
         );
 
+
         if (!classes.length) {
 
             body.innerHTML = `
+
                 <tr>
+
                     <td colspan="4">
                         No class sessions yet.
                     </td>
+
                 </tr>
+
             `;
 
         }
 
-    } catch (error) {
+    }
+
+    catch (error) {
+
+        console.error(
+            "loadClasses error:",
+            error
+        );
+
 
         body.innerHTML = `
+
             <tr>
+
                 <td colspan="4">
-                    Failed to load classes.
+
+                    ${escapeHtml(
+                        error.message ||
+                        "Failed to load classes."
+                    )}
+
                 </td>
+
             </tr>
+
         `;
 
     }
+
 }
 
+
+/* =========================================================
+   DELETE CLASS
+========================================================= */
 
 async function deleteClass(id) {
 
@@ -875,7 +1149,10 @@ async function deleteClass(id) {
             "Its attendance records will also be deleted."
         );
 
-    if (!ok) return;
+
+    if (!ok)
+        return;
+
 
     try {
 
@@ -883,31 +1160,75 @@ async function deleteClass(id) {
             await fetch(
                 `/classes/${id}`,
                 {
-                    method: "DELETE"
+                    method: "DELETE",
+
+                    credentials:
+                        "same-origin"
                 }
             );
 
-        const data =
-            await response.json();
+
+        const text =
+            await response.text();
+
+
+        let data;
+
+
+        try {
+
+            data =
+                JSON.parse(text);
+
+        }
+
+        catch (error) {
+
+            console.error(
+                "Delete class response:",
+                text
+            );
+
+            throw new Error(
+                "Server returned an invalid response."
+            );
+
+        }
+
 
         if (!response.ok || !data.ok) {
 
             throw new Error(
-                data.error
-                || "Delete failed."
+                data.error ||
+                "Delete failed."
             );
+
         }
 
-        alert(data.message);
+
+        alert(
+            data.message
+        );
+
 
         await loadClasses();
 
-    } catch (error) {
-
-        alert(error.message);
     }
+
+    catch (error) {
+
+        alert(
+            error.message
+        );
+
+    }
+
 }
 
+
+/* =========================================================
+   VIEW ATTENDANCE
+========================================================= */
 
 function viewAttendance(id) {
 
@@ -916,18 +1237,26 @@ function viewAttendance(id) {
             "attendanceClass"
         );
 
+
     select.value =
         String(id);
 
+
     loadClassAttendance();
+
 
     document.getElementById(
         "classAttendanceResult"
     ).scrollIntoView({
         behavior: "smooth"
     });
+
 }
 
+
+/* =========================================================
+   LOAD CLASS-WISE ATTENDANCE
+========================================================= */
 
 async function loadClassAttendance() {
 
@@ -936,56 +1265,159 @@ async function loadClassAttendance() {
             "attendanceClass"
         ).value;
 
+
     const msg =
         document.getElementById(
             "classAttendanceMsg"
         );
+
 
     const result =
         document.getElementById(
             "classAttendanceResult"
         );
 
+
     if (!id) {
 
         msg.textContent =
             "Select a class.";
 
+        result.innerHTML =
+            "";
+
         return;
+
     }
 
+
     msg.textContent =
-        "Loading...";
+        "Loading attendance...";
+
+
+    result.innerHTML =
+        "";
+
 
     try {
 
         const response =
             await fetch(
-                `/api/class-attendance/${id}`
+                `/api/class-attendance/${encodeURIComponent(id)}`,
+                {
+                    method: "GET",
+
+                    credentials:
+                        "same-origin",
+
+                    headers: {
+                        "Accept":
+                            "application/json"
+                    }
+                }
             );
 
-        const data =
-            await response.json();
 
-        if (!response.ok || !data.ok) {
+        /*
+         * IMPORTANT:
+         *
+         * Do NOT directly use response.json().
+         *
+         * If Flask sends an HTML page,
+         * response.json() causes:
+         *
+         * Unexpected token '<'
+         */
 
-            throw new Error(
-                data.error
-            );
+        const text =
+            await response.text();
+
+
+        console.log(
+            "Class attendance server response:",
+            text
+        );
+
+
+        let data;
+
+
+        try {
+
+            data =
+                JSON.parse(text);
+
         }
 
+        catch (parseError) {
+
+            console.error(
+                "Invalid JSON from class attendance API:",
+                text
+            );
+
+
+            if (
+                text.includes(
+                    "<!doctype"
+                ) ||
+                text.includes(
+                    "<html"
+                )
+            ) {
+
+                throw new Error(
+                    "Server returned an HTML page instead of attendance data. Please check the admin login/session."
+                );
+
+            }
+
+
+            throw new Error(
+                "Server returned invalid attendance data."
+            );
+
+        }
+
+
+        if (
+            !response.ok ||
+            !data.ok
+        ) {
+
+            throw new Error(
+                data.error ||
+                `Failed to load attendance (HTTP ${response.status}).`
+            );
+
+        }
+
+
         const students =
-            data.students;
+            Array.isArray(
+                data.students
+            )
+                ? data.students
+                : [];
+
 
         const present =
             students.filter(
-                s =>
-                    s.status === "Present"
+                function(s) {
+
+                    return (
+                        s.status ===
+                        "Present"
+                    );
+
+                }
             ).length;
+
 
         const absent =
             students.length -
             present;
+
 
         const percentage =
             students.length
@@ -996,32 +1428,51 @@ async function loadClassAttendance() {
                 ).toFixed(1)
                 : "0.0";
 
+
         let html = `
 
             <div class="cards">
 
                 <div class="card">
-                    <span>Present</span>
+
+                    <span>
+                        Present
+                    </span>
+
                     <strong>
                         ${present}
                     </strong>
+
                 </div>
 
+
                 <div class="card">
-                    <span>Absent</span>
+
+                    <span>
+                        Absent
+                    </span>
+
                     <strong>
                         ${absent}
                     </strong>
+
                 </div>
 
+
                 <div class="card">
-                    <span>Attendance</span>
+
+                    <span>
+                        Attendance
+                    </span>
+
                     <strong>
                         ${percentage}%
                     </strong>
+
                 </div>
 
             </div>
+
 
             <div class="table-wrap">
 
@@ -1030,19 +1481,76 @@ async function loadClassAttendance() {
                     <thead>
 
                         <tr>
-                            <th>Roll</th>
-                            <th>Name</th>
-                            <th>Department</th>
-                            <th>Status</th>
+
+                            <th>
+                                Roll
+                            </th>
+
+                            <th>
+                                Name
+                            </th>
+
+                            <th>
+                                Department
+                            </th>
+
+                            <th>
+                                Status
+                            </th>
+
                         </tr>
 
                     </thead>
 
+
                     <tbody>
+
         `;
+
+
+        if (
+            students.length === 0
+        ) {
+
+            html += `
+
+                <tr>
+
+                    <td colspan="4">
+
+                        No students found.
+
+                    </td>
+
+                </tr>
+
+            `;
+
+        }
+
 
         students.forEach(
             function(s) {
+
+                const statusHtml =
+                    s.status === "Present"
+
+                        ? `
+                            <span
+                                class="status-badge present"
+                            >
+                                ✓ Present
+                            </span>
+                        `
+
+                        : `
+                            <span
+                                class="status-badge absent"
+                            >
+                                ✕ Absent
+                            </span>
+                        `;
+
 
                 html += `
 
@@ -1054,41 +1562,24 @@ async function loadClassAttendance() {
                             )}
                         </td>
 
+
                         <td>
                             ${escapeHtml(
                                 s.name
                             )}
                         </td>
 
+
                         <td>
                             ${escapeHtml(
-                                s.department
-                                || "-"
+                                s.department ||
+                                "-"
                             )}
                         </td>
 
+
                         <td>
-
-                            ${
-                                s.status ===
-                                "Present"
-
-                                ? `
-                                    <span
-                                        class="status-badge present"
-                                    >
-                                        ✓ Present
-                                    </span>
-                                `
-                                : `
-                                    <span
-                                        class="status-badge absent"
-                                    >
-                                        ✕ Absent
-                                    </span>
-                                `
-                            }
-
+                            ${statusHtml}
                         </td>
 
                     </tr>
@@ -1098,26 +1589,60 @@ async function loadClassAttendance() {
             }
         );
 
+
         html += `
+
                     </tbody>
+
                 </table>
+
             </div>
+
         `;
+
 
         result.innerHTML =
             html;
 
-        msg.textContent =
-            "Attendance loaded.";
-
-    } catch (error) {
 
         msg.textContent =
-            error.message;
+            "Attendance loaded successfully.";
 
     }
+
+    catch (error) {
+
+        console.error(
+            "Class attendance error:",
+            error
+        );
+
+
+        result.innerHTML = `
+
+            <div class="error">
+
+                ${escapeHtml(
+                    error.message ||
+                    "Unable to load attendance."
+                )}
+
+            </div>
+
+        `;
+
+
+        msg.textContent =
+            "";
+
+    }
+
 }
 
+
+/* =========================================================
+   EDIT STUDENT
+========================================================= */
 
 async function editStudent(
     id,
@@ -1132,7 +1657,10 @@ async function editStudent(
             oldName
         );
 
-    if (name === null) return;
+
+    if (name === null)
+        return;
+
 
     const email =
         prompt(
@@ -1140,7 +1668,10 @@ async function editStudent(
             oldEmail || ""
         );
 
-    if (email === null) return;
+
+    if (email === null)
+        return;
+
 
     const department =
         prompt(
@@ -1148,14 +1679,20 @@ async function editStudent(
             oldDepartment || ""
         );
 
-    if (department === null) return;
+
+    if (department === null)
+        return;
+
 
     const password =
         prompt(
             "New password (leave blank to keep current):"
         );
 
-    if (password === null) return;
+
+    if (password === null)
+        return;
+
 
     try {
 
@@ -1164,49 +1701,72 @@ async function editStudent(
                 `/api/students/${id}`,
                 {
                     method: "PUT",
+
                     headers: {
                         "Content-Type":
                             "application/json"
                     },
-                    body: JSON.stringify({
 
-                        name:
-                            name.trim(),
+                    body:
+                        JSON.stringify({
 
-                        email:
-                            email.trim(),
+                            name:
+                                name.trim(),
 
-                        department:
-                            department.trim(),
+                            email:
+                                email.trim(),
 
-                        password:
-                            password.trim()
+                            department:
+                                department.trim(),
 
-                    })
+                            password:
+                                password.trim()
+
+                        })
                 }
             );
+
 
         const data =
             await response.json();
 
-        if (!response.ok || !data.ok) {
+
+        if (
+            !response.ok ||
+            !data.ok
+        ) {
 
             throw new Error(
-                data.error
-                || "Update failed."
+                data.error ||
+                "Update failed."
             );
+
         }
 
-        alert(data.message);
+
+        alert(
+            data.message
+        );
+
 
         location.reload();
 
-    } catch (error) {
-
-        alert(error.message);
     }
+
+    catch (error) {
+
+        alert(
+            error.message
+        );
+
+    }
+
 }
 
+
+/* =========================================================
+   DELETE STUDENT
+========================================================= */
 
 async function deleteStudent(
     id,
@@ -1226,7 +1786,10 @@ async function deleteStudent(
             "This cannot be undone."
         );
 
-    if (!ok) return;
+
+    if (!ok)
+        return;
+
 
     try {
 
@@ -1234,57 +1797,116 @@ async function deleteStudent(
             await fetch(
                 `/api/students/${id}`,
                 {
-                    method: "DELETE"
+                    method: "DELETE",
+
+                    credentials:
+                        "same-origin"
                 }
             );
 
-        const data =
-            await response.json();
 
-        if (!response.ok || !data.ok) {
+        const text =
+            await response.text();
 
-            throw new Error(
-                data.error
-                || "Delete failed."
-            );
+
+        let data;
+
+
+        try {
+
+            data =
+                JSON.parse(text);
+
         }
 
-        alert(data.message);
+        catch (error) {
+
+            console.error(
+                "Delete student response:",
+                text
+            );
+
+            throw new Error(
+                "Server returned an invalid response."
+            );
+
+        }
+
+
+        if (
+            !response.ok ||
+            !data.ok
+        ) {
+
+            throw new Error(
+                data.error ||
+                "Delete failed."
+            );
+
+        }
+
+
+        alert(
+            data.message
+        );
+
 
         location.reload();
 
-    } catch (error) {
-
-        alert(error.message);
     }
+
+    catch (error) {
+
+        alert(
+            error.message
+        );
+
+    }
+
 }
 
+
+/* =========================================================
+   ESCAPE HTML
+========================================================= */
 
 function escapeHtml(value) {
 
-    return String(value ?? "")
-        .replaceAll(
-            "&",
-            "&amp;"
-        )
-        .replaceAll(
-            "<",
-            "&lt;"
-        )
-        .replaceAll(
-            ">",
-            "&gt;"
-        )
-        .replaceAll(
-            '"',
-            "&quot;"
-        )
-        .replaceAll(
-            "'",
-            "&#039;"
-        );
+    return String(
+        value ?? ""
+    )
+
+    .replaceAll(
+        "&",
+        "&amp;"
+    )
+
+    .replaceAll(
+        "<",
+        "&lt;"
+    )
+
+    .replaceAll(
+        ">",
+        "&gt;"
+    )
+
+    .replaceAll(
+        '"',
+        "&quot;"
+    )
+
+    .replaceAll(
+        "'",
+        "&#039;"
+    );
+
 }
 
+
+/* =========================================================
+   PAGE LOAD
+========================================================= */
 
 document.addEventListener(
     "DOMContentLoaded",
