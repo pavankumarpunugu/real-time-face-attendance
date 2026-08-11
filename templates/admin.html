@@ -6,523 +6,426 @@
     <div>
         <div class="eyebrow">ADMIN DASHBOARD</div>
 
-        <h1>Attendance Management</h1>
+    <h1>Attendance Management</h1>
 
-        <p class="muted">
-            Students, subjects, classes and attendance.
-        </p>
-    </div>
+    <p class="muted">
+        Students, subjects, classes and attendance.
+    </p>
 </div>
 
+</div>
 
-<!-- =====================================================
-     STAT CARDS
-===================================================== -->
+<!-- STAT CARDS -->
 
 <div class="cards">
 
-    <div class="card stat-card">
-        <span>Students</span>
-        <strong>{{ students|length }}</strong>
-        <small>Registered students</small>
+<div class="card stat-card">
+    <span>Students</span>
+    <strong>{{ students|length }}</strong>
+    <small>Registered students</small>
+</div>
+
+<div class="card stat-card">
+    <span>Present Today</span>
+    <strong>{{ present_today }}</strong>
+    <small>Attendance marked today</small>
+</div>
+
+<div class="card stat-card">
+    <span>Subjects</span>
+    <strong>{{ subjects|length }}</strong>
+    <small>Available subjects</small>
+</div>
+
+</div>
+
+<!-- CREATE SUBJECT -->
+
+<div class="panel">
+
+<h2>Create Subject</h2>
+
+<p class="muted">
+    Add a new subject to the system.
+</p>
+
+<div class="grid2">
+
+    <div>
+        <label>Subject Code</label>
+
+        <input
+            id="scode"
+            placeholder="e.g. CS301"
+        >
     </div>
 
-    <div class="card stat-card">
-        <span>Present Today</span>
-        <strong>{{ present_today }}</strong>
-        <small>Attendance marked today</small>
-    </div>
+    <div>
+        <label>Subject Name</label>
 
-    <div class="card stat-card">
-        <span>Subjects</span>
-        <strong>{{ subjects|length }}</strong>
-        <small>Available subjects</small>
+        <input
+            id="sname"
+            placeholder="e.g. Python Programming"
+        >
     </div>
 
 </div>
 
+<button
+    class="primary"
+    onclick="createSubject()"
+>
+    Create Subject
+</button>
 
-<!-- =====================================================
-     CREATE SUBJECT
-===================================================== -->
-
-<div class="panel">
-
-    <h2>Create Subject</h2>
-
-    <p class="muted">
-        Add a new subject to the system.
-    </p>
-
-    <div class="grid2">
-
-        <div>
-
-            <label>Subject Code</label>
-
-            <input
-                id="scode"
-                placeholder="e.g. CS301"
-            >
-
-        </div>
-
-
-        <div>
-
-            <label>Subject Name</label>
-
-            <input
-                id="sname"
-                placeholder="e.g. Python Programming"
-            >
-
-        </div>
-
-    </div>
-
-
-    <button
-        class="primary"
-        onclick="createSubject()"
-    >
-        Create Subject
-    </button>
-
-
-    <div
-        id="subjectMsg"
-        class="status"
-    ></div>
+<div
+    id="subjectMsg"
+    class="status"
+></div>
 
 </div>
 
-
-<!-- =====================================================
-     SUBJECT MANAGEMENT
-===================================================== -->
+<!-- SUBJECT MANAGEMENT -->
 
 <div class="panel">
 
-    <h2>Subject Management</h2>
+<h2>Subject Management</h2>
 
-    <p class="muted">
-        Edit subjects or permanently remove a subject
-        and all of its class sessions and attendance records.
-    </p>
+<p class="muted">
+    Edit subjects or permanently remove a subject and all
+    of its class sessions and attendance records.
+</p>
 
+<div class="table-wrap">
 
-    <div class="table-wrap">
+    <table>
 
-        <table>
+        <thead>
 
-            <thead>
+            <tr>
+                <th>Code</th>
+                <th>Subject</th>
+                <th>Actions</th>
+            </tr>
 
-                <tr>
+        </thead>
 
-                    <th>Code</th>
+        <tbody>
 
-                    <th>Subject</th>
+            {% for s in subjects %}
 
-                    <th>Actions</th>
+            <tr>
 
-                </tr>
+                <td>
+                    <strong>
+                        {{ s.code }}
+                    </strong>
+                </td>
 
-            </thead>
+                <td>
+                    {{ s.name }}
+                </td>
 
+                <td>
 
-            <tbody>
+                    <button
+                        class="secondary"
+                        onclick='editSubject(
+                            {{ s.id }},
+                            {{ s.code|tojson }},
+                            {{ s.name|tojson }}
+                        )'
+                    >
+                        Edit
+                    </button>
 
-                {% for s in subjects %}
+                    <button
+                        class="danger"
+                        onclick='deleteSubject(
+                            {{ s.id }},
+                            {{ s.code|tojson }},
+                            {{ s.name|tojson }}
+                        )'
+                    >
+                        Delete
+                    </button>
 
-                <tr>
+                </td>
 
-                    <td>
+            </tr>
+
+            {% else %}
+
+            <tr>
+
+                <td colspan="3">
+
+                    <div class="empty-state">
 
                         <strong>
-                            {{ s.code }}
+                            No subjects yet
                         </strong>
 
-                    </td>
+                        <span>
+                            Create your first subject above.
+                        </span>
+
+                    </div>
+
+                </td>
+
+            </tr>
+
+            {% endfor %}
+
+        </tbody>
+
+    </table>
+
+</div>
+
+</div>
+
+<!-- CREATE CLASS -->
+
+<div class="panel">
+
+<h2>Create Class Session</h2>
+
+<p class="muted">
+    Schedule a class session for attendance.
+</p>
+
+<label>Subject</label>
+
+<select id="subject">
+
+    <option value="">
+        Select subject
+    </option>
+
+    {% for s in subjects %}
+
+    <option value="{{ s.id }}">
+        {{ s.code }} — {{ s.name }}
+    </option>
+
+    {% endfor %}
+
+</select>
 
 
-                    <td>
-                        {{ s.name }}
-                    </td>
+<div class="grid2">
 
+    <div>
 
-                    <td>
+        <label>Date</label>
 
-                        <button
-                            class="secondary"
-                            onclick='editSubject(
-                                {{ s.id }},
-                                {{ s.code|tojson }},
-                                {{ s.name|tojson }}
-                            )'
-                        >
-                            Edit
-                        </button>
+        <input
+            id="cdate"
+            type="date"
+        >
 
+    </div>
 
-                        <button
-                            class="danger"
-                            onclick='deleteSubject(
-                                {{ s.id }},
-                                {{ s.code|tojson }},
-                                {{ s.name|tojson }}
-                            )'
-                        >
-                            Delete
-                        </button>
+    <div>
 
-                    </td>
+        <label>Start Time</label>
 
-                </tr>
-
-
-                {% else %}
-
-                <tr>
-
-                    <td colspan="3">
-
-                        <div class="empty-state">
-
-                            <strong>
-                                No subjects yet
-                            </strong>
-
-                            <span>
-                                Create your first subject above.
-                            </span>
-
-                        </div>
-
-                    </td>
-
-                </tr>
-
-                {% endfor %}
-
-            </tbody>
-
-        </table>
+        <input
+            id="ctime"
+            type="time"
+        >
 
     </div>
 
 </div>
 
 
-<!-- =====================================================
-     CREATE CLASS
-===================================================== -->
+<button
+    class="primary"
+    onclick="createClass()"
+>
+    Create Class
+</button>
 
-<div class="panel">
-
-    <h2>Create Class Session</h2>
-
-    <p class="muted">
-        Schedule a class session for attendance.
-    </p>
-
-
-    <label>Subject</label>
-
-    <select id="subject">
-
-        <option value="">
-            Select subject
-        </option>
-
-
-        {% for s in subjects %}
-
-        <option value="{{ s.id }}">
-            {{ s.code }} — {{ s.name }}
-        </option>
-
-        {% endfor %}
-
-    </select>
-
-
-    <div class="grid2">
-
-        <div>
-
-            <label>Date</label>
-
-            <input
-                id="cdate"
-                type="date"
-            >
-
-        </div>
-
-
-        <div>
-
-            <label>Start Time</label>
-
-            <input
-                id="ctime"
-                type="time"
-            >
-
-        </div>
-
-    </div>
-
-
-    <button
-        class="primary"
-        onclick="createClass()"
-    >
-        Create Class
-    </button>
-
-
-    <div
-        id="classMsg"
-        class="status"
-    ></div>
+<div
+    id="classMsg"
+    class="status"
+></div>
 
 </div>
 
-
-<!-- =====================================================
-     CLASS SESSIONS
-===================================================== -->
+<!-- CLASS SESSIONS -->
 
 <div class="panel">
 
-    <h2>Class Sessions</h2>
+<h2>Class Sessions</h2>
 
-    <p class="muted">
-        Manage scheduled class sessions.
-        Deleting a session also deletes its attendance records.
-    </p>
+<p class="muted">
+    Manage scheduled class sessions.
+    Deleting a session also deletes its attendance records.
+</p>
 
+<div class="table-wrap">
 
-    <div class="table-wrap">
+    <table>
 
-        <table>
+        <thead>
 
-            <thead>
+            <tr>
+                <th>Subject</th>
+                <th>Date</th>
+                <th>Time</th>
+                <th>Actions</th>
+            </tr>
 
-                <tr>
+        </thead>
 
-                    <th>Subject</th>
+        <tbody id="classSessionsBody">
 
-                    <th>Date</th>
+            <tr>
 
-                    <th>Time</th>
+                <td colspan="4">
+                    Loading classes...
+                </td>
 
-                    <th>Actions</th>
+            </tr>
 
-                </tr>
+        </tbody>
 
-            </thead>
-
-
-            <tbody id="classSessionsBody">
-
-                <tr>
-
-                    <td colspan="4">
-                        Loading classes...
-                    </td>
-
-                </tr>
-
-            </tbody>
-
-        </table>
-
-    </div>
+    </table>
 
 </div>
 
+</div>
 
-<!-- =====================================================
-     CLASS-WISE ATTENDANCE
-===================================================== -->
+<!-- CLASS-WISE ATTENDANCE -->
 
 <div class="panel">
 
-    <h2>Class-wise Attendance</h2>
+<h2>Class-wise Attendance</h2>
 
-    <p class="muted">
-        View Present / Absent students for a specific class.
-    </p>
+<p class="muted">
+    View Present / Absent students for a specific class.
+</p>
 
+<label>Select Class</label>
 
-    <label>Select Class</label>
+<select id="attendanceClass">
 
-    <select id="attendanceClass">
+    <option value="">
+        Loading classes...
+    </option>
 
-        <option value="">
-            Loading classes...
-        </option>
-
-    </select>
-
-
-    <button
-        class="primary"
-        onclick="loadClassAttendance()"
-    >
-        View Attendance
-    </button>
+</select>
 
 
-    <div
-        id="classAttendanceMsg"
-        class="status"
-    ></div>
+<button
+    class="primary"
+    onclick="loadClassAttendance()"
+>
+    View Attendance
+</button>
 
 
-    <div
-        id="classAttendanceResult"
-        style="margin-top:20px;"
-    ></div>
+<div
+    id="classAttendanceMsg"
+    class="status"
+></div>
+
+
+<div
+    id="classAttendanceResult"
+    style="margin-top:20px;"
+></div>
 
 </div>
 
-
-<!-- =====================================================
-     STUDENTS
-===================================================== -->
+<!-- STUDENTS -->
 
 <div class="panel">
 
-    <h2>Students</h2>
+<h2>Students</h2>
 
-    <p class="muted">
-        Registered students in the system.
-    </p>
+<p class="muted">
+    Registered students in the system.
+</p>
 
+<div class="table-wrap">
 
-    <div class="table-wrap">
+    <table>
 
-        <table>
+        <thead>
 
-            <thead>
+            <tr>
+                <th>Roll</th>
+                <th>Name</th>
+                <th>Department</th>
+                <th>Email</th>
+            </tr>
 
-                <tr>
+        </thead>
 
-                    <th>Roll</th>
+        <tbody>
 
-                    <th>Name</th>
+            {% for s in students %}
 
-                    <th>Department</th>
+            <tr>
 
-                    <th>Email</th>
+                <td>
+                    <strong>
+                        {{ s.roll_no }}
+                    </strong>
+                </td>
 
-                    <th>Actions</th>
+                <td>
+                    {{ s.name }}
+                </td>
 
-                </tr>
+                <td>
+                    {{ s.department or '-' }}
+                </td>
 
-            </thead>
+                <td>
+                    {{ s.email or '-' }}
+                </td>
 
+            </tr>
 
-            <tbody>
+            {% else %}
 
-                {% for s in students %}
+            <tr>
 
-                <tr>
+                <td colspan="4">
 
-                    <td>
+                    <div class="empty-state">
 
                         <strong>
-                            {{ s.roll_no }}
+                            No students yet
                         </strong>
 
-                    </td>
+                        <span>
+                            Registered students will appear here.
+                        </span>
 
+                    </div>
 
-                    <td>
-                        {{ s.name }}
-                    </td>
+                </td>
 
+            </tr>
 
-                    <td>
-                        {{ s.department or '-' }}
-                    </td>
+            {% endfor %}
 
+        </tbody>
 
-                    <td>
-                        {{ s.email or '-' }}
-                    </td>
+    </table>
 
-
-                    <td>
-
-                        <button
-                            class="secondary"
-                            onclick='editStudent(
-                                {{ s.id }},
-                                {{ s.roll_no|tojson }},
-                                {{ s.name|tojson }},
-                                {{ s.email|default("", true)|tojson }},
-                                {{ s.department|default("", true)|tojson }}
-                            )'
-                        >
-                            Edit
-                        </button>
-
-
-                        <button
-                            class="danger"
-                            onclick='deleteStudent(
-                                {{ s.id }},
-                                {{ s.roll_no|tojson }},
-                                {{ s.name|tojson }}
-                            )'
-                        >
-                            Delete
-                        </button>
-
-                    </td>
-
-                </tr>
-
-
-                {% else %}
-
-                <tr>
-
-                    <td colspan="5">
-
-                        <div class="empty-state">
-
-                            <strong>
-                                No students yet
-                            </strong>
-
-                            <span>
-                                Registered students will appear here.
-                            </span>
-
-                        </div>
-
-                    </td>
-
-                </tr>
-
-                {% endfor %}
-
-            </tbody>
-
-        </table>
-
-    </div>
+</div>
 
 </div>
 
 {% endblock %}
-
 
 {% block scripts %}
 
@@ -535,24 +438,13 @@
 async function createSubject() {
 
     const code =
-        document
-            .getElementById("scode")
-            .value
-            .trim();
-
+        document.getElementById("scode").value.trim();
 
     const name =
-        document
-            .getElementById("sname")
-            .value
-            .trim();
-
+        document.getElementById("sname").value.trim();
 
     const message =
-        document.getElementById(
-            "subjectMsg"
-        );
-
+        document.getElementById("subjectMsg");
 
     if (!code || !name) {
 
@@ -562,68 +454,52 @@ async function createSubject() {
         return;
     }
 
-
     message.textContent =
         "Creating subject...";
 
-
     try {
 
-        const response =
-            await fetch(
-                "/subjects",
-                {
-                    method: "POST",
+        const response = await fetch(
+            "/subjects",
+            {
+                method: "POST",
 
-                    headers: {
-                        "Content-Type":
-                            "application/json"
-                    },
+                headers: {
+                    "Content-Type":
+                        "application/json"
+                },
 
-                    body: JSON.stringify({
-                        code: code,
-                        name: name
-                    })
-                }
-            );
-
+                body: JSON.stringify({
+                    code: code,
+                    name: name
+                })
+            }
+        );
 
         const data =
             await response.json();
 
-
-        if (
-            !response.ok ||
-            !data.ok
-        ) {
+        if (!response.ok || !data.ok) {
 
             throw new Error(
                 data.error ||
                 "Failed to create subject."
             );
-
         }
-
 
         message.textContent =
             "Subject created successfully.";
-
 
         setTimeout(
             () => window.location.reload(),
             700
         );
 
-    }
-
-    catch (error) {
+    } catch (error) {
 
         message.textContent =
-            "Error: " +
-            error.message;
-
+            "Error: " + error.message;
     }
-
 }
 
 
@@ -643,11 +519,9 @@ async function editSubject(
             oldCode
         );
 
-
     if (code === null) {
         return;
     }
-
 
     const name =
         prompt(
@@ -655,24 +529,17 @@ async function editSubject(
             oldName
         );
 
-
     if (name === null) {
         return;
     }
 
-
     const cleanCode =
         code.trim();
-
 
     const cleanName =
         name.trim();
 
-
-    if (
-        !cleanCode ||
-        !cleanName
-    ) {
+    if (!cleanCode || !cleanName) {
 
         alert(
             "Subject code and name are required."
@@ -680,7 +547,6 @@ async function editSubject(
 
         return;
     }
-
 
     try {
 
@@ -702,43 +568,31 @@ async function editSubject(
                 }
             );
 
-
         const data =
             await response.json();
 
-
-        if (
-            !response.ok ||
-            !data.ok
-        ) {
+        if (!response.ok || !data.ok) {
 
             throw new Error(
                 data.error ||
                 "Failed to update subject."
             );
-
         }
-
 
         alert(
             data.message ||
             "Subject updated successfully."
         );
 
-
         window.location.reload();
 
-    }
-
-    catch (error) {
+    } catch (error) {
 
         alert(
             "Update failed: " +
             error.message
         );
-
     }
-
 }
 
 
@@ -755,29 +609,23 @@ async function deleteSubject(
     const confirmed =
         confirm(
             "DELETE SUBJECT?\n\n" +
-
             subjectCode +
             " — " +
             subjectName +
-
             "\n\n" +
 
             "This will permanently delete:\n" +
-
             "• The subject\n" +
             "• All class sessions for this subject\n" +
             "• All attendance records for those sessions\n\n" +
 
             "This action cannot be undone.\n\n" +
-
             "Continue?"
         );
-
 
     if (!confirmed) {
         return;
     }
-
 
     try {
 
@@ -789,43 +637,31 @@ async function deleteSubject(
                 }
             );
 
-
         const data =
             await response.json();
 
-
-        if (
-            !response.ok ||
-            !data.ok
-        ) {
+        if (!response.ok || !data.ok) {
 
             throw new Error(
                 data.error ||
                 "Failed to delete subject."
             );
-
         }
-
 
         alert(
             data.message ||
             "Subject and related data deleted."
         );
 
-
         window.location.reload();
 
-    }
-
-    catch (error) {
+    } catch (error) {
 
         alert(
             "Delete failed: " +
             error.message
         );
-
     }
-
 }
 
 
@@ -836,28 +672,16 @@ async function deleteSubject(
 async function createClass() {
 
     const subject =
-        document
-            .getElementById("subject")
-            .value;
-
+        document.getElementById("subject").value;
 
     const classDate =
-        document
-            .getElementById("cdate")
-            .value;
-
+        document.getElementById("cdate").value;
 
     const startTime =
-        document
-            .getElementById("ctime")
-            .value;
-
+        document.getElementById("ctime").value;
 
     const message =
-        document.getElementById(
-            "classMsg"
-        );
-
+        document.getElementById("classMsg");
 
     if (
         !subject ||
@@ -871,10 +695,8 @@ async function createClass() {
         return;
     }
 
-
     message.textContent =
         "Creating class...";
-
 
     try {
 
@@ -904,50 +726,35 @@ async function createClass() {
                 }
             );
 
-
         const data =
             await response.json();
 
-
-        if (
-            !response.ok ||
-            !data.ok
-        ) {
+        if (!response.ok || !data.ok) {
 
             throw new Error(
                 data.error ||
                 "Failed to create class."
             );
-
         }
-
 
         message.textContent =
             "Class created successfully.";
-
 
         document.getElementById(
             "cdate"
         ).value = "";
 
-
         document.getElementById(
             "ctime"
         ).value = "";
 
-
         await loadClassOptions();
 
-    }
-
-    catch (error) {
+    } catch (error) {
 
         message.textContent =
-            "Error: " +
-            error.message;
-
+            "Error: " + error.message;
     }
-
 }
 
 
@@ -962,12 +769,10 @@ async function loadClassOptions() {
             "attendanceClass"
         );
 
-
     const tableBody =
         document.getElementById(
             "classSessionsBody"
         );
-
 
     try {
 
@@ -980,17 +785,14 @@ async function loadClassOptions() {
                 }
             );
 
-
         const classes =
             await response.json();
-
 
         if (!response.ok) {
 
             throw new Error(
                 "Failed to load classes."
             );
-
         }
 
 
@@ -998,21 +800,15 @@ async function loadClassOptions() {
 
         select.innerHTML = "";
 
-
         const first =
-            document.createElement(
-                "option"
-            );
-
+            document.createElement("option");
 
         first.value = "";
-
 
         first.textContent =
             classes.length
                 ? "Select class session"
                 : "No classes available";
-
 
         select.appendChild(first);
 
@@ -1021,23 +817,16 @@ async function loadClassOptions() {
             function(c) {
 
                 const option =
-                    document.createElement(
-                        "option"
-                    );
-
+                    document.createElement("option");
 
                 option.value =
                     c.id;
-
 
                 option.textContent =
                     `${c.code} — ${c.name} — ` +
                     `${c.class_date} ${c.start_time}`;
 
-
-                select.appendChild(
-                    option
-                );
+                select.appendChild(option);
 
             }
         );
@@ -1046,7 +835,6 @@ async function loadClassOptions() {
         /* CLASS TABLE */
 
         tableBody.innerHTML = "";
-
 
         if (!classes.length) {
 
@@ -1082,10 +870,7 @@ async function loadClassOptions() {
             function(c) {
 
                 const row =
-                    document.createElement(
-                        "tr"
-                    );
-
+                    document.createElement("tr");
 
                 row.innerHTML = `
 
@@ -1147,17 +932,12 @@ async function loadClassOptions() {
 
                 `;
 
-
-                tableBody.appendChild(
-                    row
-                );
+                tableBody.appendChild(row);
 
             }
         );
 
-    }
-
-    catch (error) {
+    } catch (error) {
 
         select.innerHTML = `
 
@@ -1166,7 +946,6 @@ async function loadClassOptions() {
             </option>
 
         `;
-
 
         tableBody.innerHTML = `
 
@@ -1179,9 +958,7 @@ async function loadClassOptions() {
             </tr>
 
         `;
-
     }
-
 }
 
 
@@ -1197,31 +974,23 @@ async function deleteClass(
 
     const confirmed =
         confirm(
-
             "DELETE CLASS SESSION?\n\n" +
-
             className +
             "\n" +
             classDateTime +
-
             "\n\n" +
 
             "This will permanently delete:\n" +
-
             "• The class session\n" +
             "• All attendance records for this session\n\n" +
 
             "This action cannot be undone.\n\n" +
-
             "Continue?"
-
         );
-
 
     if (!confirmed) {
         return;
     }
-
 
     try {
 
@@ -1233,43 +1002,31 @@ async function deleteClass(
                 }
             );
 
-
         const data =
             await response.json();
 
-
-        if (
-            !response.ok ||
-            !data.ok
-        ) {
+        if (!response.ok || !data.ok) {
 
             throw new Error(
                 data.error ||
                 "Failed to delete class."
             );
-
         }
-
 
         alert(
             data.message ||
             "Class session deleted."
         );
 
-
         await loadClassOptions();
 
-    }
-
-    catch (error) {
+    } catch (error) {
 
         alert(
             "Delete failed: " +
             error.message
         );
-
     }
-
 }
 
 
@@ -1277,32 +1034,24 @@ async function deleteClass(
    VIEW ATTENDANCE
 ===================================================== */
 
-function viewAttendance(
-    classId
-) {
+function viewAttendance(classId) {
 
     const select =
         document.getElementById(
             "attendanceClass"
         );
 
-
     select.value =
         String(classId);
 
-
     loadClassAttendance();
 
-
-    document
-        .getElementById(
-            "classAttendanceResult"
-        )
-        .scrollIntoView({
-            behavior: "smooth",
-            block: "start"
-        });
-
+    document.getElementById(
+        "classAttendanceResult"
+    ).scrollIntoView({
+        behavior: "smooth",
+        block: "start"
+    });
 }
 
 
@@ -1313,24 +1062,19 @@ function viewAttendance(
 async function loadClassAttendance() {
 
     const classId =
-        document
-            .getElementById(
-                "attendanceClass"
-            )
-            .value;
-
+        document.getElementById(
+            "attendanceClass"
+        ).value;
 
     const message =
         document.getElementById(
             "classAttendanceMsg"
         );
 
-
     const result =
         document.getElementById(
             "classAttendanceResult"
         );
-
 
     if (!classId) {
 
@@ -1342,13 +1086,10 @@ async function loadClassAttendance() {
         return;
     }
 
-
     message.textContent =
         "Loading attendance...";
 
-
     result.innerHTML = "";
-
 
     try {
 
@@ -1361,53 +1102,38 @@ async function loadClassAttendance() {
                 }
             );
 
-
         const data =
             await response.json();
 
-
-        if (
-            !response.ok ||
-            !data.ok
-        ) {
+        if (!response.ok || !data.ok) {
 
             throw new Error(
                 data.error ||
                 "Failed to load attendance."
             );
-
         }
-
 
         const info =
             data.class_info;
 
-
         const students =
             data.students;
 
-
         const present =
             students.filter(
-                s =>
-                    s.status === "Present"
+                s => s.status === "Present"
             ).length;
-
 
         const total =
             students.length;
 
-
         const absent =
             total - present;
 
-
         const percentage =
             total
-                ? (
-                    (present / total) *
-                    100
-                ).toFixed(1)
+                ? ((present / total) * 100)
+                    .toFixed(1)
                 : "0.0";
 
 
@@ -1513,7 +1239,6 @@ async function loadClassAttendance() {
 
                     </thead>
 
-
                     <tbody>
 
         `;
@@ -1559,34 +1284,28 @@ async function loadClassAttendance() {
                         <td>
 
                             <strong>
-
                                 ${escapeHtml(
                                     String(
                                         student.roll_no
                                     )
                                 )}
-
                             </strong>
 
                         </td>
 
 
                         <td>
-
                             ${escapeHtml(
                                 student.name
                             )}
-
                         </td>
 
 
                         <td>
-
                             ${escapeHtml(
                                 student.department ||
                                 "-"
                             )}
-
                         </td>
 
 
@@ -1636,256 +1355,16 @@ async function loadClassAttendance() {
         result.innerHTML =
             html;
 
-
         message.textContent =
             "Attendance loaded successfully.";
 
-    }
-
-    catch (error) {
+    } catch (error) {
 
         message.textContent =
-            "Error: " +
-            error.message;
+            "Error: " + error.message;
 
         result.innerHTML = "";
-
     }
-
-}
-
-
-/* =====================================================
-   EDIT STUDENT
-===================================================== */
-
-async function editStudent(
-    studentId,
-    oldRoll,
-    oldName,
-    oldEmail,
-    oldDepartment
-) {
-
-    const roll =
-        prompt(
-            "Enter roll number:",
-            oldRoll
-        );
-
-
-    if (roll === null) {
-        return;
-    }
-
-
-    const name =
-        prompt(
-            "Enter student name:",
-            oldName
-        );
-
-
-    if (name === null) {
-        return;
-    }
-
-
-    const email =
-        prompt(
-            "Enter email:",
-            oldEmail
-        );
-
-
-    if (email === null) {
-        return;
-    }
-
-
-    const department =
-        prompt(
-            "Enter department:",
-            oldDepartment
-        );
-
-
-    if (department === null) {
-        return;
-    }
-
-
-    if (
-        !roll.trim() ||
-        !name.trim()
-    ) {
-
-        alert(
-            "Roll number and name are required."
-        );
-
-        return;
-    }
-
-
-    try {
-
-        const response =
-            await fetch(
-                `/api/students/${studentId}`,
-                {
-                    method: "PUT",
-
-                    headers: {
-                        "Content-Type":
-                            "application/json"
-                    },
-
-                    body: JSON.stringify({
-
-                        roll_no:
-                            roll.trim(),
-
-                        name:
-                            name.trim(),
-
-                        email:
-                            email.trim(),
-
-                        department:
-                            department.trim()
-
-                    })
-                }
-            );
-
-
-        const data =
-            await response.json();
-
-
-        if (
-            !response.ok ||
-            !data.ok
-        ) {
-
-            throw new Error(
-                data.error ||
-                "Failed to update student."
-            );
-
-        }
-
-
-        alert(
-            data.message ||
-            "Student updated successfully."
-        );
-
-
-        window.location.reload();
-
-    }
-
-    catch (error) {
-
-        alert(
-            "Update failed: " +
-            error.message
-        );
-
-    }
-
-}
-
-
-/* =====================================================
-   DELETE STUDENT
-===================================================== */
-
-async function deleteStudent(
-    studentId,
-    rollNo,
-    studentName
-) {
-
-    const confirmed =
-        confirm(
-
-            "DELETE STUDENT?\n\n" +
-
-            rollNo +
-            " — " +
-            studentName +
-
-            "\n\n" +
-
-            "This will permanently delete:\n" +
-
-            "• Student profile\n" +
-            "• Face recognition data\n" +
-            "• Student login\n" +
-            "• All attendance records\n\n" +
-
-            "This action cannot be undone.\n\n" +
-
-            "Continue?"
-
-        );
-
-
-    if (!confirmed) {
-        return;
-    }
-
-
-    try {
-
-        const response =
-            await fetch(
-                `/api/students/${studentId}`,
-                {
-                    method: "DELETE"
-                }
-            );
-
-
-        const data =
-            await response.json();
-
-
-        if (
-            !response.ok ||
-            !data.ok
-        ) {
-
-            throw new Error(
-                data.error ||
-                "Failed to delete student."
-            );
-
-        }
-
-
-        alert(
-            data.message ||
-            "Student deleted successfully."
-        );
-
-
-        window.location.reload();
-
-    }
-
-    catch (error) {
-
-        alert(
-            "Delete failed: " +
-            error.message
-        );
-
-    }
-
 }
 
 
@@ -1893,39 +1372,14 @@ async function deleteStudent(
    HTML ESCAPE
 ===================================================== */
 
-function escapeHtml(
-    value
-) {
+function escapeHtml(value) {
 
-    return String(
-        value ?? ""
-    )
-
-        .replaceAll(
-            "&",
-            "&amp;"
-        )
-
-        .replaceAll(
-            "<",
-            "&lt;"
-        )
-
-        .replaceAll(
-            ">",
-            "&gt;"
-        )
-
-        .replaceAll(
-            '"',
-            "&quot;"
-        )
-
-        .replaceAll(
-            "'",
-            "&#039;"
-        );
-
+    return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
 }
 
 
