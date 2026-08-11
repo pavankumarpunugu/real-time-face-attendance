@@ -25,31 +25,23 @@
 
 <div class="grid2">
 
-    <!-- ATTENDANCE CONTROLS -->
+
+    <!-- CONTROLS -->
 
     <div class="panel">
 
-        <div class="section-title">
+        <h2>
+            Class Verification
+        </h2>
 
-            <div>
-
-                <h2>
-                    Class Verification
-                </h2>
-
-                <p class="muted">
-                    Choose the class you are attending.
-                </p>
-
-            </div>
-
-        </div>
+        <p class="muted">
+            Choose the class you are attending.
+        </p>
 
 
         <label>
             Class Session
         </label>
-
 
         <select id="classSelect">
 
@@ -99,7 +91,7 @@
                 </li>
 
                 <li>
-                    Your attendance will be recorded after verification.
+                    Attendance is recorded after verification.
                 </li>
 
             </ul>
@@ -122,7 +114,6 @@
                 playsinline
             ></video>
 
-
             <div class="camera-overlay">
 
                 <div class="face-frame"></div>
@@ -141,33 +132,40 @@
 
 {% block scripts %}
 
+<script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+
 <script>
 
 const MODEL_URL =
     "https://justadudewhohacks.github.io/face-api.js/models";
 
 
-const videoEl =
-    document.getElementById("video");
+const video =
+    document.getElementById(
+        "video"
+    );
 
+const classSelect =
+    document.getElementById(
+        "classSelect"
+    );
 
-const selectEl =
-    document.getElementById("classSelect");
+const startButton =
+    document.getElementById(
+        "start"
+    );
 
-
-const resultEl =
-    document.getElementById("result");
-
-
-const startBtn =
-    document.getElementById("start");
+const result =
+    document.getElementById(
+        "result"
+    );
 
 
 let stream = null;
 
 let students = [];
 
-let running = false;
+let scanning = false;
 
 let modelsLoaded = false;
 
@@ -187,21 +185,18 @@ function distance(a, b) {
 
     let sum = 0;
 
-
     for (
         let i = 0;
         i < a.length;
         i++
     ) {
 
-        const difference =
+        const d =
             a[i] - b[i];
 
-        sum +=
-            difference * difference;
+        sum += d * d;
 
     }
-
 
     return Math.sqrt(sum);
 }
@@ -215,7 +210,7 @@ async function loadClasses() {
 
     try {
 
-        resultEl.textContent =
+        result.textContent =
             "Loading available classes...";
 
 
@@ -223,8 +218,8 @@ async function loadClasses() {
             await fetch(
                 "/api/classes",
                 {
-                    method: "GET",
-                    credentials: "same-origin"
+                    credentials:
+                        "same-origin"
                 }
             );
 
@@ -232,7 +227,7 @@ async function loadClasses() {
         if (!response.ok) {
 
             throw new Error(
-                `Server returned ${response.status}`
+                "Failed to load classes."
             );
 
         }
@@ -242,64 +237,36 @@ async function loadClasses() {
             await response.json();
 
 
-        selectEl.innerHTML =
+        classSelect.innerHTML =
             "";
 
 
-        if (
-            !Array.isArray(classes) ||
-            classes.length === 0
-        ) {
+        if (!classes.length) {
 
-            const option =
-                document.createElement(
-                    "option"
-                );
+            classSelect.innerHTML =
+                `
+                <option value="">
+                    No classes available
+                </option>
+                `;
 
+            result.textContent =
+                "No class sessions available.";
 
-            option.value =
-                "";
-
-
-            option.textContent =
-                "No classes available";
-
-
-            selectEl.appendChild(
-                option
-            );
-
-
-            resultEl.textContent =
-                "No class sessions found. Create a subject and class from the Admin Dashboard first.";
-
-
-            startBtn.disabled =
+            startButton.disabled =
                 true;
-
 
             return;
 
         }
 
 
-        const firstOption =
-            document.createElement(
-                "option"
-            );
-
-
-        firstOption.value =
-            "";
-
-
-        firstOption.textContent =
-            "Select class";
-
-
-        selectEl.appendChild(
-            firstOption
-        );
+        classSelect.innerHTML =
+            `
+            <option value="">
+                Select class
+            </option>
+            `;
 
 
         classes.forEach(
@@ -310,16 +277,14 @@ async function loadClasses() {
                         "option"
                     );
 
-
                 option.value =
                     c.id;
 
-
                 option.textContent =
-                    `${c.code} — ${c.name} — ${c.class_date} ${c.start_time}`;
+                    `${c.code} — ${c.name} — ` +
+                    `${c.class_date} ${c.start_time}`;
 
-
-                selectEl.appendChild(
+                classSelect.appendChild(
                     option
                 );
 
@@ -327,50 +292,17 @@ async function loadClasses() {
         );
 
 
-        resultEl.textContent =
+        result.textContent =
             "Select a class and start the camera.";
 
     }
 
-
     catch (error) {
 
-        console.error(
-            "Class loading error:",
-            error
-        );
+        console.error(error);
 
-
-        selectEl.innerHTML =
-            "";
-
-
-        const option =
-            document.createElement(
-                "option"
-            );
-
-
-        option.value =
-            "";
-
-
-        option.textContent =
-            "Failed to load classes";
-
-
-        selectEl.appendChild(
-            option
-        );
-
-
-        resultEl.textContent =
-            "Failed to load classes: " +
+        result.textContent =
             error.message;
-
-
-        startBtn.disabled =
-            true;
 
     }
 
@@ -378,32 +310,20 @@ async function loadClasses() {
 
 
 /* =====================================================
-   CLASS SELECTION
+   SELECT CLASS
 ===================================================== */
 
-selectEl.addEventListener(
+classSelect.addEventListener(
     "change",
     function() {
 
-        if (selectEl.value) {
+        startButton.disabled =
+            !classSelect.value;
 
-            startBtn.disabled =
-                false;
+        if (classSelect.value) {
 
-
-            resultEl.textContent =
+            result.textContent =
                 "Class selected. Click Start Camera.";
-
-        }
-
-        else {
-
-            startBtn.disabled =
-                true;
-
-
-            resultEl.textContent =
-                "Please select a class.";
 
         }
 
@@ -412,44 +332,53 @@ selectEl.addEventListener(
 
 
 /* =====================================================
-   LOAD FACE MODELS + STUDENTS
+   LOAD FACE MODELS
 ===================================================== */
 
-async function loadRecognitionData() {
+async function loadModels() {
 
-    if (!modelsLoaded) {
-
-        resultEl.textContent =
-            "Loading face recognition models...";
-
-
-        await Promise.all([
-
-            faceapi.nets.tinyFaceDetector
-                .loadFromUri(
-                    MODEL_URL
-                ),
-
-            faceapi.nets.faceLandmark68Net
-                .loadFromUri(
-                    MODEL_URL
-                ),
-
-            faceapi.nets.faceRecognitionNet
-                .loadFromUri(
-                    MODEL_URL
-                )
-
-        ]);
-
-
-        modelsLoaded =
-            true;
-
+    if (modelsLoaded) {
+        return;
     }
 
 
-    resultEl.textContent =
+    result.textContent =
+        "Loading face recognition models...";
+
+
+    await Promise.all([
+
+        faceapi.nets.tinyFaceDetector
+            .loadFromUri(
+                MODEL_URL
+            ),
+
+        faceapi.nets.faceLandmark68Net
+            .loadFromUri(
+                MODEL_URL
+            ),
+
+        faceapi.nets.faceRecognitionNet
+            .loadFromUri(
+                MODEL_URL
+            )
+
+    ]);
+
+
+    modelsLoaded =
+        true;
+
+}
+
+
+/* =====================================================
+   LOAD STUDENTS
+===================================================== */
+
+async function loadStudents() {
+
+    result.textContent =
         "Loading registered students...";
 
 
@@ -457,8 +386,8 @@ async function loadRecognitionData() {
         await fetch(
             "/api/recognition-data",
             {
-                method: "GET",
-                credentials: "same-origin"
+                credentials:
+                    "same-origin"
             }
         );
 
@@ -466,7 +395,7 @@ async function loadRecognitionData() {
     if (!response.ok) {
 
         throw new Error(
-            `Recognition data request failed: ${response.status}`
+            "Failed to load recognition data."
         );
 
     }
@@ -476,13 +405,10 @@ async function loadRecognitionData() {
         await response.json();
 
 
-    if (
-        !Array.isArray(students) ||
-        students.length === 0
-    ) {
+    if (!students.length) {
 
         throw new Error(
-            "No registered students found. Register a student first."
+            "No registered students found."
         );
 
     }
@@ -491,86 +417,68 @@ async function loadRecognitionData() {
 
 
 /* =====================================================
-   FIND BEST MATCH
+   BEST MATCH
 ===================================================== */
 
 function findBestMatch(
     descriptor
 ) {
 
-    let best =
+    let bestStudent =
         null;
-
 
     let bestDistance =
         Infinity;
 
 
-    for (
-        const student
-        of students
-    ) {
-
-        if (
-            !Array.isArray(
-                student.embeddings
-            )
-        ) {
-
-            continue;
-
-        }
-
-
-        for (
-            const embedding
-            of student.embeddings
-        ) {
+    students.forEach(
+        function(student) {
 
             if (
                 !Array.isArray(
-                    embedding
+                    student.embeddings
                 )
             ) {
-
-                continue;
-
+                return;
             }
 
 
-            const d =
-                distance(
-                    descriptor,
-                    embedding
-                );
+            student.embeddings.forEach(
+                function(embedding) {
+
+                    const d =
+                        distance(
+                            descriptor,
+                            embedding
+                        );
 
 
-            if (
-                d < bestDistance
-            ) {
+                    if (
+                        d <
+                        bestDistance
+                    ) {
 
-                bestDistance =
-                    d;
+                        bestDistance =
+                            d;
 
+                        bestStudent =
+                            student;
 
-                best =
-                    student;
+                    }
 
-            }
+                }
+            );
 
         }
-
-    }
+    );
 
 
     return {
+        student:
+            bestStudent,
 
-        best:
-            best,
-
-        bestDistance:
+        distance:
             bestDistance
-
     };
 
 }
@@ -598,19 +506,17 @@ async function markAttendance(
                         "application/json"
                 },
 
-                body:
-                    JSON.stringify({
+                body: JSON.stringify({
 
-                        student_id:
-                            studentId,
+                    student_id:
+                        studentId,
 
-                        class_id:
-                            Number(
-                                selectEl.value
-                            )
+                    class_id:
+                        Number(
+                            classSelect.value
+                        )
 
-                    })
-
+                })
             }
         );
 
@@ -623,7 +529,7 @@ async function markAttendance(
 
         throw new Error(
             data.error ||
-            `Server returned ${response.status}`
+            "Attendance failed."
         );
 
     }
@@ -638,34 +544,25 @@ async function markAttendance(
    START CAMERA
 ===================================================== */
 
-startBtn.addEventListener(
+startButton.addEventListener(
     "click",
     async function() {
 
-        if (!selectEl.value) {
-
-            resultEl.textContent =
-                "Please select a class first.";
-
-            return;
-
-        }
-
-
         try {
 
-            startBtn.disabled =
+            startButton.disabled =
                 true;
 
-
-            startBtn.textContent =
+            startButton.textContent =
                 "Starting...";
 
 
-            await loadRecognitionData();
+            await loadModels();
+
+            await loadStudents();
 
 
-            resultEl.textContent =
+            result.textContent =
                 "Requesting camera permission...";
 
 
@@ -675,57 +572,49 @@ startBtn.addEventListener(
                     .getUserMedia({
 
                         video: {
-
                             facingMode:
                                 "user"
-
                         },
 
-                        audio:
-                            false
+                        audio: false
 
                     });
 
 
-            videoEl.srcObject =
+            video.srcObject =
                 stream;
 
 
-            running =
+            scanning =
                 true;
 
 
-            resultEl.textContent =
-                "Camera ready. Look directly at the camera.";
-
-
-            startBtn.textContent =
+            startButton.textContent =
                 "Scanning...";
 
 
-            scan();
+            result.textContent =
+                "Camera ready. Look directly at the camera.";
+
+
+            scanFace();
 
         }
 
-
         catch (error) {
 
-            console.error(
-                "Attendance start error:",
-                error
-            );
+            console.error(error);
 
-
-            resultEl.textContent =
+            result.textContent =
                 "Unable to start attendance: " +
                 error.message;
 
+            stopCamera();
 
-            startBtn.disabled =
+            startButton.disabled =
                 false;
 
-
-            startBtn.textContent =
+            startButton.textContent =
                 "Start Camera";
 
         }
@@ -735,52 +624,41 @@ startBtn.addEventListener(
 
 
 /* =====================================================
-   FACE SCAN
+   SCAN FACE
 ===================================================== */
 
-async function scan() {
+async function scanFace() {
 
-    if (!running) {
-
+    if (!scanning) {
         return;
-
     }
 
 
     try {
 
-        const detected =
+        const detection =
             await faceapi
                 .detectSingleFace(
-                    videoEl,
-
+                    video,
                     new faceapi
                         .TinyFaceDetectorOptions({
-
-                            inputSize:
-                                224,
-
-                            scoreThreshold:
-                                0.5
-
+                            inputSize: 224,
+                            scoreThreshold: 0.5
                         })
-
                 )
                 .withFaceLandmarks()
                 .withFaceDescriptor();
 
 
-        if (!detected) {
+        if (!detection) {
 
-            resultEl.textContent =
+            result.textContent =
                 "Looking for a face...";
 
-
             setTimeout(
-                scan,
+                scanFace,
                 350
             );
-
 
             return;
 
@@ -789,7 +667,7 @@ async function scan() {
 
         const descriptor =
             Array.from(
-                detected.descriptor
+                detection.descriptor
             );
 
 
@@ -800,37 +678,37 @@ async function scan() {
 
 
         if (
-            match.best &&
-            match.bestDistance <=
+            match.student
+            &&
+            match.distance <=
                 THRESHOLD
         ) {
 
-            running =
+            scanning =
                 false;
 
 
-            resultEl.textContent =
-                `Face matched: ${match.best.name}. Recording attendance...`;
+            result.textContent =
+                `Face matched: ${match.student.name}. Recording attendance...`;
 
 
             const data =
                 await markAttendance(
-                    match.best.id
+                    match.student.id
                 );
 
 
-            resultEl.textContent =
+            result.textContent =
                 data.message;
 
 
             stopCamera();
 
 
-            startBtn.disabled =
+            startButton.disabled =
                 false;
 
-
-            startBtn.textContent =
+            startButton.textContent =
                 "Take Again";
 
 
@@ -839,43 +717,34 @@ async function scan() {
         }
 
 
-        resultEl.textContent =
+        result.textContent =
             "Face not recognized. Please look at the camera.";
 
 
         setTimeout(
-            scan,
+            scanFace,
             900
         );
 
     }
 
-
     catch (error) {
 
-        console.error(
-            "Face recognition error:",
-            error
-        );
+        console.error(error);
 
-
-        running =
+        scanning =
             false;
-
-
-        resultEl.textContent =
-            "Recognition error: " +
-            error.message;
-
 
         stopCamera();
 
+        result.textContent =
+            "Recognition error: " +
+            error.message;
 
-        startBtn.disabled =
+        startButton.disabled =
             false;
 
-
-        startBtn.textContent =
+        startButton.textContent =
             "Start Camera";
 
     }
@@ -889,29 +758,30 @@ async function scan() {
 
 function stopCamera() {
 
-    if (stream) {
-
-        stream
-            .getTracks()
-            .forEach(
-                function(track) {
-
-                    track.stop();
-
-                }
-            );
-
-
-        stream =
-            null;
-
+    if (!stream) {
+        return;
     }
+
+
+    stream
+        .getTracks()
+        .forEach(
+            function(track) {
+
+                track.stop();
+
+            }
+        );
+
+
+    stream =
+        null;
 
 }
 
 
 /* =====================================================
-   INITIAL PAGE LOAD
+   INITIAL LOAD
 ===================================================== */
 
 document.addEventListener(
