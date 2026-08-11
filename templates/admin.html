@@ -6,426 +6,433 @@
     <div>
         <div class="eyebrow">ADMIN DASHBOARD</div>
 
-    <h1>Attendance Management</h1>
+        <h1>Attendance Management</h1>
 
-    <p class="muted">
-        Students, subjects, classes and attendance.
-    </p>
+        <p class="muted">
+            Students, subjects, classes and attendance.
+        </p>
+    </div>
 </div>
 
-</div>
 
 <!-- STAT CARDS -->
 
 <div class="cards">
 
-<div class="card stat-card">
-    <span>Students</span>
-    <strong>{{ students|length }}</strong>
-    <small>Registered students</small>
+    <div class="card stat-card">
+        <span>Students</span>
+        <strong>{{ students|length }}</strong>
+        <small>Registered students</small>
+    </div>
+
+    <div class="card stat-card">
+        <span>Present Today</span>
+        <strong>{{ present_today }}</strong>
+        <small>Attendance marked today</small>
+    </div>
+
+    <div class="card stat-card">
+        <span>Subjects</span>
+        <strong>{{ subjects|length }}</strong>
+        <small>Available subjects</small>
+    </div>
+
 </div>
 
-<div class="card stat-card">
-    <span>Present Today</span>
-    <strong>{{ present_today }}</strong>
-    <small>Attendance marked today</small>
-</div>
-
-<div class="card stat-card">
-    <span>Subjects</span>
-    <strong>{{ subjects|length }}</strong>
-    <small>Available subjects</small>
-</div>
-
-</div>
 
 <!-- CREATE SUBJECT -->
 
 <div class="panel">
 
-<h2>Create Subject</h2>
+    <h2>Create Subject</h2>
 
-<p class="muted">
-    Add a new subject to the system.
-</p>
+    <p class="muted">
+        Add a new subject to the system.
+    </p>
 
-<div class="grid2">
+    <div class="grid2">
 
-    <div>
-        <label>Subject Code</label>
+        <div>
+            <label>Subject Code</label>
 
-        <input
-            id="scode"
-            placeholder="e.g. CS301"
-        >
+            <input
+                id="scode"
+                placeholder="e.g. CS301"
+            >
+        </div>
+
+        <div>
+            <label>Subject Name</label>
+
+            <input
+                id="sname"
+                placeholder="e.g. Python Programming"
+            >
+        </div>
+
     </div>
 
-    <div>
-        <label>Subject Name</label>
+    <button
+        class="primary"
+        onclick="createSubject()"
+    >
+        Create Subject
+    </button>
 
-        <input
-            id="sname"
-            placeholder="e.g. Python Programming"
-        >
-    </div>
+    <div
+        id="subjectMsg"
+        class="status"
+    ></div>
 
 </div>
 
-<button
-    class="primary"
-    onclick="createSubject()"
->
-    Create Subject
-</button>
-
-<div
-    id="subjectMsg"
-    class="status"
-></div>
-
-</div>
 
 <!-- SUBJECT MANAGEMENT -->
 
 <div class="panel">
 
-<h2>Subject Management</h2>
+    <h2>Subject Management</h2>
 
-<p class="muted">
-    Edit subjects or permanently remove a subject and all
-    of its class sessions and attendance records.
-</p>
+    <p class="muted">
+        Edit subjects or permanently remove a subject and all
+        of its class sessions and attendance records.
+    </p>
 
-<div class="table-wrap">
+    <div class="table-wrap">
 
-    <table>
+        <table>
 
-        <thead>
+            <thead>
 
-            <tr>
-                <th>Code</th>
-                <th>Subject</th>
-                <th>Actions</th>
-            </tr>
+                <tr>
+                    <th>Code</th>
+                    <th>Subject</th>
+                    <th>Actions</th>
+                </tr>
 
-        </thead>
+            </thead>
 
-        <tbody>
+            <tbody>
 
-            {% for s in subjects %}
+                {% for s in subjects %}
 
-            <tr>
+                <tr>
 
-                <td>
-                    <strong>
-                        {{ s.code }}
-                    </strong>
-                </td>
-
-                <td>
-                    {{ s.name }}
-                </td>
-
-                <td>
-
-                    <button
-                        class="secondary"
-                        onclick='editSubject(
-                            {{ s.id }},
-                            {{ s.code|tojson }},
-                            {{ s.name|tojson }}
-                        )'
-                    >
-                        Edit
-                    </button>
-
-                    <button
-                        class="danger"
-                        onclick='deleteSubject(
-                            {{ s.id }},
-                            {{ s.code|tojson }},
-                            {{ s.name|tojson }}
-                        )'
-                    >
-                        Delete
-                    </button>
-
-                </td>
-
-            </tr>
-
-            {% else %}
-
-            <tr>
-
-                <td colspan="3">
-
-                    <div class="empty-state">
-
+                    <td>
                         <strong>
-                            No subjects yet
+                            {{ s.code }}
                         </strong>
+                    </td>
 
-                        <span>
-                            Create your first subject above.
-                        </span>
+                    <td>
+                        {{ s.name }}
+                    </td>
 
-                    </div>
+                    <td>
 
-                </td>
+                        <button
+                            class="secondary"
+                            onclick='editSubject(
+                                {{ s.id }},
+                                {{ s.code|tojson }},
+                                {{ s.name|tojson }}
+                            )'
+                        >
+                            Edit
+                        </button>
 
-            </tr>
+                        <button
+                            class="danger"
+                            onclick='deleteSubject(
+                                {{ s.id }},
+                                {{ s.code|tojson }},
+                                {{ s.name|tojson }}
+                            )'
+                        >
+                            Delete
+                        </button>
 
-            {% endfor %}
+                    </td>
 
-        </tbody>
+                </tr>
 
-    </table>
+                {% else %}
+
+                <tr>
+
+                    <td colspan="3">
+
+                        <div class="empty-state">
+
+                            <strong>
+                                No subjects yet
+                            </strong>
+
+                            <span>
+                                Create your first subject above.
+                            </span>
+
+                        </div>
+
+                    </td>
+
+                </tr>
+
+                {% endfor %}
+
+            </tbody>
+
+        </table>
+
+    </div>
 
 </div>
 
-</div>
 
 <!-- CREATE CLASS -->
 
 <div class="panel">
 
-<h2>Create Class Session</h2>
+    <h2>Create Class Session</h2>
 
-<p class="muted">
-    Schedule a class session for attendance.
-</p>
+    <p class="muted">
+        Schedule a class session for attendance.
+    </p>
 
-<label>Subject</label>
+    <label>Subject</label>
 
-<select id="subject">
+    <select id="subject">
 
-    <option value="">
-        Select subject
-    </option>
+        <option value="">
+            Select subject
+        </option>
 
-    {% for s in subjects %}
+        {% for s in subjects %}
 
-    <option value="{{ s.id }}">
-        {{ s.code }} — {{ s.name }}
-    </option>
+        <option value="{{ s.id }}">
+            {{ s.code }} — {{ s.name }}
+        </option>
 
-    {% endfor %}
+        {% endfor %}
 
-</select>
+    </select>
 
 
-<div class="grid2">
+    <div class="grid2">
 
-    <div>
+        <div>
 
-        <label>Date</label>
+            <label>Date</label>
 
-        <input
-            id="cdate"
-            type="date"
-        >
+            <input
+                id="cdate"
+                type="date"
+            >
+
+        </div>
+
+        <div>
+
+            <label>Start Time</label>
+
+            <input
+                id="ctime"
+                type="time"
+            >
+
+        </div>
 
     </div>
 
-    <div>
 
-        <label>Start Time</label>
+    <button
+        class="primary"
+        onclick="createClass()"
+    >
+        Create Class
+    </button>
 
-        <input
-            id="ctime"
-            type="time"
-        >
-
-    </div>
-
-</div>
-
-
-<button
-    class="primary"
-    onclick="createClass()"
->
-    Create Class
-</button>
-
-<div
-    id="classMsg"
-    class="status"
-></div>
+    <div
+        id="classMsg"
+        class="status"
+    ></div>
 
 </div>
+
 
 <!-- CLASS SESSIONS -->
 
 <div class="panel">
 
-<h2>Class Sessions</h2>
+    <h2>Class Sessions</h2>
 
-<p class="muted">
-    Manage scheduled class sessions.
-    Deleting a session also deletes its attendance records.
-</p>
+    <p class="muted">
+        Manage scheduled class sessions.
+        Deleting a session also deletes its attendance records.
+    </p>
 
-<div class="table-wrap">
+    <div class="table-wrap">
 
-    <table>
+        <table>
 
-        <thead>
+            <thead>
 
-            <tr>
-                <th>Subject</th>
-                <th>Date</th>
-                <th>Time</th>
-                <th>Actions</th>
-            </tr>
+                <tr>
+                    <th>Subject</th>
+                    <th>Date</th>
+                    <th>Time</th>
+                    <th>Actions</th>
+                </tr>
 
-        </thead>
+            </thead>
 
-        <tbody id="classSessionsBody">
+            <tbody id="classSessionsBody">
 
-            <tr>
+                <tr>
 
-                <td colspan="4">
-                    Loading classes...
-                </td>
+                    <td colspan="4">
+                        Loading classes...
+                    </td>
 
-            </tr>
+                </tr>
 
-        </tbody>
+            </tbody>
 
-    </table>
+        </table>
+
+    </div>
 
 </div>
 
-</div>
 
 <!-- CLASS-WISE ATTENDANCE -->
 
 <div class="panel">
 
-<h2>Class-wise Attendance</h2>
+    <h2>Class-wise Attendance</h2>
 
-<p class="muted">
-    View Present / Absent students for a specific class.
-</p>
+    <p class="muted">
+        View Present / Absent students for a specific class.
+    </p>
 
-<label>Select Class</label>
+    <label>Select Class</label>
 
-<select id="attendanceClass">
+    <select id="attendanceClass">
 
-    <option value="">
-        Loading classes...
-    </option>
+        <option value="">
+            Loading classes...
+        </option>
 
-</select>
-
-
-<button
-    class="primary"
-    onclick="loadClassAttendance()"
->
-    View Attendance
-</button>
+    </select>
 
 
-<div
-    id="classAttendanceMsg"
-    class="status"
-></div>
+    <button
+        class="primary"
+        onclick="loadClassAttendance()"
+    >
+        View Attendance
+    </button>
 
 
-<div
-    id="classAttendanceResult"
-    style="margin-top:20px;"
-></div>
+    <div
+        id="classAttendanceMsg"
+        class="status"
+    ></div>
+
+
+    <div
+        id="classAttendanceResult"
+        style="margin-top:20px;"
+    ></div>
 
 </div>
+
 
 <!-- STUDENTS -->
 
 <div class="panel">
 
-<h2>Students</h2>
+    <h2>Students</h2>
 
-<p class="muted">
-    Registered students in the system.
-</p>
+    <p class="muted">
+        Registered students in the system.
+    </p>
 
-<div class="table-wrap">
+    <div class="table-wrap">
 
-    <table>
+        <table>
 
-        <thead>
+            <thead>
 
-            <tr>
-                <th>Roll</th>
-                <th>Name</th>
-                <th>Department</th>
-                <th>Email</th>
-            </tr>
+                <tr>
+                    <th>Roll</th>
+                    <th>Name</th>
+                    <th>Department</th>
+                    <th>Email</th>
+                </tr>
 
-        </thead>
+            </thead>
 
-        <tbody>
+            <tbody>
 
-            {% for s in students %}
+                {% for s in students %}
 
-            <tr>
+                <tr>
 
-                <td>
-                    <strong>
-                        {{ s.roll_no }}
-                    </strong>
-                </td>
-
-                <td>
-                    {{ s.name }}
-                </td>
-
-                <td>
-                    {{ s.department or '-' }}
-                </td>
-
-                <td>
-                    {{ s.email or '-' }}
-                </td>
-
-            </tr>
-
-            {% else %}
-
-            <tr>
-
-                <td colspan="4">
-
-                    <div class="empty-state">
-
+                    <td>
                         <strong>
-                            No students yet
+                            {{ s.roll_no }}
                         </strong>
+                    </td>
 
-                        <span>
-                            Registered students will appear here.
-                        </span>
+                    <td>
+                        {{ s.name }}
+                    </td>
 
-                    </div>
+                    <td>
+                        {{ s.department or '-' }}
+                    </td>
 
-                </td>
+                    <td>
+                        {{ s.email or '-' }}
+                    </td>
 
-            </tr>
+                </tr>
 
-            {% endfor %}
+                {% else %}
 
-        </tbody>
+                <tr>
 
-    </table>
+                    <td colspan="4">
 
-</div>
+                        <div class="empty-state">
+
+                            <strong>
+                                No students yet
+                            </strong>
+
+                            <span>
+                                Registered students will appear here.
+                            </span>
+
+                        </div>
+
+                    </td>
+
+                </tr>
+
+                {% endfor %}
+
+            </tbody>
+
+        </table>
+
+    </div>
 
 </div>
 
 {% endblock %}
+
 
 {% block scripts %}
 
