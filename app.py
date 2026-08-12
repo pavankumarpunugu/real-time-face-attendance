@@ -613,7 +613,6 @@ def admin_dashboard():
 # =========================================================
 # STUDENT DASHBOARD
 # =========================================================
-
 @app.route("/student")
 @login_required
 def student_dashboard():
@@ -624,7 +623,6 @@ def student_dashboard():
         u["role"] != "student"
         or not u["student_id"]
     ):
-
         return redirect(
             url_for("admin_dashboard")
         )
@@ -635,69 +633,39 @@ def student_dashboard():
         FROM students
         WHERE id=:id
         """,
-        {"id": u["student_id"]},
+        {
+            "id": u["student_id"]
+        },
         True,
         True
     )
 
     if not student:
-
         session.clear()
-
         return redirect(
             url_for("login")
         )
 
-    total = q(
-        """
-        SELECT COUNT(*) AS c
-        FROM classes
-        """,
-        fetch=True,
-        one=True
-    )["c"]
-
-    present = q(
-        """
-        SELECT COUNT(*) AS c
-        FROM attendance
-        WHERE student_id=:sid
-        AND status='Present'
-        """,
-        {
-            "sid": student["id"]
-        },
-        True,
-        True
-    )["c"]
-
-    pct = (
-        round(
-            (present / total) * 100,
-            1
-        )
-        if total
-        else 0
-    )
-
-    history = q(
+    # Get every class with its attendance and duration.
+    rows = q(
         """
         SELECT
             sub.code,
             sub.name,
             c.class_date,
             c.start_time,
-            COALESCE(
-                a.status,
-                'Absent'
-            ) AS status,
+            c.duration_minutes,
+            a.status,
             a.marked_at
         FROM classes c
+
         JOIN subjects sub
-            ON sub.id=c.subject_id
+            ON sub.id = c.subject_id
+
         LEFT JOIN attendance a
-            ON a.class_id=c.id
-            AND a.student_id=:sid
+            ON a.class_id = c.id
+            AND a.student_id = :sid
+
         ORDER BY
             c.class_date DESC,
             c.start_time DESC
@@ -708,6 +676,93 @@ def student_dashboard():
         fetch=True
     )
 
+    now = india_now().replace(
+        tzinfo=None
+    )
+
+    history = []
+
+    total = 0
+    present = 0
+
+    for r in rows:
+
+        h = dict(r)
+
+        try:
+
+            start = datetime.strptime(
+                f'{str(h["class_date"])[:10]} '
+                f'{str(h["start_time"])[:5]}',
+                "%Y-%m-%d %H:%M"
+            )
+
+            duration = int(
+                h["duration_minutes"]
+                or 60
+            )
+
+            end = (
+                start
+                + timedelta(
+                    minutes=duration
+                )
+            )
+
+        except (
+            TypeError,
+            ValueError
+        ):
+
+            h["status"] = (
+                h["status"]
+                or "Unknown"
+            )
+
+            history.append(h)
+            continue
+
+        # Attendance already recorded.
+        if h["status"] == "Present":
+
+            display_status = "Present"
+
+            # Count only completed classes
+            # in attendance percentage.
+            if now >= end:
+                total += 1
+                present += 1
+
+        # Future class.
+        elif now < start:
+
+            display_status = "Upcoming"
+
+        # Class currently running.
+        elif now < end:
+
+            display_status = "In Progress"
+
+        # Class finished without attendance.
+        else:
+
+            display_status = "Absent"
+
+            total += 1
+
+        h["status"] = display_status
+
+        history.append(h)
+
+    pct = (
+        round(
+            (present / total) * 100,
+            1
+        )
+        if total
+        else 0
+    )
+
     return render_template(
         "student.html",
         student=student,
@@ -716,7 +771,6 @@ def student_dashboard():
         pct=pct,
         history=history
     )
-
 
 # =========================================================
 # PAGES
