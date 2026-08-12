@@ -130,8 +130,6 @@
 
 {% block scripts %}
 
-<script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
-
 <script>
 
 /* =========================================================
@@ -141,9 +139,80 @@
 const MODEL_URL =
     "https://justadudewhohacks.github.io/face-api.js/models";
 
+const MATCH_THRESHOLD = 0.55;
 
-const MATCH_THRESHOLD =
-    0.55;
+
+/* =========================================================
+   LOAD FACE-API ONLY WHEN NEEDED
+========================================================= */
+
+let faceApiPromise = null;
+
+function loadFaceApi() {
+
+    if (window.faceapi) {
+        return Promise.resolve(window.faceapi);
+    }
+
+    if (faceApiPromise) {
+        return faceApiPromise;
+    }
+
+    faceApiPromise = new Promise(
+        function(resolve, reject) {
+
+            const script =
+                document.createElement("script");
+
+            script.src =
+                "https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js";
+
+            script.async = true;
+
+            script.onload =
+                function() {
+
+                    if (window.faceapi) {
+
+                        resolve(
+                            window.faceapi
+                        );
+
+                    }
+
+                    else {
+
+                        reject(
+                            new Error(
+                                "Face recognition library did not load."
+                            )
+                        );
+
+                    }
+
+                };
+
+            script.onerror =
+                function() {
+
+                    reject(
+                        new Error(
+                            "Unable to load face recognition library. Check your internet connection."
+                        )
+                    );
+
+                };
+
+            document.head.appendChild(
+                script
+            );
+
+        }
+    );
+
+    return faceApiPromise;
+
+}
 
 
 /* =========================================================
@@ -151,27 +220,16 @@ const MATCH_THRESHOLD =
 ========================================================= */
 
 const video =
-    document.getElementById(
-        "video"
-    );
-
+    document.getElementById("video");
 
 const classSelect =
-    document.getElementById(
-        "classSelect"
-    );
-
+    document.getElementById("classSelect");
 
 const startButton =
-    document.getElementById(
-        "start"
-    );
-
+    document.getElementById("start");
 
 const result =
-    document.getElementById(
-        "result"
-    );
+    document.getElementById("result");
 
 
 /* =========================================================
@@ -193,9 +251,7 @@ let recognitionRunning = false;
    STATUS
 ========================================================= */
 
-function setStatus(
-    message
-) {
+function setStatus(message) {
 
     result.textContent =
         message;
@@ -207,10 +263,7 @@ function setStatus(
    FACE DISTANCE
 ========================================================= */
 
-function faceDistance(
-    a,
-    b
-) {
+function faceDistance(a, b) {
 
     if (
         !Array.isArray(a) ||
@@ -221,19 +274,15 @@ function faceDistance(
 
     }
 
-
     if (
-        a.length !==
-        b.length
+        a.length !== b.length
     ) {
 
         return Infinity;
 
     }
 
-
     let sum = 0;
-
 
     for (
         let i = 0;
@@ -245,17 +294,13 @@ function faceDistance(
             Number(a[i]) -
             Number(b[i]);
 
-
         sum +=
             difference *
             difference;
 
     }
 
-
-    return Math.sqrt(
-        sum
-    );
+    return Math.sqrt(sum);
 
 }
 
@@ -273,10 +318,7 @@ async function loadClasses() {
         );
 
 
-        /*
-         * Check Sunday / configured holiday
-         * before loading classes.
-         */
+        /* CHECK HOLIDAY */
 
         const statusResponse =
             await fetch(
@@ -288,6 +330,15 @@ async function loadClasses() {
             );
 
 
+        if (!statusResponse.ok) {
+
+            throw new Error(
+                "Unable to check today's status."
+            );
+
+        }
+
+
         const status =
             await statusResponse.json();
 
@@ -296,9 +347,7 @@ async function loadClasses() {
             "";
 
 
-        /* -----------------------------------------------
-           HOLIDAY
-        ------------------------------------------------ */
+        /* HOLIDAY */
 
         if (
             status.is_holiday
@@ -309,21 +358,13 @@ async function loadClasses() {
                     "option"
                 );
 
-
             option.value =
                 "";
 
-
             option.textContent =
-                status.holiday_type ===
-                "Sunday"
-
+                status.holiday_type === "Sunday"
                     ? "Sunday — Holiday"
-
-                    : (
-                        status.holiday_name +
-                        " — Holiday"
-                    );
+                    : `${status.holiday_name} — Holiday`;
 
 
             classSelect.appendChild(
@@ -336,18 +377,9 @@ async function loadClasses() {
 
 
             setStatus(
-
-                status.holiday_type ===
-                "Sunday"
-
+                status.holiday_type === "Sunday"
                     ? "Today is Sunday. Attendance is not available."
-
-                    : (
-                        "Today is a holiday: " +
-                        status.holiday_name +
-                        ". Attendance is not available."
-                    )
-
+                    : `Today is a holiday: ${status.holiday_name}. Attendance is not available.`
             );
 
 
@@ -356,9 +388,7 @@ async function loadClasses() {
         }
 
 
-        /* -----------------------------------------------
-           LOAD TODAY'S AUTOMATIC SESSIONS
-        ------------------------------------------------ */
+        /* LOAD TODAY'S CLASSES */
 
         const response =
             await fetch(
@@ -370,12 +400,10 @@ async function loadClasses() {
             );
 
 
-        if (
-            !response.ok
-        ) {
+        if (!response.ok) {
 
             throw new Error(
-                "Unable to load today's classes."
+                `Unable to load today's classes. Server returned ${response.status}.`
             );
 
         }
@@ -389,24 +417,28 @@ async function loadClasses() {
             "";
 
 
-        /* -----------------------------------------------
-           NO CLASSES
-        ------------------------------------------------ */
+        /* NO CLASSES */
 
         if (
-            !Array.isArray(
-                classes
-            ) ||
+            !Array.isArray(classes) ||
             classes.length === 0
         ) {
 
-            classSelect.innerHTML = `
+            const option =
+                document.createElement(
+                    "option"
+                );
 
-                <option value="">
-                    No classes scheduled today
-                </option>
+            option.value =
+                "";
 
-            `;
+            option.textContent =
+                "No classes scheduled today";
+
+
+            classSelect.appendChild(
+                option
+            );
 
 
             startButton.disabled =
@@ -423,19 +455,15 @@ async function loadClasses() {
         }
 
 
-        /* -----------------------------------------------
-           DEFAULT OPTION
-        ------------------------------------------------ */
+        /* DEFAULT OPTION */
 
         const defaultOption =
             document.createElement(
                 "option"
             );
 
-
         defaultOption.value =
             "";
-
 
         defaultOption.textContent =
             "Select today's class";
@@ -446,9 +474,7 @@ async function loadClasses() {
         );
 
 
-        /* -----------------------------------------------
-           CLASSES
-        ------------------------------------------------ */
+        /* CLASSES */
 
         classes.forEach(
             function(c) {
@@ -465,8 +491,7 @@ async function loadClasses() {
 
                 option.textContent =
                     `${c.code} — ${c.name} — ` +
-                    `${c.start_time} ` +
-                    `(${c.duration_minutes} min)`;
+                    `${c.start_time} (${c.duration_minutes} min)`;
 
 
                 classSelect.appendChild(
@@ -493,6 +518,14 @@ async function loadClasses() {
             "Class loading error:",
             error
         );
+
+
+        classSelect.innerHTML =
+            `
+            <option value="">
+                Failed to load classes
+            </option>
+            `;
 
 
         startButton.disabled =
@@ -548,10 +581,13 @@ classSelect.addEventListener(
 
 
 /* =========================================================
-   LOAD FACE API MODELS
+   LOAD FACE MODELS
 ========================================================= */
 
 async function loadModels() {
+
+    await loadFaceApi();
+
 
     if (
         modelsLoaded
@@ -567,34 +603,31 @@ async function loadModels() {
     );
 
 
-    await faceapi.nets
-        .tinyFaceDetector
-        .loadFromUri(
-            MODEL_URL
-        );
+    await Promise.all([
 
+        faceapi.nets
+            .tinyFaceDetector
+            .loadFromUri(
+                MODEL_URL
+            ),
 
-    await faceapi.nets
-        .faceLandmark68Net
-        .loadFromUri(
-            MODEL_URL
-        );
+        faceapi.nets
+            .faceLandmark68Net
+            .loadFromUri(
+                MODEL_URL
+            ),
 
+        faceapi.nets
+            .faceRecognitionNet
+            .loadFromUri(
+                MODEL_URL
+            )
 
-    await faceapi.nets
-        .faceRecognitionNet
-        .loadFromUri(
-            MODEL_URL
-        );
+    ]);
 
 
     modelsLoaded =
         true;
-
-
-    setStatus(
-        "Face recognition models loaded."
-    );
 
 }
 
@@ -606,7 +639,7 @@ async function loadModels() {
 async function loadStudents() {
 
     setStatus(
-        "Loading registered face data..."
+        "Loading registered students..."
     );
 
 
@@ -620,7 +653,7 @@ async function loadStudents() {
         );
 
 
-    const responseText =
+    const text =
         await response.text();
 
 
@@ -630,13 +663,17 @@ async function loadStudents() {
     try {
 
         data =
-            JSON.parse(
-                responseText
-            );
+            JSON.parse(text);
 
     }
 
     catch {
+
+        console.error(
+            "Invalid recognition response:",
+            text
+        );
+
 
         throw new Error(
             "Server returned invalid recognition data."
@@ -682,7 +719,7 @@ async function loadStudents() {
 
 
 /* =========================================================
-   FIND BEST FACE MATCH
+   FIND BEST MATCH
 ========================================================= */
 
 function findBestMatch(
@@ -692,14 +729,12 @@ function findBestMatch(
     let bestStudent =
         null;
 
-
     let bestDistance =
         Infinity;
 
 
     for (
-        const student
-        of students
+        const student of students
     ) {
 
         if (
@@ -718,7 +753,7 @@ function findBestMatch(
             of student.embeddings
         ) {
 
-            const currentDistance =
+            const distance =
                 faceDistance(
                     descriptor,
                     embedding
@@ -726,13 +761,12 @@ function findBestMatch(
 
 
             if (
-                currentDistance <
+                distance <
                 bestDistance
             ) {
 
                 bestDistance =
-                    currentDistance;
-
+                    distance;
 
                 bestStudent =
                     student;
@@ -753,6 +787,10 @@ function findBestMatch(
             bestDistance
 
     };
+
+}
+
+
 /* =========================================================
    START CAMERA
 ========================================================= */
@@ -790,27 +828,33 @@ startButton.addEventListener(
                 false;
 
 
-            /* ---------------------------------------------
-               LOAD FACE MODELS
-            --------------------------------------------- */
+            /* LOAD FACE API */
 
             await loadModels();
 
 
-            /* ---------------------------------------------
-               LOAD REGISTERED STUDENTS
-            --------------------------------------------- */
+            /* LOAD STUDENTS */
 
             await loadStudents();
 
 
-            /* ---------------------------------------------
-               CAMERA PERMISSION
-            --------------------------------------------- */
+            /* CAMERA */
 
             setStatus(
                 "Requesting camera permission..."
             );
+
+
+            if (
+                !navigator.mediaDevices ||
+                !navigator.mediaDevices.getUserMedia
+            ) {
+
+                throw new Error(
+                    "Camera access is not supported by this browser."
+                );
+
+            }
 
 
             stream =
@@ -848,11 +892,6 @@ startButton.addEventListener(
             video.srcObject =
                 stream;
 
-
-            /*
-             * Wait until the browser has
-             * real video dimensions.
-             */
 
             await waitForVideo();
 
@@ -892,7 +931,6 @@ startButton.addEventListener(
             scanning =
                 false;
 
-
             recognitionRunning =
                 false;
 
@@ -926,10 +964,7 @@ startButton.addEventListener(
 function waitForVideo() {
 
     return new Promise(
-        function(
-            resolve,
-            reject
-        ) {
+        function(resolve, reject) {
 
             let attempts =
                 0;
@@ -993,7 +1028,7 @@ function waitForVideo() {
 
 
 /* =========================================================
-   SCAN FACE
+   FACE SCANNING
 ========================================================= */
 
 async function scanFace() {
@@ -1014,10 +1049,6 @@ async function scanFace() {
 
     try {
 
-        /*
-         * Make sure video is ready.
-         */
-
         if (
             video.readyState < 2 ||
             !video.videoWidth
@@ -1037,10 +1068,6 @@ async function scanFace() {
 
         }
 
-
-        /*
-         * Detect one face.
-         */
 
         const detection =
             await faceapi
@@ -1064,9 +1091,7 @@ async function scanFace() {
                 .withFaceDescriptor();
 
 
-        /*
-         * No face detected.
-         */
+        /* NO FACE */
 
         if (
             !detection
@@ -1092,9 +1117,7 @@ async function scanFace() {
         }
 
 
-        /*
-         * Convert descriptor to normal array.
-         */
+        /* FACE FOUND */
 
         const descriptor =
             Array.from(
@@ -1110,20 +1133,16 @@ async function scanFace() {
 
         console.log(
             "Best match:",
-
             match.student
                 ? match.student.name
                 : "none",
 
             "distance:",
-
             match.distance
         );
 
 
-        /* ---------------------------------------------
-           FACE MATCHED
-        --------------------------------------------- */
+        /* MATCH */
 
         if (
             match.student &&
@@ -1188,14 +1207,6 @@ async function scanFace() {
 
             catch (error) {
 
-                scanning =
-                    false;
-
-
-                recognitionRunning =
-                    false;
-
-
                 stopCamera();
 
 
@@ -1220,9 +1231,7 @@ async function scanFace() {
         }
 
 
-        /* ---------------------------------------------
-           FACE FOUND BUT NOT MATCHED
-        --------------------------------------------- */
+        /* NOT RECOGNIZED */
 
         recognitionRunning =
             false;
@@ -1271,6 +1280,8 @@ async function scanFace() {
     }
 
 }
+
+
 /* =========================================================
    MARK ATTENDANCE
 ========================================================= */
@@ -1296,12 +1307,6 @@ async function markAttendance(
     }
 
 
-    /*
-     * The server performs the real timing
-     * validation. This is important because
-     * browser-side checks alone are not secure.
-     */
-
     const response =
         await fetch(
             "/api/mark-attendance",
@@ -1316,9 +1321,6 @@ async function markAttendance(
                 headers: {
 
                     "Content-Type":
-                        "application/json",
-
-                    "Accept":
                         "application/json"
 
                 },
@@ -1338,14 +1340,7 @@ async function markAttendance(
         );
 
 
-    /*
-     * Read as text first so an unexpected
-     * HTML response does not cause:
-     *
-     * Unexpected token '<'
-     */
-
-    const responseText =
+    const text =
         await response.text();
 
 
@@ -1355,104 +1350,24 @@ async function markAttendance(
     try {
 
         data =
-            JSON.parse(
-                responseText
-            );
+            JSON.parse(text);
 
     }
 
     catch {
 
+        console.error(
+            "Invalid attendance response:",
+            text
+        );
+
+
         throw new Error(
-            `Server returned HTTP ${response.status} instead of JSON.`
+            `Server returned HTTP ${response.status}.`
         );
 
     }
 
-
-    /*
-     * BEFORE CLASS
-     *
-     * Example:
-     *
-     * Class: 2:00 PM - 3:00 PM
-     * Current: 1:50 PM
-     *
-     * Server returns:
-     *
-     * Class has not started yet.
-     */
-
-    if (
-        response.status === 403 &&
-        data.error &&
-        data.error
-            .toLowerCase()
-            .includes(
-                "not started"
-            )
-    ) {
-
-        throw new Error(
-            data.error
-        );
-
-    }
-
-
-    /*
-     * AFTER CLASS
-     */
-
-    if (
-        response.status === 403 &&
-        data.error &&
-        data.error
-            .toLowerCase()
-            .includes(
-                "already ended"
-            )
-    ) {
-
-        throw new Error(
-            data.error
-        );
-
-    }
-
-
-    /*
-     * HOLIDAY / SUNDAY
-     */
-
-    if (
-        response.status === 403 &&
-        data.error &&
-        (
-            data.error
-                .toLowerCase()
-                .includes(
-                    "holiday"
-                )
-            ||
-            data.error
-                .toLowerCase()
-                .includes(
-                    "sunday"
-                )
-        )
-    ) {
-
-        throw new Error(
-            data.error
-        );
-
-    }
-
-
-    /*
-     * Any other server error.
-     */
 
     if (
         !response.ok
@@ -1527,20 +1442,8 @@ document.addEventListener(
 
 
 /* =========================================================
-   REFRESH TODAY'S CLASSES
+   REFRESH CLASSES EVERY MINUTE
 ========================================================= */
-
-/*
- * This keeps the page synchronized with
- * the current day.
- *
- * For example:
- *
- * 11:59 PM → yesterday
- * 12:00 AM → new day
- *
- * The browser reloads the timetable.
- */
 
 setInterval(
     async function() {
@@ -1562,7 +1465,7 @@ setInterval(
 
 
 /* =========================================================
-   CLEANUP WHEN LEAVING PAGE
+   CLEAN CAMERA WHEN LEAVING PAGE
 ========================================================= */
 
 window.addEventListener(
@@ -1574,9 +1477,6 @@ window.addEventListener(
     }
 );
 
-
 </script>
 
 {% endblock %}
-
-}
