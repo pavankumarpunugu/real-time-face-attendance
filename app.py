@@ -2,7 +2,8 @@ import os
 import json
 import secrets
 
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
+from zoneinfo import ZoneInfo
 from functools import wraps
 
 from flask import (
@@ -94,7 +95,22 @@ CREATE TABLE IF NOT EXISTS classes (
     subject_id INTEGER NOT NULL,
     class_date DATE NOT NULL,
     start_time TIME NOT NULL,
+    duration_minutes INTEGER NOT NULL DEFAULT 60,
     UNIQUE(subject_id, class_date, start_time)
+);
+
+CREATE TABLE IF NOT EXISTS class_schedules (
+    id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    subject_id INTEGER NOT NULL,
+    start_time TIME NOT NULL,
+    duration_minutes INTEGER NOT NULL DEFAULT 60,
+    UNIQUE(subject_id, start_time)
+);
+
+CREATE TABLE IF NOT EXISTS holidays (
+    id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    holiday_date DATE UNIQUE NOT NULL,
+    name VARCHAR(200) NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS attendance (
@@ -138,7 +154,22 @@ CREATE TABLE IF NOT EXISTS classes (
     subject_id INTEGER NOT NULL,
     class_date TEXT NOT NULL,
     start_time TEXT NOT NULL,
+    duration_minutes INTEGER NOT NULL DEFAULT 60,
     UNIQUE(subject_id, class_date, start_time)
+);
+
+CREATE TABLE IF NOT EXISTS class_schedules (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    subject_id INTEGER NOT NULL,
+    start_time TEXT NOT NULL,
+    duration_minutes INTEGER NOT NULL DEFAULT 60,
+    UNIQUE(subject_id, start_time)
+);
+
+CREATE TABLE IF NOT EXISTS holidays (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    holiday_date TEXT UNIQUE NOT NULL,
+    name TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS attendance (
@@ -173,6 +204,26 @@ def init_db():
                 conn.execute(
                     text(stmt)
                 )
+
+        if is_sqlite():
+            columns = conn.execute(
+                text("PRAGMA table_info(classes)")
+            ).fetchall()
+            names = {row[1] for row in columns}
+            if "duration_minutes" not in names:
+                conn.execute(
+                    text(
+                        "ALTER TABLE classes ADD COLUMN "
+                        "duration_minutes INTEGER NOT NULL DEFAULT 60"
+                    )
+                )
+        else:
+            conn.execute(
+                text(
+                    "ALTER TABLE classes ADD COLUMN IF NOT EXISTS "
+                    "duration_minutes INTEGER NOT NULL DEFAULT 60"
+                )
+            )
 
         count = conn.execute(
             text(
@@ -214,6 +265,105 @@ def init_db():
                     )
                 }
             )
+
+
+IST = ZoneInfo("Asia/Kolkata")
+
+
+def india_now():
+    return datetime.now(IST)
+
+
+def today_india():
+    return india_now().date()
+
+
+def today_string():
+    return today_india().isoformat()
+
+
+def get_today_status():
+    today = today_india()
+
+    if today.weekday() == 6:
+        return {
+            "is_holiday": True,
+            "holiday_type": "Sunday",
+            "holiday_name": "Sunday"
+        }
+
+    holiday = q(
+        """
+        SELECT id, holiday_date, name
+        FROM holidays
+        WHERE holiday_date=:d
+        """,
+        {"d": today.isoformat()},
+        True,
+        True
+    )
+
+    if holiday:
+        return {
+            "is_holiday": True,
+            "holiday_type": "Holiday",
+            "holiday_name": holiday["name"]
+        }
+
+    return {
+        "is_holiday": False,
+        "holiday_type": None,
+        "holiday_name": None
+    }
+
+
+def ensure_today_sessions():
+    if get_today_status()["is_holiday"]:
+        return
+
+    schedules = q(
+        """
+        SELECT subject_id, start_time, duration_minutes
+        FROM class_schedules
+        ORDER BY start_time
+        """,
+        fetch=True
+    )
+
+    for schedule in schedules:
+        try:
+            q(
+                """
+                INSERT INTO classes(
+                    subject_id,
+                    class_date,
+                    start_time,
+                    duration_minutes
+                )
+                VALUES(
+                    :sid,
+                    :d,
+                    :t,
+                    :duration
+                )
+                """,
+                {
+                    "sid": schedule["subject_id"],
+                    "d": today_string(),
+                    "t": str(schedule["start_time"])[:8],
+                    "duration": int(schedule["duration_minutes"])
+                }
+            )
+        except IntegrityError:
+            pass
+
+
+def parse_class_start(class_info):
+    return datetime.strptime(
+        f'{str(class_info["class_date"])[:10]} '
+        f'{str(class_info["start_time"])[:5]}',
+        "%Y-%m-%d %H:%M"
+    )
 
 
 def q(
@@ -890,192 +1040,233 @@ def delete_subject(subject_id):
 
 
 # =========================================================
-# CREATE CLASS
+# DAILY TIMETABLE
 # =========================================================
 
-@app.route(
-    "/classes",
-    methods=["POST"]
-)
+@app.route("/classes", methods=["POST"])
 @admin_required
 def create_class():
-
-    data = request.get_json(
-        force=True
-    )
-
-    subject_id = data.get(
-        "subject_id"
-    )
-
-    class_date = data.get(
-        "class_date"
-    )
-
-    start_time = data.get(
-        "start_time"
-    )
-
-    if (
-        not subject_id
-        or not class_date
-        or not start_time
-    ):
-
-        return jsonify(
-            ok=False,
-            error=(
-                "Subject, date and time "
-                "are required."
-            )
-        ), 400
+    data = request.get_json(force=True) or {}
 
     try:
+        subject_id = int(data.get("subject_id", 0))
+        duration = int(data.get("duration_minutes", 60))
+    except (TypeError, ValueError):
+        return jsonify(ok=False, error="Invalid subject or duration."), 400
 
-        subject_id = int(
-            subject_id
-        )
+    start_time = str(data.get("start_time", "")).strip()[:5]
 
-        subject = q(
+    if not subject_id or not start_time:
+        return jsonify(ok=False, error="Subject and start time are required."), 400
+
+    if duration <= 0 or duration > 480:
+        return jsonify(ok=False, error="Duration must be between 1 and 480 minutes."), 400
+
+    try:
+        datetime.strptime(start_time, "%H:%M")
+    except ValueError:
+        return jsonify(ok=False, error="Start time must be HH:MM."), 400
+
+    if not q("SELECT id FROM subjects WHERE id=:id", {"id": subject_id}, True, True):
+        return jsonify(ok=False, error="Selected subject does not exist."), 400
+
+    try:
+        q(
             """
-            SELECT id
-            FROM subjects
+            INSERT INTO class_schedules(
+                subject_id, start_time, duration_minutes
+            )
+            VALUES(:sid, :t, :duration)
+            """,
+            {"sid": subject_id, "t": start_time, "duration": duration}
+        )
+        return jsonify(ok=True, message="Daily class schedule created successfully.")
+    except IntegrityError:
+        return jsonify(ok=False, error="A daily schedule already exists for this subject and time."), 409
+
+
+@app.route("/api/class-schedules")
+@admin_required
+def class_schedules():
+    rows = q(
+        """
+        SELECT cs.id, cs.subject_id,
+               CAST(cs.start_time AS TEXT) AS start_time,
+               cs.duration_minutes, s.code, s.name
+        FROM class_schedules cs
+        JOIN subjects s ON s.id=cs.subject_id
+        ORDER BY cs.start_time
+        """,
+        fetch=True
+    )
+    return jsonify([
+        {
+            "id": r["id"],
+            "subject_id": r["subject_id"],
+            "start_time": str(r["start_time"]),
+            "duration_minutes": int(r["duration_minutes"]),
+            "code": r["code"],
+            "name": r["name"]
+        }
+        for r in rows
+    ])
+
+
+@app.route("/api/class-schedules/<int:schedule_id>", methods=["PUT"])
+@admin_required
+def edit_class_schedule(schedule_id):
+    data = request.get_json(force=True) or {}
+
+    try:
+        subject_id = int(data.get("subject_id", 0))
+        duration = int(data.get("duration_minutes", 60))
+    except (TypeError, ValueError):
+        return jsonify(ok=False, error="Invalid subject or duration."), 400
+
+    start_time = str(data.get("start_time", "")).strip()[:5]
+
+    if not subject_id or not start_time:
+        return jsonify(ok=False, error="Subject and start time are required."), 400
+
+    if duration <= 0 or duration > 480:
+        return jsonify(ok=False, error="Duration must be between 1 and 480 minutes."), 400
+
+    try:
+        datetime.strptime(start_time, "%H:%M")
+    except ValueError:
+        return jsonify(ok=False, error="Start time must be HH:MM."), 400
+
+    if not q("SELECT id FROM subjects WHERE id=:id", {"id": subject_id}, True, True):
+        return jsonify(ok=False, error="Subject not found."), 404
+
+    try:
+        result = q(
+            """
+            UPDATE class_schedules
+            SET subject_id=:sid, start_time=:t, duration_minutes=:duration
             WHERE id=:id
             """,
             {
-                "id": subject_id
-            },
-            True,
-            True
-        )
-
-        if not subject:
-
-            return jsonify(
-                ok=False,
-                error=(
-                    "Selected subject "
-                    "does not exist."
-                )
-            ), 400
-
-        q(
-            """
-            INSERT INTO classes(
-                subject_id,
-                class_date,
-                start_time
-            )
-            VALUES(
-                :sid,
-                :d,
-                :t
-            )
-            """,
-            {
                 "sid": subject_id,
-                "d": class_date,
-                "t": start_time
+                "t": start_time,
+                "duration": duration,
+                "id": schedule_id
             }
         )
-
-        return jsonify(
-            ok=True,
-            message="Class created successfully."
-        )
-
+        if result.rowcount == 0:
+            return jsonify(ok=False, error="Daily schedule not found."), 404
+        return jsonify(ok=True, message="Daily schedule updated successfully.")
     except IntegrityError:
+        return jsonify(ok=False, error="Another schedule already uses this subject and time."), 409
 
-        return jsonify(
-            ok=False,
-            error=(
-                "A class for this subject, "
-                "date and time already exists."
-            )
-        ), 409
 
-    except Exception as e:
+@app.route("/api/class-schedules/<int:schedule_id>", methods=["DELETE"])
+@admin_required
+def delete_class_schedule(schedule_id):
+    result = q(
+        "DELETE FROM class_schedules WHERE id=:id",
+        {"id": schedule_id}
+    )
+    if result.rowcount == 0:
+        return jsonify(ok=False, error="Daily schedule not found."), 404
+    return jsonify(ok=True, message="Daily schedule deleted successfully.")
 
-        return jsonify(
-            ok=False,
-            error=str(e)
-        ), 400
+
+@app.route("/api/today-status")
+@login_required
+def today_status():
+    return jsonify(get_today_status())
+
+
+@app.route("/api/holidays")
+@admin_required
+def api_holidays():
+    rows = q(
+        """
+        SELECT id, CAST(holiday_date AS TEXT) AS holiday_date, name
+        FROM holidays
+        ORDER BY holiday_date
+        """,
+        fetch=True
+    )
+    return jsonify([
+        {
+            "id": r["id"],
+            "holiday_date": str(r["holiday_date"]),
+            "name": r["name"]
+        }
+        for r in rows
+    ])
+
+
+@app.route("/api/holidays", methods=["POST"])
+@admin_required
+def create_holiday():
+    data = request.get_json(force=True) or {}
+    holiday_date = str(data.get("holiday_date", "")).strip()
+    name = str(data.get("name", "")).strip()
+
+    if not holiday_date or not name:
+        return jsonify(ok=False, error="Holiday date and name are required."), 400
+
+    try:
+        datetime.strptime(holiday_date, "%Y-%m-%d")
+    except ValueError:
+        return jsonify(ok=False, error="Holiday date must be YYYY-MM-DD."), 400
+
+    try:
+        q(
+            """
+            INSERT INTO holidays(holiday_date, name)
+            VALUES(:d, :n)
+            """,
+            {"d": holiday_date, "n": name}
+        )
+        return jsonify(ok=True, message="Holiday added successfully.")
+    except IntegrityError:
+        return jsonify(ok=False, error="A holiday already exists for this date."), 409
+
+
+@app.route("/api/holidays/<int:holiday_id>", methods=["DELETE"])
+@admin_required
+def delete_holiday(holiday_id):
+    result = q(
+        "DELETE FROM holidays WHERE id=:id",
+        {"id": holiday_id}
+    )
+    if result.rowcount == 0:
+        return jsonify(ok=False, error="Holiday not found."), 404
+    return jsonify(ok=True, message="Holiday removed successfully.")
 
 
 # =========================================================
-# DELETE CLASS
+# DELETE CLASS SESSION
 # =========================================================
 
-@app.route(
-    "/classes/<int:class_id>",
-    methods=["DELETE"]
-)
+@app.route("/classes/<int:class_id>", methods=["DELETE"])
 @admin_required
 def delete_class(class_id):
-
     class_info = q(
         """
-        SELECT
-            c.id,
-            s.code,
-            s.name,
-            c.class_date,
-            c.start_time
+        SELECT c.id, s.code, c.class_date
         FROM classes c
-        JOIN subjects s
-            ON s.id=c.subject_id
+        JOIN subjects s ON s.id=c.subject_id
         WHERE c.id=:id
         """,
-        {
-            "id": class_id
-        },
+        {"id": class_id},
         True,
         True
     )
 
     if not class_info:
-
-        return jsonify(
-            ok=False,
-            error="Class session not found."
-        ), 404
+        return jsonify(ok=False, error="Class session not found."), 404
 
     try:
-
-        q(
-            """
-            DELETE FROM attendance
-            WHERE class_id=:cid
-            """,
-            {
-                "cid": class_id
-            }
-        )
-
-        q(
-            """
-            DELETE FROM classes
-            WHERE id=:id
-            """,
-            {
-                "id": class_id
-            }
-        )
-
-        return jsonify(
-            ok=True,
-            message=(
-                "Class session and its "
-                "attendance records deleted."
-            )
-        )
-
+        q("DELETE FROM attendance WHERE class_id=:cid", {"cid": class_id})
+        q("DELETE FROM classes WHERE id=:id", {"id": class_id})
+        return jsonify(ok=True, message="Class session and its attendance records deleted.")
     except Exception as e:
-
-        return jsonify(
-            ok=False,
-            error=str(e)
-        ), 400
+        return jsonify(ok=False, error=str(e)), 400
 
 
 # =========================================================
@@ -1528,6 +1719,47 @@ def mark_attendance():
             )
         ), 404
 
+    status = get_today_status()
+
+    if status["is_holiday"]:
+        return jsonify(
+            ok=False,
+            error="Attendance is not available today: " + status["holiday_name"]
+        ), 400
+
+    if str(class_info["class_date"])[:10] != today_string():
+        return jsonify(
+            ok=False,
+            error="Attendance is only available for today's class."
+        ), 400
+
+    try:
+        start_dt = parse_class_start(class_info)
+        duration = int(class_info["duration_minutes"] or 60)
+    except (TypeError, ValueError):
+        return jsonify(ok=False, error="Invalid class schedule."), 500
+
+    now = india_now().replace(tzinfo=None)
+    end_dt = start_dt + timedelta(minutes=duration)
+
+    if now < start_dt:
+        return jsonify(
+            ok=False,
+            error=(
+                "Class has not started yet. "
+                f"Please wait until {start_dt.strftime('%I:%M %p')}."
+            )
+        ), 400
+
+    if now >= end_dt:
+        return jsonify(
+            ok=False,
+            error=(
+                "This class has already ended. "
+                f"Attendance closed at {end_dt.strftime('%I:%M %p')}."
+            )
+        ), 400
+
     try:
 
         q(
@@ -1580,46 +1812,48 @@ def mark_attendance():
 # CLASSES API
 # =========================================================
 
-@app.route(
-    "/api/classes"
-)
+@app.route("/api/classes")
 @login_required
 def api_classes():
+
+    status = get_today_status()
+
+    if status["is_holiday"]:
+        return jsonify([])
+
+    ensure_today_sessions()
 
     rows = q(
         """
         SELECT
             c.id,
             c.subject_id,
-            CAST(c.class_date AS TEXT)
-                AS class_date,
-            CAST(c.start_time AS TEXT)
-                AS start_time,
+            CAST(c.class_date AS TEXT) AS class_date,
+            CAST(c.start_time AS TEXT) AS start_time,
+            c.duration_minutes,
             s.code,
             s.name
         FROM classes c
-        JOIN subjects s
-            ON s.id=c.subject_id
-        ORDER BY
-            c.class_date DESC,
-            c.start_time DESC
+        JOIN subjects s ON s.id=c.subject_id
+        WHERE c.class_date=:d
+        ORDER BY c.start_time
         """,
+        {"d": today_string()},
         fetch=True
     )
 
-    return jsonify(
-        [
-            {
-                "id": r["id"],
-                "subject_id": r["subject_id"],
-                "class_date": r["class_date"],
-                "start_time": r["start_time"],
-                "code": r["code"],
-                "name": r["name"]
-            }
-            for r in rows
-        ]
-    )
+    return jsonify([
+        {
+            "id": r["id"],
+            "subject_id": r["subject_id"],
+            "class_date": str(r["class_date"]),
+            "start_time": str(r["start_time"]),
+            "duration_minutes": int(r["duration_minutes"] or 60),
+            "code": r["code"],
+            "name": r["name"]
+        }
+        for r in rows
+    ])
 
 
 # =========================================================
@@ -1653,6 +1887,7 @@ def class_attendance(class_id):
                 c.id,
                 c.class_date,
                 c.start_time,
+                c.duration_minutes,
                 s.code,
                 s.name
             FROM classes c
@@ -1703,6 +1938,7 @@ def class_attendance(class_id):
                 "id": class_info["id"],
                 "class_date": str(class_info["class_date"]),
                 "start_time": str(class_info["start_time"]),
+                "duration_minutes": int(class_info["duration_minutes"] or 60),
                 "code": class_info["code"],
                 "name": class_info["name"]
             },
