@@ -246,40 +246,19 @@
 </div>
 
 
-<!-- CREATE CLASS -->
+<!-- DAILY CLASS SCHEDULE -->
 
 <div class="panel">
 
     <h2>
-        Create Class Session
+        Daily Class Schedule
     </h2>
 
     <p class="muted">
-        Schedule a class for attendance.
+        Create fixed daily class timings once.
+        The system automatically creates today's sessions.
+        Sundays and holidays are excluded.
     </p>
-
-
-    <label>
-        Subject
-    </label>
-
-
-    <select id="subject">
-
-        <option value="">
-            Select subject
-        </option>
-
-
-        {% for s in subjects %}
-
-        <option value="{{ s.id }}">
-            {{ s.code }} — {{ s.name }}
-        </option>
-
-        {% endfor %}
-
-    </select>
 
 
     <div class="grid2">
@@ -287,13 +266,24 @@
         <div>
 
             <label>
-                Date
+                Subject
             </label>
 
-            <input
-                id="cdate"
-                type="date"
-            >
+            <select id="subject">
+
+                <option value="">
+                    Select subject
+                </option>
+
+                {% for s in subjects %}
+
+                <option value="{{ s.id }}">
+                    {{ s.code }} — {{ s.name }}
+                </option>
+
+                {% endfor %}
+
+            </select>
 
         </div>
 
@@ -301,7 +291,7 @@
         <div>
 
             <label>
-                Time
+                Start Time
             </label>
 
             <input
@@ -314,11 +304,41 @@
     </div>
 
 
+    <label>
+        Duration
+    </label>
+
+
+    <select id="cduration">
+
+        <option value="60">
+            1 hour
+        </option>
+
+        <option value="30">
+            30 minutes
+        </option>
+
+        <option value="45">
+            45 minutes
+        </option>
+
+        <option value="90">
+            1 hour 30 minutes
+        </option>
+
+        <option value="120">
+            2 hours
+        </option>
+
+    </select>
+
+
     <button
         class="primary"
         onclick="createClass()"
     >
-        Create Class
+        Add Daily Class
     </button>
 
 
@@ -330,13 +350,79 @@
 </div>
 
 
+<!-- SCHEDULE MANAGEMENT -->
+
+<div class="panel">
+
+    <h2>
+        Manage Daily Timetable
+    </h2>
+
+    <p class="muted">
+        Edit or delete fixed class timings.
+        Changes apply to future automatically
+        generated sessions.
+    </p>
+
+
+    <div class="table-wrap">
+
+        <table>
+
+            <thead>
+
+                <tr>
+
+                    <th>
+                        Subject
+                    </th>
+
+                    <th>
+                        Time
+                    </th>
+
+                    <th>
+                        Duration
+                    </th>
+
+                    <th>
+                        Actions
+                    </th>
+
+                </tr>
+
+            </thead>
+
+
+            <tbody id="scheduleBody">
+
+                <tr>
+
+                    <td colspan="4">
+                        Loading timetable...
+                    </td>
+
+                </tr>
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</div>
 <!-- CLASS SESSIONS -->
 
 <div class="panel">
 
     <h2>
-        Class Sessions
+        Today's Class Sessions
     </h2>
+
+    <p class="muted">
+        Today's sessions are generated automatically
+        from the daily timetable.
+    </p>
 
 
     <div class="table-wrap">
@@ -423,6 +509,114 @@
         id="classAttendanceResult"
         style="margin-top:20px;"
     ></div>
+
+</div>
+
+
+<!-- HOLIDAYS -->
+
+<div class="panel">
+
+    <h2>
+        Holidays
+    </h2>
+
+    <p class="muted">
+        Sundays are automatically holidays.
+        Add college holidays here so attendance
+        is disabled automatically.
+    </p>
+
+
+    <div class="grid2">
+
+        <div>
+
+            <label>
+                Holiday Date
+            </label>
+
+            <input
+                id="holidayDate"
+                type="date"
+            >
+
+        </div>
+
+
+        <div>
+
+            <label>
+                Holiday Name
+            </label>
+
+            <input
+                id="holidayName"
+                placeholder="Independence Day"
+            >
+
+        </div>
+
+    </div>
+
+
+    <button
+        class="primary"
+        onclick="createHoliday()"
+    >
+        Add Holiday
+    </button>
+
+
+    <div
+        id="holidayMsg"
+        class="status"
+    ></div>
+
+
+    <div
+        class="table-wrap"
+        style="margin-top:20px;"
+    >
+
+        <table>
+
+            <thead>
+
+                <tr>
+
+                    <th>
+                        Date
+                    </th>
+
+                    <th>
+                        Holiday
+                    </th>
+
+                    <th>
+                        Action
+                    </th>
+
+                </tr>
+
+            </thead>
+
+
+            <tbody id="holidayBody">
+
+                <tr>
+
+                    <td colspan="3">
+                        Loading holidays...
+                    </td>
+
+                </tr>
+
+            </tbody>
+
+        </table>
+
+    </div>
 
 </div>
 
@@ -569,20 +763,30 @@
 async function createSubject() {
 
     const code =
-        document.getElementById("scode")
-        .value.trim();
+        document
+            .getElementById("scode")
+            .value
+            .trim();
 
 
     const name =
-        document.getElementById("sname")
-        .value.trim();
+        document
+            .getElementById("sname")
+            .value
+            .trim();
 
 
     const msg =
-        document.getElementById("subjectMsg");
+        document
+            .getElementById(
+                "subjectMsg"
+            );
 
 
-    if (!code || !name) {
+    if (
+        !code ||
+        !name
+    ) {
 
         msg.textContent =
             "Enter subject code and name.";
@@ -598,7 +802,8 @@ async function createSubject() {
             await fetch(
                 "/subjects",
                 {
-                    method: "POST",
+                    method:
+                        "POST",
 
                     headers: {
                         "Content-Type":
@@ -607,8 +812,13 @@ async function createSubject() {
 
                     body:
                         JSON.stringify({
-                            code: code,
-                            name: name
+
+                            code:
+                                code,
+
+                            name:
+                                name
+
                         })
                 }
             );
@@ -618,7 +828,10 @@ async function createSubject() {
             await response.json();
 
 
-        if (!response.ok || !data.ok) {
+        if (
+            !response.ok ||
+            !data.ok
+        ) {
 
             throw new Error(
                 data.error ||
@@ -659,8 +872,11 @@ async function editSubject(
         );
 
 
-    if (code === null)
+    if (
+        code === null
+    ) {
         return;
+    }
 
 
     const name =
@@ -670,18 +886,10 @@ async function editSubject(
         );
 
 
-    if (name === null)
+    if (
+        name === null
+    ) {
         return;
-
-
-    if (!code.trim() || !name.trim()) {
-
-        alert(
-            "Subject code and name are required."
-        );
-
-        return;
-
     }
 
 
@@ -691,7 +899,8 @@ async function editSubject(
             await fetch(
                 `/subjects/${id}`,
                 {
-                    method: "PUT",
+                    method:
+                        "PUT",
 
                     headers: {
                         "Content-Type":
@@ -700,11 +909,13 @@ async function editSubject(
 
                     body:
                         JSON.stringify({
+
                             code:
                                 code.trim(),
 
                             name:
                                 name.trim()
+
                         })
                 }
             );
@@ -714,7 +925,10 @@ async function editSubject(
             await response.json();
 
 
-        if (!response.ok || !data.ok) {
+        if (
+            !response.ok ||
+            !data.ok
+        ) {
 
             throw new Error(
                 data.error ||
@@ -722,6 +936,11 @@ async function editSubject(
             );
 
         }
+
+
+        alert(
+            data.message
+        );
 
 
         location.reload();
@@ -756,16 +975,16 @@ async function deleteSubject(
             " — " +
             name +
             "\n\n" +
-            "This will delete:\n" +
-            "• Subject\n" +
-            "• All class sessions\n" +
-            "• All attendance records\n\n" +
+            "This will delete the subject, " +
+            "its timetable and its attendance " +
+            "history.\n\n" +
             "This cannot be undone."
         );
 
 
-    if (!ok)
+    if (!ok) {
         return;
+    }
 
 
     try {
@@ -774,7 +993,11 @@ async function deleteSubject(
             await fetch(
                 `/subjects/${id}`,
                 {
-                    method: "DELETE"
+                    method:
+                        "DELETE",
+
+                    credentials:
+                        "same-origin"
                 }
             );
 
@@ -783,7 +1006,10 @@ async function deleteSubject(
             await response.json();
 
 
-        if (!response.ok || !data.ok) {
+        if (
+            !response.ok ||
+            !data.ok
+        ) {
 
             throw new Error(
                 data.error ||
@@ -814,43 +1040,50 @@ async function deleteSubject(
 
 
 /* =========================================================
-   CREATE CLASS
+   CREATE DAILY CLASS
 ========================================================= */
 
 async function createClass() {
 
     const subject =
-        document.getElementById(
-            "subject"
-        ).value;
-
-
-    const classDate =
-        document.getElementById(
-            "cdate"
-        ).value;
+        document
+            .getElementById(
+                "subject"
+            )
+            .value;
 
 
     const startTime =
-        document.getElementById(
-            "ctime"
-        ).value;
+        document
+            .getElementById(
+                "ctime"
+            )
+            .value;
+
+
+    const duration =
+        document
+            .getElementById(
+                "cduration"
+            )
+            .value;
 
 
     const msg =
-        document.getElementById(
-            "classMsg"
-        );
+        document
+            .getElementById(
+                "classMsg"
+            );
 
 
     if (
         !subject ||
-        !classDate ||
-        !startTime
+        !startTime ||
+        !duration
     ) {
 
         msg.textContent =
-            "Select subject, date and time.";
+            "Select subject, time and duration.";
 
         return;
 
@@ -863,7 +1096,8 @@ async function createClass() {
             await fetch(
                 "/classes",
                 {
-                    method: "POST",
+                    method:
+                        "POST",
 
                     headers: {
                         "Content-Type":
@@ -872,14 +1106,18 @@ async function createClass() {
 
                     body:
                         JSON.stringify({
+
                             subject_id:
                                 subject,
 
-                            class_date:
-                                classDate,
-
                             start_time:
-                                startTime
+                                startTime,
+
+                            duration_minutes:
+                                Number(
+                                    duration
+                                )
+
                         })
                 }
             );
@@ -889,7 +1127,10 @@ async function createClass() {
             await response.json();
 
 
-        if (!response.ok || !data.ok) {
+        if (
+            !response.ok ||
+            !data.ok
+        ) {
 
             throw new Error(
                 data.error ||
@@ -900,8 +1141,17 @@ async function createClass() {
 
 
         msg.textContent =
-            "Class created successfully.";
+            "Daily class schedule created successfully.";
 
+
+        document
+            .getElementById(
+                "ctime"
+            )
+            .value = "";
+
+
+        await loadSchedules();
 
         await loadClasses();
 
@@ -918,24 +1168,95 @@ async function createClass() {
 
 
 /* =========================================================
-   LOAD CLASS SESSIONS
+   LOAD TODAY'S CLASSES
 ========================================================= */
 
 async function loadClasses() {
 
     const body =
-        document.getElementById(
-            "classSessionsBody"
-        );
+        document
+            .getElementById(
+                "classSessionsBody"
+            );
 
 
     const select =
-        document.getElementById(
-            "attendanceClass"
-        );
+        document
+            .getElementById(
+                "attendanceClass"
+            );
 
 
     try {
+
+        const statusResponse =
+            await fetch(
+                "/api/today-status",
+                {
+                    credentials:
+                        "same-origin"
+                }
+            );
+
+
+        const status =
+            await statusResponse.json();
+
+
+        if (
+            status.is_holiday
+        ) {
+
+            body.innerHTML = `
+
+                <tr>
+
+                    <td colspan="4">
+
+                        <strong>
+                            ${
+                                status.holiday_type ===
+                                "Sunday"
+
+                                ? "Sunday — Holiday"
+
+                                : (
+                                    status.holiday_name +
+                                    " — Holiday"
+                                )
+                            }
+                        </strong>
+
+                    </td>
+
+                </tr>
+
+            `;
+
+
+            select.innerHTML = `
+
+                <option value="">
+                    ${
+                        status.holiday_type ===
+                        "Sunday"
+
+                        ? "Sunday — Holiday"
+
+                        : (
+                            status.holiday_name +
+                            " — Holiday"
+                        )
+                    }
+                </option>
+
+            `;
+
+
+            return;
+
+        }
+
 
         const response =
             await fetch(
@@ -947,89 +1268,79 @@ async function loadClasses() {
             );
 
 
-        /*
-         * Read text first.
-         *
-         * This prevents:
-         * Unexpected token '<'
-         *
-         * when Flask returns HTML.
-         */
-
-        const text =
-            await response.text();
-
-
-        let classes;
-
-
-        try {
-
-            classes =
-                JSON.parse(text);
-
-        }
-
-        catch (error) {
-
-            console.error(
-                "Class API returned:",
-                text
-            );
+        if (
+            !response.ok
+        ) {
 
             throw new Error(
-                "Unable to load classes. Server returned an invalid response."
+                "Unable to load today's classes."
             );
 
         }
 
 
-        if (!response.ok) {
-
-            throw new Error(
-                "Failed to load classes."
-            );
-
-        }
+        const classes =
+            await response.json();
 
 
         body.innerHTML =
             "";
 
-
         select.innerHTML =
-            `<option value="">
-                Select class session
-            </option>`;
+            "";
+
+
+        if (
+            !Array.isArray(
+                classes
+            ) ||
+            classes.length === 0
+        ) {
+
+            body.innerHTML = `
+
+                <tr>
+
+                    <td colspan="4">
+                        No classes scheduled today.
+                    </td>
+
+                </tr>
+
+            `;
+
+
+            select.innerHTML = `
+
+                <option value="">
+                    No classes today
+                </option>
+
+            `;
+
+
+            return;
+
+        }
+
+
+        select.innerHTML = `
+
+            <option value="">
+                Select today's class
+            </option>
+
+        `;
 
 
         classes.forEach(
             function(c) {
 
-                const option =
-                    document.createElement(
-                        "option"
-                    );
-
-
-                option.value =
-                    c.id;
-
-
-                option.textContent =
-                    `${c.code} — ${c.name} — ` +
-                    `${c.class_date} ${c.start_time}`;
-
-
-                select.appendChild(
-                    option
-                );
-
-
                 const row =
-                    document.createElement(
-                        "tr"
-                    );
+                    document
+                        .createElement(
+                            "tr"
+                        );
 
 
                 row.innerHTML = `
@@ -1037,25 +1348,44 @@ async function loadClasses() {
                     <td>
 
                         <strong>
-                            ${escapeHtml(c.code)}
+                            ${escapeHtml(
+                                c.code
+                            )}
                         </strong>
 
                         <br>
 
                         <span class="muted">
-                            ${escapeHtml(c.name)}
+                            ${escapeHtml(
+                                c.name
+                            )}
                         </span>
 
                     </td>
 
 
                     <td>
-                        ${escapeHtml(c.class_date)}
+                        ${escapeHtml(
+                            c.class_date
+                        )}
                     </td>
 
 
                     <td>
-                        ${escapeHtml(c.start_time)}
+                        ${escapeHtml(
+                            c.start_time
+                        )}
+
+                        <br>
+
+                        <span class="muted">
+                            ${escapeHtml(
+                                String(
+                                    c.duration_minutes
+                                )
+                            )} min
+                        </span>
+
                     </td>
 
 
@@ -1063,15 +1393,215 @@ async function loadClasses() {
 
                         <button
                             class="secondary"
-                            onclick="viewAttendance(${c.id})"
+                            onclick="viewAttendance(
+                                ${c.id}
+                            )"
                         >
-                            View
+                            View Attendance
                         </button>
 
 
                         <button
                             class="danger"
-                            onclick="deleteClass(${c.id})"
+                            onclick="deleteClass(
+                                ${c.id}
+                            )"
+                        >
+                            Delete
+                        </button>
+
+                    </td>
+
+                `;
+
+
+                body.appendChild(
+                    row
+                );
+
+
+                const option =
+                    document
+                        .createElement(
+                            "option"
+                        );
+
+
+                option.value =
+                    c.id;
+
+
+                option.textContent =
+                    `${c.code} — ${c.name} — ${c.start_time}`;
+
+
+                select.appendChild(
+                    option
+                );
+
+            }
+        );
+
+    }
+
+    catch (error) {
+
+        body.innerHTML = `
+
+            <tr>
+
+                <td colspan="4">
+
+                    ${escapeHtml(
+                        error.message
+                    )}
+
+                </td>
+
+            </tr>
+
+        `;
+
+    }
+
+}
+
+
+/* =========================================================
+   LOAD DAILY SCHEDULES
+========================================================= */
+
+async function loadSchedules() {
+
+    const body =
+        document
+            .getElementById(
+                "scheduleBody"
+            );
+
+
+    if (!body) {
+        return;
+    }
+
+
+    try {
+
+        const response =
+            await fetch(
+                "/api/class-schedules",
+                {
+                    credentials:
+                        "same-origin"
+                }
+            );
+
+
+        const schedules =
+            await response.json();
+
+
+        body.innerHTML =
+            "";
+
+
+        if (
+            !Array.isArray(
+                schedules
+            ) ||
+            schedules.length === 0
+        ) {
+
+            body.innerHTML = `
+
+                <tr>
+
+                    <td colspan="4">
+                        No daily schedules yet.
+                    </td>
+
+                </tr>
+
+            `;
+
+            return;
+
+        }
+
+
+        schedules.forEach(
+            function(s) {
+
+                const row =
+                    document
+                        .createElement(
+                            "tr"
+                        );
+
+
+                row.innerHTML = `
+
+                    <td>
+
+                        <strong>
+                            ${escapeHtml(
+                                s.code
+                            )}
+                        </strong>
+
+                        <br>
+
+                        <span class="muted">
+                            ${escapeHtml(
+                                s.name
+                            )}
+                        </span>
+
+                    </td>
+
+
+                    <td>
+                        ${escapeHtml(
+                            s.start_time
+                        )}
+                    </td>
+
+
+                    <td>
+                        ${escapeHtml(
+                            String(
+                                s.duration_minutes
+                            )
+                        )}
+                        min
+                    </td>
+
+
+                    <td>
+
+                        <button
+                            class="secondary"
+                            onclick="editSchedule(
+                                ${s.id},
+                                ${s.subject_id},
+                                '${String(
+                                    s.start_time
+                                ).substring(0,5)}',
+                                ${s.duration_minutes}
+                            )"
+                        >
+                            Edit
+                        </button>
+
+
+                        <button
+                            class="danger"
+                            onclick="deleteSchedule(
+                                ${s.id},
+                                '${escapeHtml(
+                                    s.code
+                                )}'
+                            )"
                         >
                             Delete
                         </button>
@@ -1088,44 +1618,353 @@ async function loadClasses() {
             }
         );
 
-
-        if (!classes.length) {
-
-            body.innerHTML = `
-
-                <tr>
-
-                    <td colspan="4">
-                        No class sessions yet.
-                    </td>
-
-                </tr>
-
-            `;
-
-        }
-
     }
 
     catch (error) {
-
-        console.error(
-            "loadClasses error:",
-            error
-        );
-
 
         body.innerHTML = `
 
             <tr>
 
                 <td colspan="4">
+                    Failed to load timetable.
+                </td>
 
-                    ${escapeHtml(
-                        error.message ||
-                        "Failed to load classes."
-                    )}
+            </tr>
 
+        `;
+
+    }
+
+}
+/* =========================================================
+   EDIT DAILY SCHEDULE
+========================================================= */
+
+async function editSchedule(
+    id,
+    oldSubject,
+    oldTime,
+    oldDuration
+) {
+
+    const subject =
+        prompt(
+            "Subject ID:",
+            oldSubject
+        );
+
+
+    if (
+        subject === null
+    ) {
+        return;
+    }
+
+
+    const time =
+        prompt(
+            "Start time (HH:MM):",
+            oldTime
+        );
+
+
+    if (
+        time === null
+    ) {
+        return;
+    }
+
+
+    const duration =
+        prompt(
+            "Duration in minutes:",
+            oldDuration
+        );
+
+
+    if (
+        duration === null
+    ) {
+        return;
+    }
+
+
+    try {
+
+        const response =
+            await fetch(
+                `/api/class-schedules/${id}`,
+                {
+                    method:
+                        "PUT",
+
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
+
+                    body:
+                        JSON.stringify({
+
+                            subject_id:
+                                Number(
+                                    subject
+                                ),
+
+                            start_time:
+                                time,
+
+                            duration_minutes:
+                                Number(
+                                    duration
+                                )
+
+                        })
+                }
+            );
+
+
+        const data =
+            await response.json();
+
+
+        if (
+            !response.ok ||
+            !data.ok
+        ) {
+
+            throw new Error(
+                data.error ||
+                "Update failed."
+            );
+
+        }
+
+
+        alert(
+            data.message
+        );
+
+
+        await loadSchedules();
+
+        await loadClasses();
+
+    }
+
+    catch (error) {
+
+        alert(
+            error.message
+        );
+
+    }
+
+}
+
+
+/* =========================================================
+   DELETE DAILY SCHEDULE
+========================================================= */
+
+async function deleteSchedule(
+    id,
+    code
+) {
+
+    if (
+        !confirm(
+            "Delete the daily schedule for " +
+            code +
+            "?\n\n" +
+            "Historical attendance will be kept."
+        )
+    ) {
+
+        return;
+
+    }
+
+
+    try {
+
+        const response =
+            await fetch(
+                `/api/class-schedules/${id}`,
+                {
+                    method:
+                        "DELETE",
+
+                    credentials:
+                        "same-origin"
+                }
+            );
+
+
+        const data =
+            await response.json();
+
+
+        if (
+            !response.ok ||
+            !data.ok
+        ) {
+
+            throw new Error(
+                data.error ||
+                "Delete failed."
+            );
+
+        }
+
+
+        alert(
+            data.message
+        );
+
+
+        await loadSchedules();
+
+        await loadClasses();
+
+    }
+
+    catch (error) {
+
+        alert(
+            error.message
+        );
+
+    }
+
+}
+
+
+/* =========================================================
+   HOLIDAYS
+========================================================= */
+
+async function loadHolidays() {
+
+    const body =
+        document
+            .getElementById(
+                "holidayBody"
+            );
+
+
+    if (!body) {
+        return;
+    }
+
+
+    try {
+
+        const response =
+            await fetch(
+                "/api/holidays",
+                {
+                    credentials:
+                        "same-origin"
+                }
+            );
+
+
+        const holidays =
+            await response.json();
+
+
+        body.innerHTML =
+            "";
+
+
+        if (
+            !Array.isArray(
+                holidays
+            ) ||
+            holidays.length === 0
+        ) {
+
+            body.innerHTML = `
+
+                <tr>
+
+                    <td colspan="3">
+
+                        No configured holidays.
+                        Sundays are automatic.
+
+                    </td>
+
+                </tr>
+
+            `;
+
+            return;
+
+        }
+
+
+        holidays.forEach(
+            function(h) {
+
+                const row =
+                    document
+                        .createElement(
+                            "tr"
+                        );
+
+
+                row.innerHTML = `
+
+                    <td>
+                        ${escapeHtml(
+                            h.holiday_date
+                        )}
+                    </td>
+
+
+                    <td>
+                        ${escapeHtml(
+                            h.name
+                        )}
+                    </td>
+
+
+                    <td>
+
+                        <button
+                            class="danger"
+                            onclick="deleteHoliday(
+                                ${h.id}
+                            )"
+                        >
+                            Delete
+                        </button>
+
+                    </td>
+
+                `;
+
+
+                body.appendChild(
+                    row
+                );
+
+            }
+        );
+
+    }
+
+    catch (error) {
+
+        body.innerHTML = `
+
+            <tr>
+
+                <td colspan="3">
+                    Failed to load holidays.
                 </td>
 
             </tr>
@@ -1138,10 +1977,195 @@ async function loadClasses() {
 
 
 /* =========================================================
-   DELETE CLASS
+   CREATE HOLIDAY
 ========================================================= */
 
-async function deleteClass(id) {
+async function createHoliday() {
+
+    const holidayDate =
+        document
+            .getElementById(
+                "holidayDate"
+            )
+            .value;
+
+
+    const holidayName =
+        document
+            .getElementById(
+                "holidayName"
+            )
+            .value
+            .trim();
+
+
+    const msg =
+        document
+            .getElementById(
+                "holidayMsg"
+            );
+
+
+    if (
+        !holidayDate ||
+        !holidayName
+    ) {
+
+        msg.textContent =
+            "Select a date and enter a holiday name.";
+
+        return;
+
+    }
+
+
+    try {
+
+        const response =
+            await fetch(
+                "/api/holidays",
+                {
+                    method:
+                        "POST",
+
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
+
+                    body:
+                        JSON.stringify({
+
+                            holiday_date:
+                                holidayDate,
+
+                            name:
+                                holidayName
+
+                        })
+                }
+            );
+
+
+        const data =
+            await response.json();
+
+
+        if (
+            !response.ok ||
+            !data.ok
+        ) {
+
+            throw new Error(
+                data.error ||
+                "Failed."
+            );
+
+        }
+
+
+        msg.textContent =
+            data.message;
+
+
+        document
+            .getElementById(
+                "holidayName"
+            )
+            .value = "";
+
+
+        await loadHolidays();
+
+        await loadClasses();
+
+    }
+
+    catch (error) {
+
+        msg.textContent =
+            error.message;
+
+    }
+
+}
+
+
+/* =========================================================
+   DELETE HOLIDAY
+========================================================= */
+
+async function deleteHoliday(
+    id
+) {
+
+    if (
+        !confirm(
+            "Remove this holiday?"
+        )
+    ) {
+
+        return;
+
+    }
+
+
+    try {
+
+        const response =
+            await fetch(
+                `/api/holidays/${id}`,
+                {
+                    method:
+                        "DELETE",
+
+                    credentials:
+                        "same-origin"
+                }
+            );
+
+
+        const data =
+            await response.json();
+
+
+        if (
+            !response.ok ||
+            !data.ok
+        ) {
+
+            throw new Error(
+                data.error ||
+                "Delete failed."
+            );
+
+        }
+
+
+        await loadHolidays();
+
+        await loadClasses();
+
+    }
+
+    catch (error) {
+
+        alert(
+            error.message
+        );
+
+    }
+
+}
+
+
+/* =========================================================
+   DELETE TODAY'S CLASS SESSION
+========================================================= */
+
+async function deleteClass(
+    id
+) {
 
     const ok =
         confirm(
@@ -1150,8 +2174,9 @@ async function deleteClass(id) {
         );
 
 
-    if (!ok)
+    if (!ok) {
         return;
+    }
 
 
     try {
@@ -1160,10 +2185,16 @@ async function deleteClass(id) {
             await fetch(
                 `/classes/${id}`,
                 {
-                    method: "DELETE",
+                    method:
+                        "DELETE",
 
                     credentials:
-                        "same-origin"
+                        "same-origin",
+
+                    headers: {
+                        "Accept":
+                            "application/json"
+                    }
                 }
             );
 
@@ -1178,7 +2209,9 @@ async function deleteClass(id) {
         try {
 
             data =
-                JSON.parse(text);
+                JSON.parse(
+                    text
+                );
 
         }
 
@@ -1189,6 +2222,7 @@ async function deleteClass(id) {
                 text
             );
 
+
             throw new Error(
                 "Server returned an invalid response."
             );
@@ -1196,7 +2230,10 @@ async function deleteClass(id) {
         }
 
 
-        if (!response.ok || !data.ok) {
+        if (
+            !response.ok ||
+            !data.ok
+        ) {
 
             throw new Error(
                 data.error ||
@@ -1230,12 +2267,15 @@ async function deleteClass(id) {
    VIEW ATTENDANCE
 ========================================================= */
 
-function viewAttendance(id) {
+function viewAttendance(
+    id
+) {
 
     const select =
-        document.getElementById(
-            "attendanceClass"
-        );
+        document
+            .getElementById(
+                "attendanceClass"
+            );
 
 
     select.value =
@@ -1245,11 +2285,14 @@ function viewAttendance(id) {
     loadClassAttendance();
 
 
-    document.getElementById(
-        "classAttendanceResult"
-    ).scrollIntoView({
-        behavior: "smooth"
-    });
+    document
+        .getElementById(
+            "classAttendanceResult"
+        )
+        .scrollIntoView({
+            behavior:
+                "smooth"
+        });
 
 }
 
@@ -1261,21 +2304,25 @@ function viewAttendance(id) {
 async function loadClassAttendance() {
 
     const id =
-        document.getElementById(
-            "attendanceClass"
-        ).value;
+        document
+            .getElementById(
+                "attendanceClass"
+            )
+            .value;
 
 
     const msg =
-        document.getElementById(
-            "classAttendanceMsg"
-        );
+        document
+            .getElementById(
+                "classAttendanceMsg"
+            );
 
 
     const result =
-        document.getElementById(
-            "classAttendanceResult"
-        );
+        document
+            .getElementById(
+                "classAttendanceResult"
+            );
 
 
     if (!id) {
@@ -1305,7 +2352,8 @@ async function loadClassAttendance() {
             await fetch(
                 `/api/class-attendance/${encodeURIComponent(id)}`,
                 {
-                    method: "GET",
+                    method:
+                        "GET",
 
                     credentials:
                         "same-origin",
@@ -1319,14 +2367,13 @@ async function loadClassAttendance() {
 
 
         /*
-         * IMPORTANT:
+         * Read as text first.
          *
-         * Do NOT directly use response.json().
-         *
-         * If Flask sends an HTML page,
-         * response.json() causes:
+         * This prevents:
          *
          * Unexpected token '<'
+         *
+         * when Flask returns HTML.
          */
 
         const text =
@@ -1345,14 +2392,16 @@ async function loadClassAttendance() {
         try {
 
             data =
-                JSON.parse(text);
+                JSON.parse(
+                    text
+                );
 
         }
 
         catch (parseError) {
 
             console.error(
-                "Invalid JSON from class attendance API:",
+                "Invalid JSON:",
                 text
             );
 
@@ -1638,8 +2687,6 @@ async function loadClassAttendance() {
     }
 
 }
-
-
 /* =========================================================
    EDIT STUDENT
 ========================================================= */
@@ -1654,12 +2701,15 @@ async function editStudent(
     const name =
         prompt(
             "Student name:",
-            oldName
+            oldName || ""
         );
 
 
-    if (name === null)
+    if (
+        name === null
+    ) {
         return;
+    }
 
 
     const email =
@@ -1669,8 +2719,11 @@ async function editStudent(
         );
 
 
-    if (email === null)
+    if (
+        email === null
+    ) {
         return;
+    }
 
 
     const department =
@@ -1680,18 +2733,25 @@ async function editStudent(
         );
 
 
-    if (department === null)
+    if (
+        department === null
+    ) {
         return;
+    }
 
 
     const password =
         prompt(
-            "New password (leave blank to keep current):"
+            "New password (leave blank to keep current password):",
+            ""
         );
 
 
-    if (password === null)
+    if (
+        password === null
+    ) {
         return;
+    }
 
 
     try {
@@ -1700,7 +2760,8 @@ async function editStudent(
             await fetch(
                 `/api/students/${id}`,
                 {
-                    method: "PUT",
+                    method:
+                        "PUT",
 
                     headers: {
                         "Content-Type":
@@ -1738,7 +2799,7 @@ async function editStudent(
 
             throw new Error(
                 data.error ||
-                "Update failed."
+                "Student update failed."
             );
 
         }
@@ -1778,17 +2839,15 @@ async function deleteStudent(
             "DELETE STUDENT?\n\n" +
             name +
             "\n\n" +
-            "This will permanently delete:\n" +
-            "• Student account\n" +
-            "• Face recognition data\n" +
-            "• Login account\n" +
-            "• Attendance records\n\n" +
+            "This will delete the student's " +
+            "login and attendance records.\n\n" +
             "This cannot be undone."
         );
 
 
-    if (!ok)
+    if (!ok) {
         return;
+    }
 
 
     try {
@@ -1797,10 +2856,16 @@ async function deleteStudent(
             await fetch(
                 `/api/students/${id}`,
                 {
-                    method: "DELETE",
+                    method:
+                        "DELETE",
 
                     credentials:
-                        "same-origin"
+                        "same-origin",
+
+                    headers: {
+                        "Accept":
+                            "application/json"
+                    }
                 }
             );
 
@@ -1815,16 +2880,13 @@ async function deleteStudent(
         try {
 
             data =
-                JSON.parse(text);
+                JSON.parse(
+                    text
+                );
 
         }
 
         catch (error) {
-
-            console.error(
-                "Delete student response:",
-                text
-            );
 
             throw new Error(
                 "Server returned an invalid response."
@@ -1840,7 +2902,7 @@ async function deleteStudent(
 
             throw new Error(
                 data.error ||
-                "Delete failed."
+                "Student deletion failed."
             );
 
         }
@@ -1867,56 +2929,104 @@ async function deleteStudent(
 
 
 /* =========================================================
-   ESCAPE HTML
+   HTML ESCAPING
 ========================================================= */
 
-function escapeHtml(value) {
+function escapeHtml(
+    value
+) {
+
+    if (
+        value === null ||
+        value === undefined
+    ) {
+
+        return "";
+
+    }
+
 
     return String(
-        value ?? ""
+        value
     )
-
-    .replaceAll(
-        "&",
-        "&amp;"
-    )
-
-    .replaceAll(
-        "<",
-        "&lt;"
-    )
-
-    .replaceAll(
-        ">",
-        "&gt;"
-    )
-
-    .replaceAll(
-        '"',
-        "&quot;"
-    )
-
-    .replaceAll(
-        "'",
-        "&#039;"
-    );
+        .replace(
+            /&/g,
+            "&amp;"
+        )
+        .replace(
+            /</g,
+            "&lt;"
+        )
+        .replace(
+            />/g,
+            "&gt;"
+        )
+        .replace(
+            /"/g,
+            "&quot;"
+        )
+        .replace(
+            /'/g,
+            "&#039;"
+        );
 
 }
 
 
 /* =========================================================
-   PAGE LOAD
+   PAGE INITIALIZATION
 ========================================================= */
 
 document.addEventListener(
     "DOMContentLoaded",
-    function() {
+    async function() {
 
-        loadClasses();
+        /*
+         * Set holiday date to TODAY
+         * using India timezone.
+         */
+
+        const holidayDate =
+            document
+                .getElementById(
+                    "holidayDate"
+                );
+
+
+        if (holidayDate) {
+
+            const formatter =
+                new Intl.DateTimeFormat(
+                    "en-CA",
+                    {
+                        timeZone:
+                            "Asia/Kolkata"
+                    }
+                );
+
+
+            holidayDate.value =
+                formatter.format(
+                    new Date()
+                );
+
+        }
+
+
+        /*
+         * Load today's sessions,
+         * timetable and holidays.
+         */
+
+        await loadClasses();
+
+        await loadSchedules();
+
+        await loadHolidays();
 
     }
 );
 
-</script>
 
+</script>
 {% endblock %}
