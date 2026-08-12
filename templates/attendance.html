@@ -26,30 +26,60 @@
 <div class="grid2">
 
     <!-- LEFT SIDE -->
-
     <div class="panel">
 
         <h2>
-            Class Verification
+            Classroom Verification
         </h2>
 
         <p class="muted">
-            Choose the class you are attending.
+            Scan the classroom QR code first, then verify your identity using face recognition.
         </p>
 
+        <div style="margin-bottom:16px;">
+
+            <label>
+                Classroom QR Code
+            </label>
+
+            <div
+                id="qrReader"
+                style="
+                    width:100%;
+                    max-width:420px;
+                    margin:12px auto;
+                    border-radius:14px;
+                    overflow:hidden;
+                "
+            ></div>
+
+            <button
+                id="scanQrButton"
+                class="secondary full"
+                type="button"
+            >
+                Scan Classroom QR
+            </button>
+
+        </div>
+
+        <div
+            id="qrStatus"
+            class="result-box"
+            style="margin-bottom:16px;"
+        >
+            Scan the QR code displayed by your teacher.
+        </div>
 
         <label>
             Class Session
         </label>
 
-        <select id="classSelect">
-
+        <select id="classSelect" disabled>
             <option value="">
-                Loading classes...
+                Scan classroom QR first
             </option>
-
         </select>
-
 
         <button
             id="start"
@@ -60,14 +90,12 @@
             Start Camera
         </button>
 
-
         <div
             id="result"
             class="result-box"
         >
-            Loading available classes...
+            Waiting for classroom QR verification...
         </div>
-
 
         <div class="attendance-help">
 
@@ -78,19 +106,23 @@
             <ul>
 
                 <li>
-                    Select your class.
+                    Teacher starts the classroom QR session.
                 </li>
 
                 <li>
-                    Click Start Camera.
+                    Scan the QR code with your camera.
                 </li>
 
                 <li>
-                    Look directly at the camera.
+                    The QR is valid only for the active class session.
                 </li>
 
                 <li>
-                    Wait for face verification.
+                    Click Start Camera and look directly at the camera.
+                </li>
+
+                <li>
+                    Attendance is recorded only after QR + face verification.
                 </li>
 
             </ul>
@@ -130,10 +162,418 @@
 
 {% block scripts %}
 
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
 <script>
 
 /* =========================================================
-   CONFIGURATION
+   QR ATTENDANCE CONFIGURATION
+========================================================= */
+
+const INITIAL_QR_TOKEN =
+    {{ qr_session|default("")|tojson }};
+
+let qrToken =
+    INITIAL_QR_TOKEN || "";
+
+let qrScanner = null;
+
+let qrScannerRunning = false;
+
+let qrVerified = false;
+
+let verifiedClassId = null;
+
+
+/* =========================================================
+   QR ELEMENTS
+========================================================= */
+
+const qrReader =
+    document.getElementById("qrReader");
+
+const qrStatus =
+    document.getElementById("qrStatus");
+
+const scanQrButton =
+    document.getElementById("scanQrButton");
+
+
+function setQrStatus(message) {
+
+    qrStatus.textContent =
+        message;
+
+}
+
+
+/* =========================================================
+   STOP QR SCANNER
+========================================================= */
+
+async function stopQrScanner() {
+
+    if (!qrScanner) {
+        return;
+    }
+
+    if (qrScannerRunning) {
+
+        try {
+            await qrScanner.stop();
+        }
+        catch (error) {
+            console.warn(
+                "QR scanner stop error:",
+                error
+            );
+        }
+
+    }
+
+    qrScannerRunning =
+        false;
+
+    try {
+        await qrScanner.clear();
+    }
+    catch (error) {
+        console.warn(
+            "QR scanner clear error:",
+            error
+        );
+    }
+
+    qrScanner =
+        null;
+
+}
+
+
+/* =========================================================
+   START QR SCANNER
+========================================================= */
+
+async function startQrScanner() {
+
+    if (!window.Html5Qrcode) {
+
+        setQrStatus(
+            "QR scanner library failed to load. Check your internet connection."
+        );
+
+        return;
+    }
+
+    await stopQrScanner();
+
+    qrScanner =
+        new Html5Qrcode(
+            "qrReader"
+        );
+
+    setQrStatus(
+        "Point your camera at the classroom QR code."
+    );
+
+    try {
+
+        await qrScanner.start(
+
+            {
+                facingMode:
+                    "environment"
+            },
+
+            {
+                fps:
+                    10,
+
+                qrbox:
+                    {
+                        width: 250,
+                        height: 250
+                    },
+
+                aspectRatio:
+                    1.0
+            },
+
+            async function(decodedText) {
+
+                await handleQrToken(
+                    decodedText
+                );
+
+            },
+
+            function() {
+                // Ignore normal QR scan misses.
+            }
+
+        );
+
+        qrScannerRunning =
+            true;
+
+        scanQrButton.textContent =
+            "Scanning Classroom QR...";
+
+    }
+
+    catch (error) {
+
+        console.error(
+            "QR camera error:",
+            error
+        );
+
+        setQrStatus(
+            "Unable to start QR camera: " +
+            error
+        );
+
+        await stopQrScanner();
+
+    }
+
+}
+
+
+/* =========================================================
+   HANDLE QR TOKEN / URL
+========================================================= */
+
+async function handleQrToken(
+    rawValue
+) {
+
+    if (!rawValue) {
+        return;
+    }
+
+    let token =
+        String(rawValue).trim();
+
+    /*
+     * The admin QR normally contains:
+     *
+     * /attendance?session=TOKEN
+     *
+     * Also accept a raw token.
+     */
+
+    try {
+
+        const url =
+            new URL(
+                token,
+                window.location.origin
+            );
+
+        const sessionParam =
+            url.searchParams.get(
+                "session"
+            );
+
+        if (sessionParam) {
+            token =
+                sessionParam;
+        }
+
+    }
+    catch (error) {
+        // Treat it as a raw token.
+    }
+
+    if (!token) {
+
+        setQrStatus(
+            "QR code does not contain a valid attendance session."
+        );
+
+        return;
+    }
+
+    setQrStatus(
+        "QR detected. Verifying classroom session..."
+    );
+
+    await stopQrScanner();
+
+    scanQrButton.textContent =
+        "Scan Classroom QR Again";
+
+    try {
+
+        const response =
+            await fetch(
+                "/api/attendance-session/validate",
+                {
+                    method:
+                        "POST",
+
+                    credentials:
+                        "same-origin",
+
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
+
+                    body:
+                        JSON.stringify({
+                            session_token:
+                                token
+                        })
+                }
+            );
+
+        const text =
+            await response.text();
+
+        let data;
+
+        try {
+
+            data =
+                JSON.parse(text);
+
+        }
+        catch {
+
+            throw new Error(
+                `Server returned HTTP ${response.status}.`
+            );
+
+        }
+
+        if (
+            !response.ok ||
+            !data.ok
+        ) {
+
+            throw new Error(
+                data.error ||
+                "QR verification failed."
+            );
+
+        }
+
+        qrToken =
+            token;
+
+        qrVerified =
+            true;
+
+        verifiedClassId =
+            Number(
+                data.class_id
+            );
+
+        /*
+         * Select the exact class returned by
+         * the server.
+         */
+
+        classSelect.value =
+            String(
+                verifiedClassId
+            );
+
+        classSelect.disabled =
+            false;
+
+        startButton.disabled =
+            false;
+
+        setQrStatus(
+            `✓ Classroom verified: ${data.code} — ${data.subject}.`
+        );
+
+        setStatus(
+            "Classroom QR verified. Click Start Camera for face verification."
+        );
+
+    }
+
+    catch (error) {
+
+        qrToken =
+            "";
+
+        qrVerified =
+            false;
+
+        verifiedClassId =
+            null;
+
+        classSelect.value =
+            "";
+
+        classSelect.disabled =
+            true;
+
+        startButton.disabled =
+            true;
+
+        setQrStatus(
+            "QR verification failed: " +
+            error.message
+        );
+
+    }
+
+}
+
+
+/* =========================================================
+   INITIAL QR TOKEN FROM URL
+========================================================= */
+
+async function initializeQrFromUrl() {
+
+    if (!INITIAL_QR_TOKEN) {
+        return;
+    }
+
+    setQrStatus(
+        "QR session found in the URL. Verifying..."
+    );
+
+    await handleQrToken(
+        INITIAL_QR_TOKEN
+    );
+
+}
+
+
+/* =========================================================
+   QR BUTTON
+========================================================= */
+
+scanQrButton.addEventListener(
+    "click",
+    async function() {
+
+        if (qrScannerRunning) {
+            return;
+        }
+
+        await startQrScanner();
+
+    }
+);
+
+
+/* =========================================================
+   FACE CONFIGURATION
+========================================================= */
+
+const MODEL_URL =
+    "https://justadudewhohacks.github.io/face-api.js/models";
+
+const MATCH_THRESHOLD = 0.55;
 ========================================================= */
 
 const MODEL_URL =
@@ -550,6 +990,35 @@ classSelect.addEventListener(
     "change",
     function() {
 
+        if (!qrVerified) {
+
+            classSelect.value =
+                verifiedClassId
+                    ? String(verifiedClassId)
+                    : "";
+
+            setStatus(
+                "Scan the classroom QR code first."
+            );
+
+            return;
+        }
+
+        if (
+            Number(classSelect.value) !==
+            Number(verifiedClassId)
+        ) {
+
+            classSelect.value =
+                String(verifiedClassId);
+
+            setStatus(
+                "The selected class must match the scanned classroom QR."
+            );
+
+            return;
+        }
+
         if (
             classSelect.value
         ) {
@@ -557,9 +1026,8 @@ classSelect.addEventListener(
             startButton.disabled =
                 false;
 
-
             setStatus(
-                "Class selected. Click Start Camera."
+                "Classroom verified. Click Start Camera."
             );
 
         }
@@ -569,9 +1037,8 @@ classSelect.addEventListener(
             startButton.disabled =
                 true;
 
-
             setStatus(
-                "Please select a class."
+                "Please scan the classroom QR."
             );
 
         }
@@ -1332,7 +1799,10 @@ async function markAttendance(
                             studentId,
 
                         class_id:
-                            classId
+                            classId,
+
+                        session_token:
+                            qrToken
 
                     })
 
@@ -1436,6 +1906,8 @@ document.addEventListener(
     function() {
 
         loadClasses();
+
+        initializeQrFromUrl();
 
     }
 );
