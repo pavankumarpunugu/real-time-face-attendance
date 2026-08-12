@@ -141,16 +141,9 @@
 const MODEL_URL =
     "https://justadudewhohacks.github.io/face-api.js/models";
 
-/*
-   face-api.js Euclidean distance.
 
-   Lower value = better match.
-
-   0.55 is slightly more tolerant than the
-   previous 0.50 threshold.
-*/
-
-const MATCH_THRESHOLD = 0.55;
+const MATCH_THRESHOLD =
+    0.55;
 
 
 /* =========================================================
@@ -158,16 +151,27 @@ const MATCH_THRESHOLD = 0.55;
 ========================================================= */
 
 const video =
-    document.getElementById("video");
+    document.getElementById(
+        "video"
+    );
+
 
 const classSelect =
-    document.getElementById("classSelect");
+    document.getElementById(
+        "classSelect"
+    );
+
 
 const startButton =
-    document.getElementById("start");
+    document.getElementById(
+        "start"
+    );
+
 
 const result =
-    document.getElementById("result");
+    document.getElementById(
+        "result"
+    );
 
 
 /* =========================================================
@@ -189,18 +193,24 @@ let recognitionRunning = false;
    STATUS
 ========================================================= */
 
-function setStatus(message) {
+function setStatus(
+    message
+) {
 
-    result.textContent = message;
+    result.textContent =
+        message;
 
 }
 
 
 /* =========================================================
-   DISTANCE BETWEEN FACE EMBEDDINGS
+   FACE DISTANCE
 ========================================================= */
 
-function faceDistance(a, b) {
+function faceDistance(
+    a,
+    b
+) {
 
     if (
         !Array.isArray(a) ||
@@ -213,7 +223,8 @@ function faceDistance(a, b) {
 
 
     if (
-        a.length !== b.length
+        a.length !==
+        b.length
     ) {
 
         return Infinity;
@@ -234,6 +245,7 @@ function faceDistance(a, b) {
             Number(a[i]) -
             Number(b[i]);
 
+
         sum +=
             difference *
             difference;
@@ -241,13 +253,15 @@ function faceDistance(a, b) {
     }
 
 
-    return Math.sqrt(sum);
+    return Math.sqrt(
+        sum
+    );
 
 }
 
 
 /* =========================================================
-   LOAD CLASSES
+   LOAD TODAY'S CLASSES
 ========================================================= */
 
 async function loadClasses() {
@@ -255,9 +269,96 @@ async function loadClasses() {
     try {
 
         setStatus(
-            "Loading available classes..."
+            "Checking today's timetable..."
         );
 
+
+        /*
+         * Check Sunday / configured holiday
+         * before loading classes.
+         */
+
+        const statusResponse =
+            await fetch(
+                "/api/today-status",
+                {
+                    credentials:
+                        "same-origin"
+                }
+            );
+
+
+        const status =
+            await statusResponse.json();
+
+
+        classSelect.innerHTML =
+            "";
+
+
+        /* -----------------------------------------------
+           HOLIDAY
+        ------------------------------------------------ */
+
+        if (
+            status.is_holiday
+        ) {
+
+            const option =
+                document.createElement(
+                    "option"
+                );
+
+
+            option.value =
+                "";
+
+
+            option.textContent =
+                status.holiday_type ===
+                "Sunday"
+
+                    ? "Sunday — Holiday"
+
+                    : (
+                        status.holiday_name +
+                        " — Holiday"
+                    );
+
+
+            classSelect.appendChild(
+                option
+            );
+
+
+            startButton.disabled =
+                true;
+
+
+            setStatus(
+
+                status.holiday_type ===
+                "Sunday"
+
+                    ? "Today is Sunday. Attendance is not available."
+
+                    : (
+                        "Today is a holiday: " +
+                        status.holiday_name +
+                        ". Attendance is not available."
+                    )
+
+            );
+
+
+            return;
+
+        }
+
+
+        /* -----------------------------------------------
+           LOAD TODAY'S AUTOMATIC SESSIONS
+        ------------------------------------------------ */
 
         const response =
             await fetch(
@@ -269,10 +370,12 @@ async function loadClasses() {
             );
 
 
-        if (!response.ok) {
+        if (
+            !response.ok
+        ) {
 
             throw new Error(
-                "Unable to load class sessions."
+                "Unable to load today's classes."
             );
 
         }
@@ -282,46 +385,70 @@ async function loadClasses() {
             await response.json();
 
 
-        classSelect.innerHTML = "";
+        classSelect.innerHTML =
+            "";
 
+
+        /* -----------------------------------------------
+           NO CLASSES
+        ------------------------------------------------ */
 
         if (
-            !Array.isArray(classes) ||
+            !Array.isArray(
+                classes
+            ) ||
             classes.length === 0
         ) {
 
             classSelect.innerHTML = `
+
                 <option value="">
-                    No classes available
+                    No classes scheduled today
                 </option>
+
             `;
+
 
             startButton.disabled =
                 true;
 
+
             setStatus(
-                "No class sessions are available."
+                "No classes are scheduled for today."
             );
+
 
             return;
 
         }
 
 
+        /* -----------------------------------------------
+           DEFAULT OPTION
+        ------------------------------------------------ */
+
         const defaultOption =
             document.createElement(
                 "option"
             );
 
-        defaultOption.value = "";
+
+        defaultOption.value =
+            "";
+
 
         defaultOption.textContent =
-            "Select class";
+            "Select today's class";
+
 
         classSelect.appendChild(
             defaultOption
         );
 
+
+        /* -----------------------------------------------
+           CLASSES
+        ------------------------------------------------ */
 
         classes.forEach(
             function(c) {
@@ -331,12 +458,16 @@ async function loadClasses() {
                         "option"
                     );
 
+
                 option.value =
                     c.id;
 
+
                 option.textContent =
                     `${c.code} — ${c.name} — ` +
-                    `${c.class_date} ${c.start_time}`;
+                    `${c.start_time} ` +
+                    `(${c.duration_minutes} min)`;
+
 
                 classSelect.appendChild(
                     option
@@ -346,8 +477,12 @@ async function loadClasses() {
         );
 
 
+        startButton.disabled =
+            true;
+
+
         setStatus(
-            "Select a class and click Start Camera."
+            "Select today's class."
         );
 
     }
@@ -358,6 +493,11 @@ async function loadClasses() {
             "Class loading error:",
             error
         );
+
+
+        startButton.disabled =
+            true;
+
 
         setStatus(
             "Class loading failed: " +
@@ -384,6 +524,7 @@ classSelect.addEventListener(
             startButton.disabled =
                 false;
 
+
             setStatus(
                 "Class selected. Click Start Camera."
             );
@@ -394,6 +535,7 @@ classSelect.addEventListener(
 
             startButton.disabled =
                 true;
+
 
             setStatus(
                 "Please select a class."
@@ -406,12 +548,14 @@ classSelect.addEventListener(
 
 
 /* =========================================================
-   LOAD FACE-API MODELS
+   LOAD FACE API MODELS
 ========================================================= */
 
 async function loadModels() {
 
-    if (modelsLoaded) {
+    if (
+        modelsLoaded
+    ) {
 
         return;
 
@@ -423,19 +567,22 @@ async function loadModels() {
     );
 
 
-    await faceapi.nets.tinyFaceDetector
+    await faceapi.nets
+        .tinyFaceDetector
         .loadFromUri(
             MODEL_URL
         );
 
 
-    await faceapi.nets.faceLandmark68Net
+    await faceapi.nets
+        .faceLandmark68Net
         .loadFromUri(
             MODEL_URL
         );
 
 
-    await faceapi.nets.faceRecognitionNet
+    await faceapi.nets
+        .faceRecognitionNet
         .loadFromUri(
             MODEL_URL
         );
@@ -498,7 +645,9 @@ async function loadStudents() {
     }
 
 
-    if (!response.ok) {
+    if (
+        !response.ok
+    ) {
 
         throw new Error(
             data.error ||
@@ -543,12 +692,14 @@ function findBestMatch(
     let bestStudent =
         null;
 
+
     let bestDistance =
         Infinity;
 
 
     for (
-        const student of students
+        const student
+        of students
     ) {
 
         if (
@@ -582,6 +733,7 @@ function findBestMatch(
                 bestDistance =
                     currentDistance;
 
+
                 bestStudent =
                     student;
 
@@ -601,10 +753,6 @@ function findBestMatch(
             bestDistance
 
     };
-
-}
-
-
 /* =========================================================
    START CAMERA
 ========================================================= */
@@ -642,17 +790,23 @@ startButton.addEventListener(
                 false;
 
 
-            /* LOAD MODELS */
+            /* ---------------------------------------------
+               LOAD FACE MODELS
+            --------------------------------------------- */
 
             await loadModels();
 
 
-            /* LOAD STUDENTS */
+            /* ---------------------------------------------
+               LOAD REGISTERED STUDENTS
+            --------------------------------------------- */
 
             await loadStudents();
 
 
-            /* CAMERA */
+            /* ---------------------------------------------
+               CAMERA PERMISSION
+            --------------------------------------------- */
 
             setStatus(
                 "Requesting camera permission..."
@@ -665,19 +819,28 @@ startButton.addEventListener(
                     .getUserMedia({
 
                         video: {
+
                             facingMode:
                                 "user",
 
                             width: {
-                                ideal: 640
+
+                                ideal:
+                                    640
+
                             },
 
                             height: {
-                                ideal: 480
+
+                                ideal:
+                                    480
+
                             }
+
                         },
 
-                        audio: false
+                        audio:
+                            false
 
                     });
 
@@ -687,16 +850,12 @@ startButton.addEventListener(
 
 
             /*
-               Wait until browser actually
-               has video dimensions.
-            */
+             * Wait until the browser has
+             * real video dimensions.
+             */
 
             await waitForVideo();
 
-
-            /*
-               Play explicitly.
-            */
 
             await video.play();
 
@@ -717,10 +876,6 @@ startButton.addEventListener(
                 "Camera ready. Look directly at the camera."
             );
 
-
-            /*
-               Start recognition.
-            */
 
             scanFace();
 
@@ -748,6 +903,7 @@ startButton.addEventListener(
             startButton.disabled =
                 false;
 
+
             startButton.textContent =
                 "Start Camera";
 
@@ -770,9 +926,14 @@ startButton.addEventListener(
 function waitForVideo() {
 
     return new Promise(
-        function(resolve, reject) {
+        function(
+            resolve,
+            reject
+        ) {
 
-            let attempts = 0;
+            let attempts =
+                0;
+
 
             const maxAttempts =
                 100;
@@ -795,6 +956,7 @@ function waitForVideo() {
                                 timer
                             );
 
+
                             resolve();
 
                             return;
@@ -810,6 +972,7 @@ function waitForVideo() {
                             clearInterval(
                                 timer
                             );
+
 
                             reject(
                                 new Error(
@@ -852,8 +1015,8 @@ async function scanFace() {
     try {
 
         /*
-           Make sure video is actually ready.
-        */
+         * Make sure video is ready.
+         */
 
         if (
             video.readyState < 2 ||
@@ -863,10 +1026,12 @@ async function scanFace() {
             recognitionRunning =
                 false;
 
+
             setTimeout(
                 scanFace,
                 500
             );
+
 
             return;
 
@@ -874,12 +1039,8 @@ async function scanFace() {
 
 
         /*
-           Detect face.
-
-           Slightly lower score threshold
-           helps detection under normal
-           webcam lighting.
-        */
+         * Detect one face.
+         */
 
         const detection =
             await faceapi
@@ -904,13 +1065,16 @@ async function scanFace() {
 
 
         /*
-           No face.
-        */
+         * No face detected.
+         */
 
-        if (!detection) {
+        if (
+            !detection
+        ) {
 
             recognitionRunning =
                 false;
+
 
             setStatus(
                 "No face detected. Move closer and look at the camera."
@@ -929,8 +1093,8 @@ async function scanFace() {
 
 
         /*
-           Face found.
-        */
+         * Convert descriptor to normal array.
+         */
 
         const descriptor =
             Array.from(
@@ -946,18 +1110,20 @@ async function scanFace() {
 
         console.log(
             "Best match:",
+
             match.student
                 ? match.student.name
                 : "none",
 
             "distance:",
+
             match.distance
         );
 
 
-        /*
-           MATCH
-        */
+        /* ---------------------------------------------
+           FACE MATCHED
+        --------------------------------------------- */
 
         if (
             match.student &&
@@ -1011,6 +1177,7 @@ async function scanFace() {
                 startButton.disabled =
                     false;
 
+
                 startButton.textContent =
                     "Take Again";
 
@@ -1024,14 +1191,17 @@ async function scanFace() {
                 scanning =
                     false;
 
+
                 recognitionRunning =
                     false;
+
 
                 stopCamera();
 
 
                 startButton.disabled =
                     false;
+
 
                 startButton.textContent =
                     "Start Camera";
@@ -1050,9 +1220,9 @@ async function scanFace() {
         }
 
 
-        /*
-           Face detected but not recognized.
-        */
+        /* ---------------------------------------------
+           FACE FOUND BUT NOT MATCHED
+        --------------------------------------------- */
 
         recognitionRunning =
             false;
@@ -1101,8 +1271,6 @@ async function scanFace() {
     }
 
 }
-
-
 /* =========================================================
    MARK ATTENDANCE
 ========================================================= */
@@ -1128,6 +1296,12 @@ async function markAttendance(
     }
 
 
+    /*
+     * The server performs the real timing
+     * validation. This is important because
+     * browser-side checks alone are not secure.
+     */
+
     const response =
         await fetch(
             "/api/mark-attendance",
@@ -1142,6 +1316,9 @@ async function markAttendance(
                 headers: {
 
                     "Content-Type":
+                        "application/json",
+
+                    "Accept":
                         "application/json"
 
                 },
@@ -1160,6 +1337,13 @@ async function markAttendance(
             }
         );
 
+
+    /*
+     * Read as text first so an unexpected
+     * HTML response does not cause:
+     *
+     * Unexpected token '<'
+     */
 
     const responseText =
         await response.text();
@@ -1180,11 +1364,95 @@ async function markAttendance(
     catch {
 
         throw new Error(
-            `Server returned HTTP ${response.status}.`
+            `Server returned HTTP ${response.status} instead of JSON.`
         );
 
     }
 
+
+    /*
+     * BEFORE CLASS
+     *
+     * Example:
+     *
+     * Class: 2:00 PM - 3:00 PM
+     * Current: 1:50 PM
+     *
+     * Server returns:
+     *
+     * Class has not started yet.
+     */
+
+    if (
+        response.status === 403 &&
+        data.error &&
+        data.error
+            .toLowerCase()
+            .includes(
+                "not started"
+            )
+    ) {
+
+        throw new Error(
+            data.error
+        );
+
+    }
+
+
+    /*
+     * AFTER CLASS
+     */
+
+    if (
+        response.status === 403 &&
+        data.error &&
+        data.error
+            .toLowerCase()
+            .includes(
+                "already ended"
+            )
+    ) {
+
+        throw new Error(
+            data.error
+        );
+
+    }
+
+
+    /*
+     * HOLIDAY / SUNDAY
+     */
+
+    if (
+        response.status === 403 &&
+        data.error &&
+        (
+            data.error
+                .toLowerCase()
+                .includes(
+                    "holiday"
+                )
+            ||
+            data.error
+                .toLowerCase()
+                .includes(
+                    "sunday"
+                )
+        )
+    ) {
+
+        throw new Error(
+            data.error
+        );
+
+    }
+
+
+    /*
+     * Any other server error.
+     */
 
     if (
         !response.ok
@@ -1212,6 +1480,7 @@ function stopCamera() {
     scanning =
         false;
 
+
     recognitionRunning =
         false;
 
@@ -1230,6 +1499,7 @@ function stopCamera() {
                 }
             );
 
+
         stream =
             null;
 
@@ -1243,7 +1513,7 @@ function stopCamera() {
 
 
 /* =========================================================
-   INITIAL LOAD
+   PAGE INITIALIZATION
 ========================================================= */
 
 document.addEventListener(
@@ -1255,6 +1525,58 @@ document.addEventListener(
     }
 );
 
+
+/* =========================================================
+   REFRESH TODAY'S CLASSES
+========================================================= */
+
+/*
+ * This keeps the page synchronized with
+ * the current day.
+ *
+ * For example:
+ *
+ * 11:59 PM → yesterday
+ * 12:00 AM → new day
+ *
+ * The browser reloads the timetable.
+ */
+
+setInterval(
+    async function() {
+
+        if (
+            scanning
+        ) {
+
+            return;
+
+        }
+
+
+        await loadClasses();
+
+    },
+    60000
+);
+
+
+/* =========================================================
+   CLEANUP WHEN LEAVING PAGE
+========================================================= */
+
+window.addEventListener(
+    "beforeunload",
+    function() {
+
+        stopCamera();
+
+    }
+);
+
+
 </script>
 
 {% endblock %}
+
+}
