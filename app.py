@@ -1,9 +1,8 @@
 import os
 import json
 import secrets
-import hashlib
 
-from datetime import datetime, date, timedelta
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from functools import wraps
 
@@ -66,11 +65,7 @@ engine = create_engine(
 )
 
 
-# =========================================================
-# DATABASE SCHEMA
-# =========================================================
-
-SCHEMA = """
+POSTGRES_SCHEMA = """
 CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     username VARCHAR(100) UNIQUE NOT NULL,
@@ -127,10 +122,10 @@ CREATE TABLE IF NOT EXISTS attendance (
     UNIQUE(student_id, class_id)
 );
 
-CREATE TABLE IF NOT EXISTS attendance_sessions (
+CREATE TABLE IF NOT EXISTS qr_sessions (
     id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     class_id INTEGER NOT NULL,
-    token_hash VARCHAR(128) UNIQUE NOT NULL,
+    token TEXT UNIQUE NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     expires_at TIMESTAMP NOT NULL,
     active BOOLEAN NOT NULL DEFAULT TRUE
@@ -195,10 +190,10 @@ CREATE TABLE IF NOT EXISTS attendance (
     UNIQUE(student_id, class_id)
 );
 
-CREATE TABLE IF NOT EXISTS attendance_sessions (
+CREATE TABLE IF NOT EXISTS qr_sessions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     class_id INTEGER NOT NULL,
-    token_hash TEXT UNIQUE NOT NULL,
+    token TEXT UNIQUE NOT NULL,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     expires_at TEXT NOT NULL,
     active INTEGER NOT NULL DEFAULT 1
@@ -210,9 +205,26 @@ def is_sqlite():
     return database_url.startswith("sqlite")
 
 
-# =========================================================
-# DATABASE INITIALIZATION
-# =========================================================
+def q(sql, params=None, fetch=False, one=False):
+
+    with engine.begin() as conn:
+
+        result = conn.execute(
+            text(sql),
+            params or {}
+        )
+
+        if fetch:
+
+            rows = result.mappings().all()
+
+            if one:
+                return rows[0] if rows else None
+
+            return rows
+
+        return result
+
 
 def init_db():
 
@@ -221,27 +233,21 @@ def init_db():
         schema = (
             SQLITE_SCHEMA
             if is_sqlite()
-            else SCHEMA
+            else POSTGRES_SCHEMA
         )
 
-        for stmt in schema.split(";"):
+        for statement in schema.split(";"):
 
-            if stmt.strip():
+            if statement.strip():
 
                 conn.execute(
-                    text(stmt)
+                    text(statement)
                 )
-
-        # -------------------------------------------------
-        # Add duration_minutes to old databases
-        # -------------------------------------------------
 
         if is_sqlite():
 
             columns = conn.execute(
-                text(
-                    "PRAGMA table_info(classes)"
-                )
+                text("PRAGMA table_info(classes)")
             ).fetchall()
 
             names = {
@@ -274,11 +280,7 @@ def init_db():
                 )
             )
 
-        # -------------------------------------------------
-        # Admin account
-        # -------------------------------------------------
-
-        count = conn.execute(
+        admin_count = conn.execute(
             text(
                 """
                 SELECT COUNT(*)
@@ -288,7 +290,7 @@ def init_db():
             )
         ).scalar()
 
-        if count == 0:
+        if admin_count == 0:
 
             conn.execute(
                 text(
@@ -321,75 +323,34 @@ def init_db():
 
 
 # =========================================================
-# TIMEZONE
+# TIME
 # =========================================================
 
-IST = ZoneInfo(
-    "Asia/Kolkata"
-)
+IST = ZoneInfo("Asia/Kolkata")
 
 
 def india_now():
+    return datetime.now(IST)
 
-    return datetime.now(
-        IST
+
+def naive_india_now():
+    return india_now().replace(
+        tzinfo=None
     )
 
 
 def today_india():
-
     return india_now().date()
 
 
 def today_string():
-
     return today_india().isoformat()
 
-
-# =========================================================
-# DATABASE HELPER
-# =========================================================
-
-def q(
-    sql,
-    params=None,
-    fetch=False,
-    one=False
-):
-
-    with engine.begin() as conn:
-
-        result = conn.execute(
-            text(sql),
-            params or {}
-        )
-
-        if fetch:
-
-            rows = result.mappings().all()
-
-            if one:
-
-                return (
-                    rows[0]
-                    if rows
-                    else None
-                )
-
-            return rows
-
-        return result
-
-
-# =========================================================
-# TODAY / HOLIDAY
-# =========================================================
 
 def get_today_status():
 
     today = today_india()
 
-    # Sunday
     if today.weekday() == 6:
 
         return {
@@ -400,10 +361,7 @@ def get_today_status():
 
     holiday = q(
         """
-        SELECT
-            id,
-            holiday_date,
-            name
+        SELECT id, holiday_date, name
         FROM holidays
         WHERE holiday_date=:d
         """,
@@ -429,14 +387,9 @@ def get_today_status():
     }
 
 
-# =========================================================
-# AUTOMATIC DAILY CLASS CREATION
-# =========================================================
-
 def ensure_today_sessions():
 
     if get_today_status()["is_holiday"]:
-
         return
 
     schedules = q(
@@ -471,34 +424,20 @@ def ensure_today_sessions():
                 )
                 """,
                 {
-                    "sid":
-                        schedule["subject_id"],
-
-                    "d":
-                        today_string(),
-
-                    "t":
-                        str(
-                            schedule["start_time"]
-                        )[:8],
-
-                    "duration":
-                        int(
-                            schedule[
-                                "duration_minutes"
-                            ]
-                        )
+                    "sid": schedule["subject_id"],
+                    "d": today_string(),
+                    "t": str(
+                        schedule["start_time"]
+                    )[:8],
+                    "duration": int(
+                        schedule["duration_minutes"]
+                    )
                 }
             )
 
         except IntegrityError:
-
             pass
 
-
-# =========================================================
-# CLASS TIME HELPERS
-# =========================================================
 
 def parse_class_start(class_info):
 
@@ -509,31 +448,308 @@ def parse_class_start(class_info):
     )
 
 
-def get_class_window(class_info):
+def class_window(class_info):
 
-    start_dt = parse_class_start(
+    start = parse_class_start(
         class_info
     )
 
     duration = int(
-        class_info[
-            "duration_minutes"
-        ]
+        class_info["duration_minutes"]
         or 60
     )
 
-    end_dt = (
-        start_dt
-        + timedelta(
-            minutes=duration
-        )
+    end = start + timedelta(
+        minutes=duration
     )
 
-    return start_dt, end_dt
+    return start, end
 
 
 # =========================================================
-# AUTHENTICATION
+# QR HELPERS
+# =========================================================
+
+def deactivate_qr_sessions():
+
+    now = naive_india_now()
+
+    q(
+        """
+        UPDATE qr_sessions
+        SET active=0
+        WHERE active=1
+        AND expires_at <= :now
+        """,
+        {
+            "now": now
+        }
+    )
+
+
+def get_active_qr(class_id):
+
+    deactivate_qr_sessions()
+
+    row = q(
+        """
+        SELECT
+            qr.id,
+            qr.class_id,
+            qr.token,
+            qr.created_at,
+            qr.expires_at,
+            qr.active,
+
+            c.class_date,
+            c.start_time,
+            c.duration_minutes,
+
+            s.code,
+            s.name
+
+        FROM qr_sessions qr
+
+        JOIN classes c
+            ON c.id=qr.class_id
+
+        JOIN subjects s
+            ON s.id=c.subject_id
+
+        WHERE qr.class_id=:cid
+        AND qr.active=1
+
+        ORDER BY qr.id DESC
+
+        LIMIT 1
+        """,
+        {
+            "cid": class_id
+        },
+        True,
+        True
+    )
+
+    if not row:
+        return None
+
+    now = naive_india_now()
+
+    try:
+
+        start, end = class_window(row)
+
+    except Exception:
+        return None
+
+    if now < start or now >= end:
+        q(
+            """
+            UPDATE qr_sessions
+            SET active=0
+            WHERE id=:id
+            """,
+            {
+                "id": row["id"]
+            }
+        )
+
+        return None
+
+    expires = row["expires_at"]
+
+    if isinstance(expires, str):
+
+        try:
+
+            expires = datetime.fromisoformat(
+                expires.replace(
+                    "Z",
+                    ""
+                )
+            )
+
+        except Exception:
+            return None
+
+    if expires <= now:
+
+        q(
+            """
+            UPDATE qr_sessions
+            SET active=0
+            WHERE id=:id
+            """,
+            {
+                "id": row["id"]
+            }
+        )
+
+        return None
+
+    return row
+
+
+def extract_qr_token(value):
+
+    value = str(
+        value or ""
+    ).strip()
+
+    if not value:
+        return ""
+
+    # Direct token
+    if not value.startswith("http"):
+        return value
+
+    # QR may contain:
+    # https://domain.com/attendance?qr=TOKEN
+
+    try:
+
+        from urllib.parse import urlparse, parse_qs
+
+        parsed = urlparse(value)
+
+        query = parse_qs(
+            parsed.query
+        )
+
+        token = query.get(
+            "qr",
+            [""]
+        )[0]
+
+        return token.strip()
+
+    except Exception:
+
+        return ""
+
+
+def verify_qr_token(token):
+
+    token = extract_qr_token(
+        token
+    )
+
+    if not token:
+        return None, "Invalid QR code."
+
+    deactivate_qr_sessions()
+
+    row = q(
+        """
+        SELECT
+            qr.id,
+            qr.class_id,
+            qr.token,
+            qr.expires_at,
+            qr.active,
+
+            c.class_date,
+            c.start_time,
+            c.duration_minutes,
+
+            s.code,
+            s.name
+
+        FROM qr_sessions qr
+
+        JOIN classes c
+            ON c.id=qr.class_id
+
+        JOIN subjects s
+            ON s.id=c.subject_id
+
+        WHERE qr.token=:token
+        AND qr.active=1
+
+        LIMIT 1
+        """,
+        {
+            "token": token
+        },
+        True,
+        True
+    )
+
+    if not row:
+        return None, "QR code is invalid or expired."
+
+    now = naive_india_now()
+
+    expires = row["expires_at"]
+
+    if isinstance(expires, str):
+
+        try:
+
+            expires = datetime.fromisoformat(
+                expires.replace(
+                    "Z",
+                    ""
+                )
+            )
+
+        except Exception:
+
+            return None, "Invalid QR expiry."
+
+    if now >= expires:
+
+        q(
+            """
+            UPDATE qr_sessions
+            SET active=0
+            WHERE id=:id
+            """,
+            {
+                "id": row["id"]
+            }
+        )
+
+        return None, "QR code has expired."
+
+    if str(row["class_date"])[:10] != today_string():
+
+        return None, "This QR is not for today's class."
+
+    try:
+
+        start, end = class_window(
+            row
+        )
+
+    except Exception:
+
+        return None, "Invalid class schedule."
+
+    if now < start:
+
+        return None, "The class has not started yet."
+
+    if now >= end:
+
+        q(
+            """
+            UPDATE qr_sessions
+            SET active=0
+            WHERE id=:id
+            """,
+            {
+                "id": row["id"]
+            }
+        )
+
+        return None, "The class has already ended."
+
+    return row, None
+
+
+# =========================================================
+# AUTH
 # =========================================================
 
 def current_user():
@@ -543,7 +759,6 @@ def current_user():
     )
 
     if not uid:
-
         return None
 
     return q(
@@ -564,18 +779,14 @@ def current_user():
 def inject_current_user():
 
     return {
-        "current_user":
-            current_user
+        "current_user": current_user
     }
 
 
 def login_required(fn):
 
     @wraps(fn)
-    def wrapper(
-        *args,
-        **kwargs
-    ):
+    def wrapper(*args, **kwargs):
 
         if not current_user():
 
@@ -583,10 +794,7 @@ def login_required(fn):
                 url_for("login")
             )
 
-        return fn(
-            *args,
-            **kwargs
-        )
+        return fn(*args, **kwargs)
 
     return wrapper
 
@@ -594,10 +802,7 @@ def login_required(fn):
 def admin_required(fn):
 
     @wraps(fn)
-    def wrapper(
-        *args,
-        **kwargs
-    ):
+    def wrapper(*args, **kwargs):
 
         u = current_user()
 
@@ -610,16 +815,13 @@ def admin_required(fn):
                 url_for("login")
             )
 
-        return fn(
-            *args,
-            **kwargs
-        )
+        return fn(*args, **kwargs)
 
     return wrapper
 
 
 # =========================================================
-# HOME
+# HOME / LOGIN
 # =========================================================
 
 @app.route("/")
@@ -643,10 +845,6 @@ def home():
         url_for("student_dashboard")
     )
 
-
-# =========================================================
-# LOGIN
-# =========================================================
 
 @app.route(
     "/login",
@@ -691,9 +889,7 @@ def login():
 
             session.clear()
 
-            session["user_id"] = (
-                u["id"]
-            )
+            session["user_id"] = u["id"]
 
             return redirect(
                 url_for("home")
@@ -708,10 +904,6 @@ def login():
         error=error
     )
 
-
-# =========================================================
-# LOGOUT
-# =========================================================
 
 @app.route("/logout")
 def logout():
@@ -801,8 +993,7 @@ def student_dashboard():
         WHERE id=:id
         """,
         {
-            "id":
-                u["student_id"]
+            "id": u["student_id"]
         },
         True,
         True
@@ -819,7 +1010,6 @@ def student_dashboard():
     rows = q(
         """
         SELECT
-            c.id AS class_id,
             sub.code,
             sub.name,
             c.class_date,
@@ -842,20 +1032,16 @@ def student_dashboard():
             c.start_time DESC
         """,
         {
-            "sid":
-                student["id"]
+            "sid": student["id"]
         },
         fetch=True
     )
 
-    now = india_now().replace(
-        tzinfo=None
-    )
+    now = naive_india_now()
 
     history = []
 
     total = 0
-
     present = 0
 
     for r in rows:
@@ -864,28 +1050,11 @@ def student_dashboard():
 
         try:
 
-            start = datetime.strptime(
-                f'{str(h["class_date"])[:10]} '
-                f'{str(h["start_time"])[:5]}',
-                "%Y-%m-%d %H:%M"
+            start, end = class_window(
+                h
             )
 
-            duration = int(
-                h["duration_minutes"]
-                or 60
-            )
-
-            end = (
-                start
-                + timedelta(
-                    minutes=duration
-                )
-            )
-
-        except (
-            TypeError,
-            ValueError
-        ):
+        except Exception:
 
             h["status"] = (
                 h["status"]
@@ -896,7 +1065,6 @@ def student_dashboard():
 
             continue
 
-        # Already marked present
         if h["status"] == "Present":
 
             display_status = "Present"
@@ -904,38 +1072,29 @@ def student_dashboard():
             if now >= end:
 
                 total += 1
-
                 present += 1
 
-        # Future
         elif now < start:
 
             display_status = "Upcoming"
 
-        # Currently running
         elif now < end:
 
             display_status = "In Progress"
 
-        # Finished
         else:
 
             display_status = "Absent"
 
             total += 1
 
-        h["status"] = (
-            display_status
-        )
+        h["status"] = display_status
 
         history.append(h)
 
     pct = (
         round(
-            (
-                present /
-                total
-            ) * 100,
+            present / total * 100,
             1
         )
         if total
@@ -953,7 +1112,7 @@ def student_dashboard():
 
 
 # =========================================================
-# REGISTER PAGE
+# PAGES
 # =========================================================
 
 @app.route("/register")
@@ -965,38 +1124,12 @@ def register_page():
     )
 
 
-# =========================================================
-# ATTENDANCE PAGE
-#
-# QR can open:
-#
-# /attendance?session=TOKEN
-#
-# The frontend can read the token.
-# =========================================================
-
 @app.route("/attendance")
 @login_required
 def attendance_page():
 
-    subjects = q(
-        """
-        SELECT *
-        FROM subjects
-        ORDER BY name
-        """,
-        fetch=True
-    )
-
-    qr_token = request.args.get(
-        "session",
-        ""
-    ).strip()
-
     return render_template(
-        "attendance.html",
-        subjects=subjects,
-        qr_session=qr_token
+        "attendance.html"
     )
 
 
@@ -1007,10 +1140,6 @@ def attendance_page():
 @app.route("/reports")
 @admin_required
 def reports():
-
-    now = india_now().replace(
-        tzinfo=None
-    )
 
     rows = q(
         """
@@ -1044,6 +1173,8 @@ def reports():
         fetch=True
     )
 
+    now = naive_india_now()
+
     students = {}
 
     for r in rows:
@@ -1055,64 +1186,33 @@ def reports():
         if sid not in students:
 
             students[sid] = {
-                "id":
-                    sid,
-
-                "roll_no":
-                    d["roll_no"],
-
-                "name":
-                    d["name"],
-
-                "department":
-                    d["department"],
-
-                "total_classes":
-                    0,
-
-                "present":
-                    0
+                "id": sid,
+                "roll_no": d["roll_no"],
+                "name": d["name"],
+                "department": d["department"],
+                "total_classes": 0,
+                "present": 0
             }
 
         if not d["class_id"]:
-
             continue
 
         try:
 
-            start = datetime.strptime(
-                f'{str(d["class_date"])[:10]} '
-                f'{str(d["start_time"])[:5]}',
-                "%Y-%m-%d %H:%M"
+            start, end = class_window(
+                d
             )
 
-            duration = int(
-                d["duration_minutes"]
-                or 60
-            )
-
-            end = (
-                start
-                + timedelta(
-                    minutes=duration
-                )
-            )
-
-        except (
-            TypeError,
-            ValueError
-        ):
+        except Exception:
 
             continue
 
-        # Future class is NOT counted
+        # Future class
         if now < start:
-
             continue
 
-        # Running class is NOT counted
+        # Current class
         if now < end:
-
             continue
 
         # Completed class
@@ -1130,63 +1230,36 @@ def reports():
 
     for student in students.values():
 
-        total_classes = int(
-            student[
-                "total_classes"
-            ]
-            or 0
-        )
+        total = student[
+            "total_classes"
+        ]
 
-        present = int(
-            student[
-                "present"
-            ]
-            or 0
-        )
+        present = student[
+            "present"
+        ]
 
         percentage = (
-
             round(
-                (
-                    present /
-                    total_classes
-                ) * 100,
+                present / total * 100,
                 1
             )
-
-            if total_classes
-
+            if total
             else 0
         )
 
-        result.append(
-            {
-                "id":
-                    student["id"],
-
-                "roll_no":
-                    student["roll_no"],
-
-                "name":
-                    student["name"],
-
-                "department":
-                    student["department"],
-
-                "total_classes":
-                    total_classes,
-
-                "present":
-                    present,
-
-                "percentage":
-                    percentage
-            }
-        )
+        result.append({
+            "id": student["id"],
+            "roll_no": student["roll_no"],
+            "name": student["name"],
+            "department": student["department"],
+            "total_classes": total,
+            "present": present,
+            "percentage": percentage
+        })
 
     result.sort(
         key=lambda x:
-            x["name"].lower()
+        x["name"].lower()
     )
 
     return render_template(
@@ -1196,7 +1269,7 @@ def reports():
 
 
 # =========================================================
-# SUBJECT CREATE
+# SUBJECTS
 # =========================================================
 
 @app.route(
@@ -1222,10 +1295,7 @@ def create_subject():
 
         return jsonify(
             ok=False,
-            error=(
-                "Subject code and name "
-                "are required."
-            )
+            error="Subject code and name are required."
         ), 400
 
     try:
@@ -1251,22 +1321,14 @@ def create_subject():
 
         return jsonify(
             ok=False,
-            error=(
-                "Subject code already exists."
-            )
+            error="Subject code already exists."
         ), 409
 
     return jsonify(
         ok=True,
-        message=(
-            "Subject created successfully."
-        )
+        message="Subject created successfully."
     )
 
-
-# =========================================================
-# SUBJECT EDIT
-# =========================================================
 
 @app.route(
     "/subjects/<int:subject_id>",
@@ -1291,10 +1353,7 @@ def edit_subject(subject_id):
 
         return jsonify(
             ok=False,
-            error=(
-                "Subject code and name "
-                "are required."
-            )
+            error="Subject code and name are required."
         ), 400
 
     try:
@@ -1302,20 +1361,14 @@ def edit_subject(subject_id):
         result = q(
             """
             UPDATE subjects
-            SET
-                code=:code,
+            SET code=:code,
                 name=:name
             WHERE id=:id
             """,
             {
-                "code":
-                    code,
-
-                "name":
-                    name,
-
-                "id":
-                    subject_id
+                "code": code,
+                "name": name,
+                "id": subject_id
             }
         )
 
@@ -1330,22 +1383,14 @@ def edit_subject(subject_id):
 
         return jsonify(
             ok=False,
-            error=(
-                "Subject code already exists."
-            )
+            error="Subject code already exists."
         ), 409
 
     return jsonify(
         ok=True,
-        message=(
-            "Subject updated successfully."
-        )
+        message="Subject updated successfully."
     )
 
-
-# =========================================================
-# SUBJECT DELETE
-# =========================================================
 
 @app.route(
     "/subjects/<int:subject_id>",
@@ -1361,8 +1406,7 @@ def delete_subject(subject_id):
         WHERE id=:id
         """,
         {
-            "id":
-                subject_id
+            "id": subject_id
         },
         True,
         True
@@ -1379,6 +1423,20 @@ def delete_subject(subject_id):
 
         q(
             """
+            DELETE FROM qr_sessions
+            WHERE class_id IN (
+                SELECT id
+                FROM classes
+                WHERE subject_id=:sid
+            )
+            """,
+            {
+                "sid": subject_id
+            }
+        )
+
+        q(
+            """
             DELETE FROM attendance
             WHERE class_id IN (
                 SELECT id
@@ -1387,23 +1445,7 @@ def delete_subject(subject_id):
             )
             """,
             {
-                "sid":
-                    subject_id
-            }
-        )
-
-        q(
-            """
-            DELETE FROM attendance_sessions
-            WHERE class_id IN (
-                SELECT id
-                FROM classes
-                WHERE subject_id=:sid
-            )
-            """,
-            {
-                "sid":
-                    subject_id
+                "sid": subject_id
             }
         )
 
@@ -1413,8 +1455,17 @@ def delete_subject(subject_id):
             WHERE subject_id=:sid
             """,
             {
-                "sid":
-                    subject_id
+                "sid": subject_id
+            }
+        )
+
+        q(
+            """
+            DELETE FROM class_schedules
+            WHERE subject_id=:sid
+            """,
+            {
+                "sid": subject_id
             }
         )
 
@@ -1424,25 +1475,16 @@ def delete_subject(subject_id):
             WHERE id=:id
             """,
             {
-                "id":
-                    subject_id
+                "id": subject_id
             }
         )
 
         return jsonify(
             ok=True,
-            message=(
-                "Subject, class sessions "
-                "and attendance records "
-                "deleted."
-            )
+            message="Subject deleted successfully."
         )
 
     except Exception as e:
-
-        app.logger.exception(
-            "Subject delete error"
-        )
 
         return jsonify(
             ok=False,
@@ -1451,7 +1493,7 @@ def delete_subject(subject_id):
 
 
 # =========================================================
-# DAILY TIMETABLE CREATE
+# DAILY TIMETABLE
 # =========================================================
 
 @app.route(
@@ -1459,7 +1501,7 @@ def delete_subject(subject_id):
     methods=["POST"]
 )
 @admin_required
-def create_class():
+def create_class_schedule():
 
     data = request.get_json(
         force=True
@@ -1488,10 +1530,7 @@ def create_class():
 
         return jsonify(
             ok=False,
-            error=(
-                "Invalid subject "
-                "or duration."
-            )
+            error="Invalid subject or duration."
         ), 400
 
     start_time = str(
@@ -1501,31 +1540,18 @@ def create_class():
         )
     ).strip()[:5]
 
-    if (
-        not subject_id
-        or not start_time
-    ):
+    if not subject_id or not start_time:
 
         return jsonify(
             ok=False,
-            error=(
-                "Subject and start "
-                "time are required."
-            )
+            error="Subject and start time are required."
         ), 400
 
-    if (
-        duration <= 0
-        or duration > 480
-    ):
+    if duration <= 0 or duration > 480:
 
         return jsonify(
             ok=False,
-            error=(
-                "Duration must be "
-                "between 1 and 480 "
-                "minutes."
-            )
+            error="Duration must be between 1 and 480 minutes."
         ), 400
 
     try:
@@ -1539,10 +1565,7 @@ def create_class():
 
         return jsonify(
             ok=False,
-            error=(
-                "Start time must "
-                "be HH:MM."
-            )
+            error="Start time must be HH:MM."
         ), 400
 
     if not q(
@@ -1552,8 +1575,7 @@ def create_class():
         WHERE id=:id
         """,
         {
-            "id":
-                subject_id
+            "id": subject_id
         },
         True,
         True
@@ -1561,10 +1583,7 @@ def create_class():
 
         return jsonify(
             ok=False,
-            error=(
-                "Selected subject "
-                "does not exist."
-            )
+            error="Selected subject does not exist."
         ), 400
 
     try:
@@ -1583,40 +1602,24 @@ def create_class():
             )
             """,
             {
-                "sid":
-                    subject_id,
-
-                "t":
-                    start_time,
-
-                "duration":
-                    duration
+                "sid": subject_id,
+                "t": start_time,
+                "duration": duration
             }
         )
 
         return jsonify(
             ok=True,
-            message=(
-                "Daily class schedule "
-                "created successfully."
-            )
+            message="Daily class schedule created successfully."
         )
 
     except IntegrityError:
 
         return jsonify(
             ok=False,
-            error=(
-                "A daily schedule already "
-                "exists for this subject "
-                "and time."
-            )
+            error="A daily schedule already exists for this subject and time."
         ), 409
 
-
-# =========================================================
-# CLASS SCHEDULES
-# =========================================================
 
 @app.route(
     "/api/class-schedules"
@@ -1630,15 +1633,17 @@ def class_schedules():
             cs.id,
             cs.subject_id,
             CAST(
-                cs.start_time
-                AS TEXT
+                cs.start_time AS TEXT
             ) AS start_time,
             cs.duration_minutes,
             s.code,
             s.name
+
         FROM class_schedules cs
+
         JOIN subjects s
             ON s.id=cs.subject_id
+
         ORDER BY cs.start_time
         """,
         fetch=True
@@ -1647,37 +1652,21 @@ def class_schedules():
     return jsonify(
         [
             {
-                "id":
-                    r["id"],
-
-                "subject_id":
-                    r["subject_id"],
-
+                "id": r["id"],
+                "subject_id": r["subject_id"],
                 "start_time":
-                    str(
-                        r["start_time"]
-                    ),
-
+                    str(r["start_time"])[:5],
                 "duration_minutes":
                     int(
                         r["duration_minutes"]
                     ),
-
-                "code":
-                    r["code"],
-
-                "name":
-                    r["name"]
+                "code": r["code"],
+                "name": r["name"]
             }
-
             for r in rows
         ]
     )
 
-
-# =========================================================
-# EDIT DAILY SCHEDULE
-# =========================================================
 
 @app.route(
     "/api/class-schedules/<int:schedule_id>",
@@ -1715,10 +1704,7 @@ def edit_class_schedule(
 
         return jsonify(
             ok=False,
-            error=(
-                "Invalid subject "
-                "or duration."
-            )
+            error="Invalid subject or duration."
         ), 400
 
     start_time = str(
@@ -1728,31 +1714,18 @@ def edit_class_schedule(
         )
     ).strip()[:5]
 
-    if (
-        not subject_id
-        or not start_time
-    ):
+    if not subject_id or not start_time:
 
         return jsonify(
             ok=False,
-            error=(
-                "Subject and start "
-                "time are required."
-            )
+            error="Subject and start time are required."
         ), 400
 
-    if (
-        duration <= 0
-        or duration > 480
-    ):
+    if duration <= 0 or duration > 480:
 
         return jsonify(
             ok=False,
-            error=(
-                "Duration must be "
-                "between 1 and 480 "
-                "minutes."
-            )
+            error="Duration must be between 1 and 480 minutes."
         ), 400
 
     try:
@@ -1766,30 +1739,8 @@ def edit_class_schedule(
 
         return jsonify(
             ok=False,
-            error=(
-                "Start time must "
-                "be HH:MM."
-            )
+            error="Start time must be HH:MM."
         ), 400
-
-    if not q(
-        """
-        SELECT id
-        FROM subjects
-        WHERE id=:id
-        """,
-        {
-            "id":
-                subject_id
-        },
-        True,
-        True
-    ):
-
-        return jsonify(
-            ok=False,
-            error="Subject not found."
-        ), 404
 
     try:
 
@@ -1803,17 +1754,10 @@ def edit_class_schedule(
             WHERE id=:id
             """,
             {
-                "sid":
-                    subject_id,
-
-                "t":
-                    start_time,
-
-                "duration":
-                    duration,
-
-                "id":
-                    schedule_id
+                "sid": subject_id,
+                "t": start_time,
+                "duration": duration,
+                "id": schedule_id
             }
         )
 
@@ -1821,34 +1765,21 @@ def edit_class_schedule(
 
             return jsonify(
                 ok=False,
-                error=(
-                    "Daily schedule "
-                    "not found."
-                )
+                error="Daily schedule not found."
             ), 404
 
         return jsonify(
             ok=True,
-            message=(
-                "Daily schedule "
-                "updated successfully."
-            )
+            message="Daily schedule updated successfully."
         )
 
     except IntegrityError:
 
         return jsonify(
             ok=False,
-            error=(
-                "Another schedule already "
-                "uses this subject and time."
-            )
+            error="Another schedule already uses this subject and time."
         ), 409
 
-
-# =========================================================
-# DELETE DAILY SCHEDULE
-# =========================================================
 
 @app.route(
     "/api/class-schedules/<int:schedule_id>",
@@ -1865,8 +1796,7 @@ def delete_class_schedule(
         WHERE id=:id
         """,
         {
-            "id":
-                schedule_id
+            "id": schedule_id
         }
     )
 
@@ -1874,23 +1804,17 @@ def delete_class_schedule(
 
         return jsonify(
             ok=False,
-            error=(
-                "Daily schedule "
-                "not found."
-            )
+            error="Daily schedule not found."
         ), 404
 
     return jsonify(
         ok=True,
-        message=(
-            "Daily schedule "
-            "deleted successfully."
-        )
+        message="Daily schedule deleted successfully."
     )
 
 
 # =========================================================
-# TODAY STATUS
+# HOLIDAYS
 # =========================================================
 
 @app.route(
@@ -1904,10 +1828,6 @@ def today_status():
     )
 
 
-# =========================================================
-# HOLIDAYS
-# =========================================================
-
 @app.route(
     "/api/holidays"
 )
@@ -1919,11 +1839,12 @@ def api_holidays():
         SELECT
             id,
             CAST(
-                holiday_date
-                AS TEXT
+                holiday_date AS TEXT
             ) AS holiday_date,
             name
+
         FROM holidays
+
         ORDER BY holiday_date
         """,
         fetch=True
@@ -1932,18 +1853,11 @@ def api_holidays():
     return jsonify(
         [
             {
-                "id":
-                    r["id"],
-
+                "id": r["id"],
                 "holiday_date":
-                    str(
-                        r["holiday_date"]
-                    ),
-
-                "name":
-                    r["name"]
+                    str(r["holiday_date"]),
+                "name": r["name"]
             }
-
             for r in rows
         ]
     )
@@ -1974,17 +1888,11 @@ def create_holiday():
         )
     ).strip()
 
-    if (
-        not holiday_date
-        or not name
-    ):
+    if not holiday_date or not name:
 
         return jsonify(
             ok=False,
-            error=(
-                "Holiday date and "
-                "name are required."
-            )
+            error="Holiday date and name are required."
         ), 400
 
     try:
@@ -1998,10 +1906,7 @@ def create_holiday():
 
         return jsonify(
             ok=False,
-            error=(
-                "Holiday date must "
-                "be YYYY-MM-DD."
-            )
+            error="Holiday date must be YYYY-MM-DD."
         ), 400
 
     try:
@@ -2018,30 +1923,21 @@ def create_holiday():
             )
             """,
             {
-                "d":
-                    holiday_date,
-
-                "n":
-                    name
+                "d": holiday_date,
+                "n": name
             }
         )
 
         return jsonify(
             ok=True,
-            message=(
-                "Holiday added "
-                "successfully."
-            )
+            message="Holiday added successfully."
         )
 
     except IntegrityError:
 
         return jsonify(
             ok=False,
-            error=(
-                "A holiday already "
-                "exists for this date."
-            )
+            error="A holiday already exists for this date."
         ), 409
 
 
@@ -2060,8 +1956,7 @@ def delete_holiday(
         WHERE id=:id
         """,
         {
-            "id":
-                holiday_id
+            "id": holiday_id
         }
     )
 
@@ -2074,10 +1969,77 @@ def delete_holiday(
 
     return jsonify(
         ok=True,
-        message=(
-            "Holiday removed "
-            "successfully."
-        )
+        message="Holiday removed successfully."
+    )
+
+
+# =========================================================
+# TODAY'S CLASSES
+# =========================================================
+
+@app.route(
+    "/api/classes"
+)
+@login_required
+def api_classes():
+
+    status = get_today_status()
+
+    if status["is_holiday"]:
+
+        return jsonify([])
+
+    ensure_today_sessions()
+
+    rows = q(
+        """
+        SELECT
+            c.id,
+            c.subject_id,
+            CAST(
+                c.class_date AS TEXT
+            ) AS class_date,
+            CAST(
+                c.start_time AS TEXT
+            ) AS start_time,
+            c.duration_minutes,
+            s.code,
+            s.name
+
+        FROM classes c
+
+        JOIN subjects s
+            ON s.id=c.subject_id
+
+        WHERE c.class_date=:d
+
+        ORDER BY c.start_time
+        """,
+        {
+            "d": today_string()
+        },
+        fetch=True
+    )
+
+    return jsonify(
+        [
+            {
+                "id": r["id"],
+                "subject_id": r["subject_id"],
+                "class_date":
+                    str(r["class_date"]),
+                "start_time":
+                    str(r["start_time"])[:5],
+                "duration_minutes":
+                    int(
+                        r["duration_minutes"]
+                        or 60
+                    ),
+                "code": r["code"],
+                "name": r["name"]
+            }
+            for r in rows
+        ]
     )
 
 
@@ -2100,14 +2062,16 @@ def delete_class(
             c.id,
             s.code,
             c.class_date
+
         FROM classes c
+
         JOIN subjects s
             ON s.id=c.subject_id
+
         WHERE c.id=:id
         """,
         {
-            "id":
-                class_id
+            "id": class_id
         },
         True,
         True
@@ -2117,22 +2081,18 @@ def delete_class(
 
         return jsonify(
             ok=False,
-            error=(
-                "Class session "
-                "not found."
-            )
+            error="Class session not found."
         ), 404
 
     try:
 
         q(
             """
-            DELETE FROM attendance_sessions
+            DELETE FROM qr_sessions
             WHERE class_id=:cid
             """,
             {
-                "cid":
-                    class_id
+                "cid": class_id
             }
         )
 
@@ -2142,8 +2102,7 @@ def delete_class(
             WHERE class_id=:cid
             """,
             {
-                "cid":
-                    class_id
+                "cid": class_id
             }
         )
 
@@ -2153,30 +2112,372 @@ def delete_class(
             WHERE id=:id
             """,
             {
-                "id":
-                    class_id
+                "id": class_id
             }
         )
 
         return jsonify(
             ok=True,
-            message=(
-                "Class session and "
-                "its attendance records "
-                "deleted."
-            )
+            message="Class session deleted successfully."
         )
 
     except Exception as e:
-
-        app.logger.exception(
-            "Delete class error"
-        )
 
         return jsonify(
             ok=False,
             error=str(e)
         ), 400
+
+
+# =========================================================
+# QR - START
+# =========================================================
+
+@app.route(
+    "/api/qr/start",
+    methods=["POST"]
+)
+@admin_required
+def start_qr():
+
+    data = request.get_json(
+        force=True
+    ) or {}
+
+    try:
+
+        class_id = int(
+            data.get(
+                "class_id",
+                0
+            )
+        )
+
+    except (
+        TypeError,
+        ValueError
+    ):
+
+        return jsonify(
+            ok=False,
+            error="Invalid class."
+        ), 400
+
+    class_info = q(
+        """
+        SELECT
+            c.*,
+            s.code,
+            s.name AS subject_name
+
+        FROM classes c
+
+        JOIN subjects s
+            ON s.id=c.subject_id
+
+        WHERE c.id=:id
+        """,
+        {
+            "id": class_id
+        },
+        True,
+        True
+    )
+
+    if not class_info:
+
+        return jsonify(
+            ok=False,
+            error="Class not found."
+        ), 404
+
+    if str(
+        class_info["class_date"]
+    )[:10] != today_string():
+
+        return jsonify(
+            ok=False,
+            error="QR can only be started for today's class."
+        ), 400
+
+    status = get_today_status()
+
+    if status["is_holiday"]:
+
+        return jsonify(
+            ok=False,
+            error="Today is a holiday."
+        ), 400
+
+    try:
+
+        start, end = class_window(
+            class_info
+        )
+
+    except Exception:
+
+        return jsonify(
+            ok=False,
+            error="Invalid class schedule."
+        ), 500
+
+    now = naive_india_now()
+
+    if now < start:
+
+        return jsonify(
+            ok=False,
+            error=(
+                "Class has not started yet. "
+                f"QR can start at "
+                f"{start.strftime('%I:%M %p')}."
+            )
+        ), 400
+
+    if now >= end:
+
+        return jsonify(
+            ok=False,
+            error="This class has already ended."
+        ), 400
+
+    # Stop previous QR for this class.
+    q(
+        """
+        UPDATE qr_sessions
+        SET active=0
+        WHERE class_id=:cid
+        AND active=1
+        """,
+        {
+            "cid": class_id
+        }
+    )
+
+    token = secrets.token_urlsafe(
+        32
+    )
+
+    qr_expiry = min(
+        now + timedelta(minutes=2),
+        end
+    )
+
+    q(
+        """
+        INSERT INTO qr_sessions(
+            class_id,
+            token,
+            expires_at,
+            active
+        )
+        VALUES(
+            :cid,
+            :token,
+            :expires,
+            1
+        )
+        """,
+        {
+            "cid": class_id,
+            "token": token,
+            "expires": qr_expiry
+        }
+    )
+
+    scan_url = (
+        request.host_url.rstrip("/")
+        + url_for(
+            "attendance_page"
+        )
+        + "?qr="
+        + token
+    )
+
+    return jsonify(
+        ok=True,
+        token=token,
+        scan_url=scan_url,
+        class_id=class_id,
+        subject_code=class_info["code"],
+        subject=class_info["subject_name"],
+        start_time=str(
+            class_info["start_time"]
+        )[:5],
+        expires_at=qr_expiry.isoformat()
+    )
+
+
+# =========================================================
+# QR - STATUS
+# =========================================================
+
+@app.route(
+    "/api/qr/status"
+)
+@admin_required
+def qr_status():
+
+    try:
+
+        class_id = int(
+            request.args.get(
+                "class_id",
+                0
+            )
+        )
+
+    except ValueError:
+
+        return jsonify(
+            ok=False,
+            error="Invalid class."
+        ), 400
+
+    qr = get_active_qr(
+        class_id
+    )
+
+    if not qr:
+
+        return jsonify(
+            ok=True,
+            active=False
+        )
+
+    expires = qr["expires_at"]
+
+    if isinstance(expires, str):
+
+        expires = datetime.fromisoformat(
+            expires.replace(
+                "Z",
+                ""
+            )
+        )
+
+    scan_url = (
+        request.host_url.rstrip("/")
+        + url_for(
+            "attendance_page"
+        )
+        + "?qr="
+        + qr["token"]
+    )
+
+    return jsonify(
+        ok=True,
+        active=True,
+        token=qr["token"],
+        scan_url=scan_url,
+        class_id=qr["class_id"],
+        subject_code=qr["code"],
+        subject=qr["name"],
+        start_time=str(
+            qr["start_time"]
+        )[:5],
+        expires_at=expires.isoformat()
+    )
+
+
+# =========================================================
+# QR - END
+# =========================================================
+
+@app.route(
+    "/api/qr/end",
+    methods=["POST"]
+)
+@admin_required
+def end_qr():
+
+    data = request.get_json(
+        force=True
+    ) or {}
+
+    try:
+
+        class_id = int(
+            data.get(
+                "class_id",
+                0
+            )
+        )
+
+    except (
+        TypeError,
+        ValueError
+    ):
+
+        return jsonify(
+            ok=False,
+            error="Invalid class."
+        ), 400
+
+    result = q(
+        """
+        UPDATE qr_sessions
+        SET active=0
+        WHERE class_id=:cid
+        AND active=1
+        """,
+        {
+            "cid": class_id
+        }
+    )
+
+    return jsonify(
+        ok=True,
+        message="QR ended successfully."
+    )
+
+
+# =========================================================
+# QR - VERIFY
+# =========================================================
+
+@app.route(
+    "/api/qr/verify"
+)
+@login_required
+def verify_qr():
+
+    token = request.args.get(
+        "token",
+        ""
+    )
+
+    row, error = verify_qr_token(
+        token
+    )
+
+    if error:
+
+        return jsonify(
+            ok=False,
+            error=error
+        ), 400
+
+    return jsonify(
+        ok=True,
+        class_id=row["class_id"],
+        subject_code=row["code"],
+        subject=row["name"],
+        class_date=str(
+            row["class_date"]
+        )[:10],
+        start_time=str(
+            row["start_time"]
+        )[:5],
+        duration_minutes=int(
+            row["duration_minutes"]
+            or 60
+        ),
+        expires_at=str(
+            row["expires_at"]
+        )
+    )
 
 
 # =========================================================
@@ -2224,11 +2525,7 @@ def create_student():
 
         return jsonify(
             ok=False,
-            error=(
-                "Roll number, name and "
-                "at least one face sample "
-                "are required."
-            )
+            error="Roll number, name and at least one face sample are required."
         ), 400
 
     try:
@@ -2251,32 +2548,23 @@ def create_student():
             )
             """,
             {
-                "r":
-                    roll_no,
-
-                "n":
-                    name,
-
-                "e":
-                    str(
-                        data.get(
-                            "email",
-                            ""
-                        )
-                    ).strip(),
-
-                "d":
-                    str(
-                        data.get(
-                            "department",
-                            ""
-                        )
-                    ).strip(),
-
-                "f":
-                    json.dumps(
-                        embeddings
+                "r": roll_no,
+                "n": name,
+                "e": str(
+                    data.get(
+                        "email",
+                        ""
                     )
+                ).strip(),
+                "d": str(
+                    data.get(
+                        "department",
+                        ""
+                    )
+                ).strip(),
+                "f": json.dumps(
+                    embeddings
+                )
             }
         )
 
@@ -2287,8 +2575,7 @@ def create_student():
             WHERE roll_no=:r
             """,
             {
-                "r":
-                    roll_no
+                "r": roll_no
             },
             True,
             True
@@ -2298,14 +2585,13 @@ def create_student():
 
         return jsonify(
             ok=False,
-            error=(
-                "Roll number already "
-                "exists."
-            )
+            error="Roll number already exists."
         ), 409
 
     password = (
-        data.get("password")
+        data.get(
+            "password"
+        )
         or "student123"
     )
 
@@ -2327,21 +2613,15 @@ def create_student():
             )
             """,
             {
-                "u":
-                    roll_no,
-
-                "p":
-                    generate_password_hash(
-                        password
-                    ),
-
-                "sid":
-                    sid
+                "u": roll_no,
+                "p": generate_password_hash(
+                    password
+                ),
+                "sid": sid
             }
         )
 
     except IntegrityError:
-
         pass
 
     return jsonify(
@@ -2394,10 +2674,7 @@ def edit_student(
 
         return jsonify(
             ok=False,
-            error=(
-                "Student name "
-                "is required."
-            )
+            error="Student name is required."
         ), 400
 
     student = q(
@@ -2407,8 +2684,7 @@ def edit_student(
         WHERE id=:id
         """,
         {
-            "id":
-                student_id
+            "id": student_id
         },
         True,
         True
@@ -2418,9 +2694,7 @@ def edit_student(
 
         return jsonify(
             ok=False,
-            error=(
-                "Student not found."
-            )
+            error="Student not found."
         ), 404
 
     q(
@@ -2433,17 +2707,10 @@ def edit_student(
         WHERE id=:id
         """,
         {
-            "name":
-                name,
-
-            "email":
-                email,
-
-            "department":
-                department,
-
-            "id":
-                student_id
+            "name": name,
+            "email": email,
+            "department": department,
+            "id": student_id
         }
     )
 
@@ -2463,22 +2730,16 @@ def edit_student(
             WHERE student_id=:sid
             """,
             {
-                "p":
-                    generate_password_hash(
-                        password
-                    ),
-
-                "sid":
-                    student_id
+                "p": generate_password_hash(
+                    password
+                ),
+                "sid": student_id
             }
         )
 
     return jsonify(
         ok=True,
-        message=(
-            "Student updated "
-            "successfully."
-        )
+        message="Student updated successfully."
     )
 
 
@@ -2502,8 +2763,7 @@ def delete_student(
         WHERE id=:id
         """,
         {
-            "id":
-                student_id
+            "id": student_id
         },
         True,
         True
@@ -2513,9 +2773,7 @@ def delete_student(
 
         return jsonify(
             ok=False,
-            error=(
-                "Student not found."
-            )
+            error="Student not found."
         ), 404
 
     try:
@@ -2526,8 +2784,7 @@ def delete_student(
             WHERE student_id=:sid
             """,
             {
-                "sid":
-                    student_id
+                "sid": student_id
             }
         )
 
@@ -2537,8 +2794,7 @@ def delete_student(
             WHERE student_id=:sid
             """,
             {
-                "sid":
-                    student_id
+                "sid": student_id
             }
         )
 
@@ -2548,25 +2804,19 @@ def delete_student(
             WHERE id=:sid
             """,
             {
-                "sid":
-                    student_id
+                "sid": student_id
             }
         )
 
         return jsonify(
             ok=True,
             message=(
-                f"Student "
-                f"{student['name']} "
+                f"Student {student['name']} "
                 "deleted successfully."
             )
         )
 
     except Exception as e:
-
-        app.logger.exception(
-            "Delete student error"
-        )
 
         return jsonify(
             ok=False,
@@ -2591,838 +2841,29 @@ def recognition_data():
             roll_no,
             name,
             face_embeddings
+
         FROM students
         """,
         fetch=True
     )
 
-    result = []
-
-    for r in rows:
-
-        try:
-
-            embeddings = json.loads(
-                r["face_embeddings"]
-            )
-
-        except Exception:
-
-            embeddings = []
-
-        result.append(
-            {
-                "id":
-                    r["id"],
-
-                "roll_no":
-                    r["roll_no"],
-
-                "name":
-                    r["name"],
-
-                "embeddings":
-                    embeddings
-            }
-        )
-
     return jsonify(
-        result
-    )
-
-
-# =========================================================
-# QR SECURITY HELPERS
-# =========================================================
-
-QR_EXPIRY_SECONDS = 120
-
-
-def hash_qr_token(token):
-
-    return hashlib.sha256(
-        token.encode(
-            "utf-8"
-        )
-    ).hexdigest()
-
-
-def generate_qr_token():
-
-    return secrets.token_urlsafe(
-        32
-    )
-
-
-def parse_db_datetime(value):
-
-    if isinstance(
-        value,
-        datetime
-    ):
-
-        return value
-
-    value = str(value)
-
-    value = value.replace(
-        "T",
-        " "
-    )
-
-    value = value.replace(
-        "Z",
-        ""
-    )
-
-    value = value[:26]
-
-    formats = [
-        "%Y-%m-%d %H:%M:%S.%f",
-        "%Y-%m-%d %H:%M:%S",
-        "%Y-%m-%d %H:%M"
-    ]
-
-    for fmt in formats:
-
-        try:
-
-            return datetime.strptime(
-                value,
-                fmt
-            )
-
-        except ValueError:
-
-            continue
-
-    return None
-
-
-def get_active_qr_session(
-    token
-):
-
-    if not token:
-
-        return None
-
-    token_hash = hash_qr_token(
-        token
-    )
-
-    row = q(
-        """
-        SELECT
-            ats.id,
-            ats.class_id,
-            ats.token_hash,
-            ats.created_at,
-            ats.expires_at,
-            ats.active,
-
-            c.class_date,
-            c.start_time,
-            c.duration_minutes,
-
-            s.code,
-            s.name AS subject_name
-
-        FROM attendance_sessions ats
-
-        JOIN classes c
-            ON c.id=ats.class_id
-
-        JOIN subjects s
-            ON s.id=c.subject_id
-
-        WHERE ats.token_hash=:hash
-        AND ats.active=TRUE
-        """,
-        {
-            "hash":
-                token_hash
-        },
-        True,
-        True
-    )
-
-    if not row:
-
-        return None
-
-    expires_at = parse_db_datetime(
-        row["expires_at"]
-    )
-
-    now = india_now().replace(
-        tzinfo=None
-    )
-
-    if not expires_at:
-
-        return None
-
-    if now >= expires_at:
-
-        # Automatically deactivate expired QR.
-        q(
-            """
-            UPDATE attendance_sessions
-            SET active=FALSE
-            WHERE id=:id
-            """,
+        [
             {
-                "id":
-                    row["id"]
+                "id": r["id"],
+                "roll_no": r["roll_no"],
+                "name": r["name"],
+                "embeddings": json.loads(
+                    r["face_embeddings"]
+                )
             }
-        )
-
-        return None
-
-    return row
-
-
-# =========================================================
-# ADMIN: START QR SESSION
-# =========================================================
-
-@app.route(
-    "/api/attendance-sessions/start",
-    methods=["POST"]
-)
-@admin_required
-def start_attendance_session():
-
-    data = request.get_json(
-        force=True
-    ) or {}
-
-    try:
-
-        class_id = int(
-            data.get(
-                "class_id",
-                0
-            )
-        )
-
-    except (
-        TypeError,
-        ValueError
-    ):
-
-        return jsonify(
-            ok=False,
-            error=(
-                "Invalid class ID."
-            )
-        ), 400
-
-    if not class_id:
-
-        return jsonify(
-            ok=False,
-            error=(
-                "Class ID is required."
-            )
-        ), 400
-
-    status = get_today_status()
-
-    if status["is_holiday"]:
-
-        return jsonify(
-            ok=False,
-            error=(
-                "Cannot start attendance "
-                "session on "
-                f"{status['holiday_name']}."
-            )
-        ), 400
-
-    class_info = q(
-        """
-        SELECT
-            c.*,
-            s.code,
-            s.name AS subject_name
-        FROM classes c
-        JOIN subjects s
-            ON s.id=c.subject_id
-        WHERE c.id=:id
-        """,
-        {
-            "id":
-                class_id
-        },
-        True,
-        True
-    )
-
-    if not class_info:
-
-        return jsonify(
-            ok=False,
-            error=(
-                "Class session "
-                "not found."
-            )
-        ), 404
-
-    # QR can only be started for today's class.
-    if (
-        str(
-            class_info["class_date"]
-        )[:10]
-        != today_string()
-    ):
-
-        return jsonify(
-            ok=False,
-            error=(
-                "QR attendance can "
-                "only be started "
-                "for today's class."
-            )
-        ), 400
-
-    try:
-
-        start_dt, end_dt = (
-            get_class_window(
-                class_info
-            )
-        )
-
-    except (
-        TypeError,
-        ValueError
-    ):
-
-        return jsonify(
-            ok=False,
-            error=(
-                "Invalid class schedule."
-            )
-        ), 500
-
-    now = india_now().replace(
-        tzinfo=None
-    )
-
-    # Teacher cannot start QR before class.
-    if now < start_dt:
-
-        return jsonify(
-            ok=False,
-            error=(
-                "Class has not started yet. "
-                f"QR can be started at "
-                f"{start_dt.strftime('%I:%M %p')}."
-            )
-        ), 400
-
-    # Teacher cannot start QR after class.
-    if now >= end_dt:
-
-        return jsonify(
-            ok=False,
-            error=(
-                "This class has already ended. "
-                "QR attendance is closed."
-            )
-        ), 400
-
-    # -----------------------------------------------------
-    # Invalidate all old QR sessions for this class.
-    # -----------------------------------------------------
-
-    q(
-        """
-        UPDATE attendance_sessions
-        SET active=FALSE
-        WHERE class_id=:cid
-        AND active=TRUE
-        """,
-        {
-            "cid":
-                class_id
-        }
-    )
-
-    # -----------------------------------------------------
-    # Generate cryptographically random token.
-    # -----------------------------------------------------
-
-    token = generate_qr_token()
-
-    token_hash = hash_qr_token(
-        token
-    )
-
-    created_at = now
-
-    requested_expiry = (
-        now
-        + timedelta(
-            seconds=QR_EXPIRY_SECONDS
-        )
-    )
-
-    # Never allow QR to survive beyond class end.
-    expires_at = min(
-        requested_expiry,
-        end_dt
-    )
-
-    q(
-        """
-        INSERT INTO attendance_sessions(
-            class_id,
-            token_hash,
-            created_at,
-            expires_at,
-            active
-        )
-        VALUES(
-            :cid,
-            :hash,
-            :created,
-            :expires,
-            TRUE
-        )
-        """,
-        {
-            "cid":
-                class_id,
-
-            "hash":
-                token_hash,
-
-            "created":
-                created_at,
-
-            "expires":
-                expires_at
-        }
-    )
-
-    # The frontend uses this URL to create the QR.
-    qr_url = (
-        url_for(
-            "attendance_page",
-            _external=True
-        )
-        + "?session="
-        + token
-    )
-
-    return jsonify(
-        ok=True,
-
-        session_token=token,
-
-        qr_url=qr_url,
-
-        class_id=class_id,
-
-        subject=class_info[
-            "subject_name"
-        ],
-
-        code=class_info[
-            "code"
-        ],
-
-        starts_at=start_dt.strftime(
-            "%Y-%m-%d %H:%M:%S"
-        ),
-
-        expires_at=expires_at.strftime(
-            "%Y-%m-%d %H:%M:%S"
-        ),
-
-        expires_in_seconds=max(
-            0,
-            int(
-                (
-                    expires_at -
-                    now
-                ).total_seconds()
-            )
-        )
-    )
-
-
-# =========================================================
-# ADMIN: END QR SESSION
-# =========================================================
-
-@app.route(
-    "/api/attendance-sessions/end",
-    methods=["POST"]
-)
-@admin_required
-def end_attendance_session():
-
-    data = request.get_json(
-        force=True
-    ) or {}
-
-    token = str(
-        data.get(
-            "session_token",
-            ""
-        )
-    ).strip()
-
-    try:
-
-        class_id = int(
-            data.get(
-                "class_id",
-                0
-            )
-        )
-
-    except (
-        TypeError,
-        ValueError
-    ):
-
-        class_id = 0
-
-    if token:
-
-        token_hash = hash_qr_token(
-            token
-        )
-
-        result = q(
-            """
-            UPDATE attendance_sessions
-            SET active=FALSE
-            WHERE token_hash=:hash
-            """,
-            {
-                "hash":
-                    token_hash
-            }
-        )
-
-    elif class_id:
-
-        result = q(
-            """
-            UPDATE attendance_sessions
-            SET active=FALSE
-            WHERE class_id=:cid
-            AND active=TRUE
-            """,
-            {
-                "cid":
-                    class_id
-            }
-        )
-
-    else:
-
-        return jsonify(
-            ok=False,
-            error=(
-                "Session token or "
-                "class ID is required."
-            )
-        ), 400
-
-    return jsonify(
-        ok=True,
-        message=(
-            "QR attendance session "
-            "ended."
-        ),
-        changed=result.rowcount
-    )
-
-
-# =========================================================
-# ADMIN: CURRENT QR SESSION
-# =========================================================
-
-@app.route(
-    "/api/attendance-sessions/<int:class_id>"
-)
-@admin_required
-def current_attendance_session(
-    class_id
-):
-
-    row = q(
-        """
-        SELECT
-            ats.id,
-            ats.class_id,
-            ats.created_at,
-            ats.expires_at,
-            ats.active
-        FROM attendance_sessions ats
-        WHERE ats.class_id=:cid
-        AND ats.active=TRUE
-        ORDER BY ats.id DESC
-        """,
-        {
-            "cid":
-                class_id
-        },
-        True,
-        True
-    )
-
-    if not row:
-
-        return jsonify(
-            ok=True,
-            active=False
-        )
-
-    expires_at = parse_db_datetime(
-        row["expires_at"]
-    )
-
-    now = india_now().replace(
-        tzinfo=None
-    )
-
-    if (
-        not expires_at
-        or now >= expires_at
-    ):
-
-        q(
-            """
-            UPDATE attendance_sessions
-            SET active=FALSE
-            WHERE id=:id
-            """,
-            {
-                "id":
-                    row["id"]
-            }
-        )
-
-        return jsonify(
-            ok=True,
-            active=False
-        )
-
-    remaining = int(
-        (
-            expires_at -
-            now
-        ).total_seconds()
-    )
-
-    return jsonify(
-        ok=True,
-        active=True,
-        expires_at=expires_at.strftime(
-            "%Y-%m-%d %H:%M:%S"
-        ),
-        remaining_seconds=max(
-            0,
-            remaining
-        )
-    )
-
-
-# =========================================================
-# PUBLIC/LOGGED-IN QR SESSION VALIDATION
-#
-# This endpoint receives the raw QR token.
-# It returns only safe class information.
-# =========================================================
-
-@app.route(
-    "/api/attendance-session/validate",
-    methods=["POST"]
-)
-@login_required
-def validate_attendance_session():
-
-    data = request.get_json(
-        force=True
-    ) or {}
-
-    token = str(
-        data.get(
-            "session_token",
-            ""
-        )
-    ).strip()
-
-    if not token:
-
-        return jsonify(
-            ok=False,
-            error=(
-                "Attendance QR token "
-                "is required."
-            )
-        ), 400
-
-    row = get_active_qr_session(
-        token
-    )
-
-    if not row:
-
-        return jsonify(
-            ok=False,
-            error=(
-                "This classroom QR "
-                "is invalid or has expired."
-            )
-        ), 400
-
-    # Today's holiday check.
-    status = get_today_status()
-
-    if status["is_holiday"]:
-
-        return jsonify(
-            ok=False,
-            error=(
-                "Attendance is unavailable "
-                "today: "
-                + status[
-                    "holiday_name"
-                ]
-            )
-        ), 400
-
-    if (
-        str(
-            row["class_date"]
-        )[:10]
-        != today_string()
-    ):
-
-        return jsonify(
-            ok=False,
-            error=(
-                "This QR is not for "
-                "today's class."
-            )
-        ), 400
-
-    try:
-
-        start_dt, end_dt = (
-            get_class_window(
-                row
-            )
-        )
-
-    except (
-        TypeError,
-        ValueError
-    ):
-
-        return jsonify(
-            ok=False,
-            error=(
-                "Invalid class schedule."
-            )
-        ), 500
-
-    now = india_now().replace(
-        tzinfo=None
-    )
-
-    if now < start_dt:
-
-        return jsonify(
-            ok=False,
-            error=(
-                "Class has not started yet. "
-                f"Please wait until "
-                f"{start_dt.strftime('%I:%M %p')}."
-            )
-        ), 400
-
-    if now >= end_dt:
-
-        return jsonify(
-            ok=False,
-            error=(
-                "This class has already ended."
-            )
-        ), 400
-
-    expires_at = parse_db_datetime(
-        row["expires_at"]
-    )
-
-    if (
-        not expires_at
-        or now >= expires_at
-    ):
-
-        q(
-            """
-            UPDATE attendance_sessions
-            SET active=FALSE
-            WHERE id=:id
-            """,
-            {
-                "id":
-                    row["id"]
-            }
-        )
-
-        return jsonify(
-            ok=False,
-            error=(
-                "This classroom QR "
-                "has expired."
-            )
-        ), 400
-
-    return jsonify(
-        ok=True,
-        class_id=row["class_id"],
-        subject=row["subject_name"],
-        code=row["code"],
-        class_date=str(
-            row["class_date"]
-        ),
-        start_time=str(
-            row["start_time"]
-        ),
-        duration_minutes=int(
-            row["duration_minutes"]
-            or 60
-        ),
-        expires_at=expires_at.strftime(
-            "%Y-%m-%d %H:%M:%S"
-        )
+            for r in rows
+        ]
     )
 
 
 # =========================================================
 # MARK ATTENDANCE
-#
-# IMPORTANT:
-# Student attendance now requires:
-#
-# 1. Logged-in student
-# 2. Own student ID
-# 3. Valid classroom QR
-# 4. Correct class
-# 5. Today's date
-# 6. Current class time
-# 7. No duplicate attendance
 # =========================================================
 
 @app.route(
@@ -3459,57 +2900,58 @@ def mark_attendance():
 
         return jsonify(
             ok=False,
-            error=(
-                "Invalid student "
-                "or class ID."
-            )
+            error="Invalid student or class."
         ), 400
-
-    # -----------------------------------------------------
-    # QR TOKEN IS REQUIRED
-    # -----------------------------------------------------
 
     qr_token = str(
         data.get(
-            "session_token",
+            "qr_token",
             ""
         )
     ).strip()
+
+    u = current_user()
+
+    if (
+        u["role"] == "student"
+        and u["student_id"] != student_id
+    ):
+
+        return jsonify(
+            ok=False,
+            error="You can only mark your own attendance."
+        ), 403
+
+    # =====================================================
+    # QR IS REQUIRED
+    # =====================================================
 
     if not qr_token:
 
         return jsonify(
             ok=False,
-            error=(
-                "Please scan the "
-                "classroom QR code "
-                "before taking attendance."
-            )
-        ), 400
+            error="Classroom QR verification is required."
+        ), 403
 
-    u = current_user()
+    qr_row, qr_error = verify_qr_token(
+        qr_token
+    )
 
-    # -----------------------------------------------------
-    # Student can only mark own attendance.
-    # -----------------------------------------------------
-
-    if (
-        u["role"] == "student"
-        and u["student_id"]
-        != student_id
-    ):
+    if qr_error:
 
         return jsonify(
             ok=False,
-            error=(
-                "You can only mark "
-                "your own attendance."
-            )
+            error=qr_error
         ), 403
 
-    # -----------------------------------------------------
-    # Student
-    # -----------------------------------------------------
+    if int(
+        qr_row["class_id"]
+    ) != class_id:
+
+        return jsonify(
+            ok=False,
+            error="QR code does not belong to this class."
+        ), 403
 
     student = q(
         """
@@ -3518,16 +2960,18 @@ def mark_attendance():
         WHERE id=:id
         """,
         {
-            "id":
-                student_id
+            "id": student_id
         },
         True,
         True
     )
 
-    # -----------------------------------------------------
-    # Class
-    # -----------------------------------------------------
+    if not student:
+
+        return jsonify(
+            ok=False,
+            error="Student not found."
+        ), 404
 
     class_info = q(
         """
@@ -3535,35 +2979,27 @@ def mark_attendance():
             c.*,
             sub.code,
             sub.name AS subject_name
+
         FROM classes c
+
         JOIN subjects sub
             ON sub.id=c.subject_id
+
         WHERE c.id=:id
         """,
         {
-            "id":
-                class_id
+            "id": class_id
         },
         True,
         True
     )
 
-    if (
-        not student
-        or not class_info
-    ):
+    if not class_info:
 
         return jsonify(
             ok=False,
-            error=(
-                "Student or class "
-                "not found."
-            )
+            error="Class not found."
         ), 404
-
-    # -----------------------------------------------------
-    # Holiday
-    # -----------------------------------------------------
 
     status = get_today_status()
 
@@ -3572,61 +3008,34 @@ def mark_attendance():
         return jsonify(
             ok=False,
             error=(
-                "Attendance is not "
-                "available today: "
-                + status[
-                    "holiday_name"
-                ]
+                "Attendance is not available today: "
+                + status["holiday_name"]
             )
         ), 400
 
-    # -----------------------------------------------------
-    # Today's class only
-    # -----------------------------------------------------
-
-    if (
-        str(
-            class_info["class_date"]
-        )[:10]
-        != today_string()
-    ):
+    if str(
+        class_info["class_date"]
+    )[:10] != today_string():
 
         return jsonify(
             ok=False,
-            error=(
-                "Attendance is only "
-                "available for "
-                "today's class."
-            )
+            error="Attendance is only available for today's class."
         ), 400
-
-    # -----------------------------------------------------
-    # Class timing
-    # -----------------------------------------------------
 
     try:
 
-        start_dt, end_dt = (
-            get_class_window(
-                class_info
-            )
+        start_dt, end_dt = class_window(
+            class_info
         )
 
-    except (
-        TypeError,
-        ValueError
-    ):
+    except Exception:
 
         return jsonify(
             ok=False,
-            error=(
-                "Invalid class schedule."
-            )
+            error="Invalid class schedule."
         ), 500
 
-    now = india_now().replace(
-        tzinfo=None
-    )
+    now = naive_india_now()
 
     if now < start_dt:
 
@@ -3644,71 +3053,9 @@ def mark_attendance():
         return jsonify(
             ok=False,
             error=(
-                "This class has already ended. "
-                f"Attendance closed at "
-                f"{end_dt.strftime('%I:%M %p')}."
+                "This class has already ended."
             )
         ), 400
-
-    # -----------------------------------------------------
-    # QR SESSION VALIDATION
-    # -----------------------------------------------------
-
-    qr_session = get_active_qr_session(
-        qr_token
-    )
-
-    if not qr_session:
-
-        return jsonify(
-            ok=False,
-            error=(
-                "Classroom QR is invalid "
-                "or has expired. "
-                "Please scan the current "
-                "classroom QR."
-            )
-        ), 400
-
-    # -----------------------------------------------------
-    # QR must belong to THIS class.
-    # -----------------------------------------------------
-
-    if int(
-        qr_session["class_id"]
-    ) != class_id:
-
-        return jsonify(
-            ok=False,
-            error=(
-                "This QR code belongs "
-                "to a different class."
-            )
-        ), 400
-
-    # -----------------------------------------------------
-    # QR must still be inside class time.
-    # -----------------------------------------------------
-
-    qr_expires_at = parse_db_datetime(
-        qr_session["expires_at"]
-    )
-
-    if (
-        not qr_expires_at
-        or now >= qr_expires_at
-    ):
-
-        return jsonify(
-            ok=False,
-            error=(
-                "Classroom QR has expired."
-            )
-        ), 400
-
-    # -----------------------------------------------------
-    # INSERT ATTENDANCE
-    # -----------------------------------------------------
 
     try:
 
@@ -3726,38 +3073,20 @@ def mark_attendance():
             )
             """,
             {
-                "s":
-                    student_id,
-
-                "c":
-                    class_id
+                "s": student_id,
+                "c": class_id
             }
         )
 
         return jsonify(
             ok=True,
-
             already=False,
-
-            message=(
-                "Attendance recorded."
-            ),
-
-            student=
-                student["name"],
-
-            roll_no=
-                student["roll_no"],
-
-            subject=
-                class_info[
-                    "subject_name"
-                ],
-
+            message="Attendance recorded successfully.",
+            student=student["name"],
+            roll_no=student["roll_no"],
+            subject=class_info["subject_name"],
             date=str(
-                class_info[
-                    "class_date"
-                ]
+                class_info["class_date"]
             )
         )
 
@@ -3765,147 +3094,27 @@ def mark_attendance():
 
         return jsonify(
             ok=True,
-
             already=True,
-
-            message=(
-                "Attendance already "
-                "marked for this class."
-            ),
-
-            student=
-                student["name"],
-
-            roll_no=
-                student["roll_no"],
-
-            subject=
-                class_info[
-                    "subject_name"
-                ]
+            message="Attendance already marked for this class.",
+            student=student["name"],
+            roll_no=student["roll_no"],
+            subject=class_info["subject_name"]
         )
 
 
 # =========================================================
-# CLASSES API
-# =========================================================
-
-@app.route(
-    "/api/classes"
-)
-@login_required
-def api_classes():
-
-    status = get_today_status()
-
-    if status["is_holiday"]:
-
-        return jsonify([])
-
-    ensure_today_sessions()
-
-    rows = q(
-        """
-        SELECT
-            c.id,
-            c.subject_id,
-            CAST(
-                c.class_date
-                AS TEXT
-            ) AS class_date,
-            CAST(
-                c.start_time
-                AS TEXT
-            ) AS start_time,
-            c.duration_minutes,
-            s.code,
-            s.name
-        FROM classes c
-        JOIN subjects s
-            ON s.id=c.subject_id
-        WHERE c.class_date=:d
-        ORDER BY c.start_time
-        """,
-        {
-            "d":
-                today_string()
-        },
-        fetch=True
-    )
-
-    return jsonify(
-        [
-            {
-                "id":
-                    r["id"],
-
-                "subject_id":
-                    r["subject_id"],
-
-                "class_date":
-                    str(
-                        r["class_date"]
-                    ),
-
-                "start_time":
-                    str(
-                        r["start_time"]
-                    ),
-
-                "duration_minutes":
-                    int(
-                        r[
-                            "duration_minutes"
-                        ]
-                        or 60
-                    ),
-
-                "code":
-                    r["code"],
-
-                "name":
-                    r["name"]
-            }
-
-            for r in rows
-        ]
-    )
-
-
-# =========================================================
-# CLASS ATTENDANCE API
+# CLASS ATTENDANCE
 # =========================================================
 
 @app.route(
     "/api/class-attendance/<int:class_id>"
 )
+@admin_required
 def class_attendance(
     class_id
 ):
 
     try:
-
-        u = current_user()
-
-        if not u:
-
-            return jsonify(
-                ok=False,
-                error=(
-                    "Admin login "
-                    "session not found."
-                )
-            ), 401
-
-        if u["role"] != "admin":
-
-            return jsonify(
-                ok=False,
-                error=(
-                    "Admin access "
-                    "required."
-                )
-            ), 403
 
         class_info = q(
             """
@@ -3916,14 +3125,16 @@ def class_attendance(
                 c.duration_minutes,
                 s.code,
                 s.name
+
             FROM classes c
+
             JOIN subjects s
                 ON s.id=c.subject_id
+
             WHERE c.id=:id
             """,
             {
-                "id":
-                    class_id
+                "id": class_id
             },
             True,
             True
@@ -3960,8 +3171,7 @@ def class_attendance(
             ORDER BY s.name
             """,
             {
-                "cid":
-                    class_id
+                "cid": class_id
             },
             fetch=True
         )
@@ -3970,67 +3180,46 @@ def class_attendance(
             ok=True,
 
             class_info={
-                "id":
-                    class_info["id"],
-
+                "id": class_info["id"],
                 "class_date":
                     str(
-                        class_info[
-                            "class_date"
-                        ]
+                        class_info["class_date"]
                     ),
-
                 "start_time":
                     str(
-                        class_info[
-                            "start_time"
-                        ]
+                        class_info["start_time"]
                     ),
-
                 "duration_minutes":
                     int(
                         class_info[
                             "duration_minutes"
-                        ]
-                        or 60
+                        ] or 60
                     ),
-
                 "code":
                     class_info["code"],
-
                 "name":
                     class_info["name"]
             },
 
             students=[
                 {
-                    "id":
-                        s["id"],
-
-                    "roll_no":
-                        s["roll_no"],
-
-                    "name":
-                        s["name"],
-
+                    "id": s["id"],
+                    "roll_no": s["roll_no"],
+                    "name": s["name"],
                     "department":
                         s["department"],
-
                     "status":
                         s["status"],
-
                     "marked_at":
                         (
                             str(
                                 s["marked_at"]
                             )
-                            if s[
-                                "marked_at"
-                            ] is not None
+                            if s["marked_at"]
+                            is not None
                             else None
                         )
                 }
-
                 for s in students
             ]
         )
@@ -4038,20 +3227,17 @@ def class_attendance(
     except Exception as e:
 
         app.logger.exception(
-            "Class attendance API error"
+            "Class attendance error"
         )
 
         return jsonify(
             ok=False,
-            error=(
-                "Class attendance error: "
-                + str(e)
-            )
+            error=str(e)
         ), 500
 
 
 # =========================================================
-# ALL ATTENDANCE API
+# ALL ATTENDANCE
 # =========================================================
 
 @app.route(
@@ -4099,27 +3285,21 @@ def api_attendance():
 
 
 # =========================================================
-# STARTUP
+# START
 # =========================================================
 
 init_db()
 
 
-# =========================================================
-# LOCAL RUN
-# =========================================================
-
 if __name__ == "__main__":
 
     app.run(
         host="0.0.0.0",
-
         port=int(
             os.environ.get(
                 "PORT",
                 5000
             )
         ),
-
         debug=False
     )
