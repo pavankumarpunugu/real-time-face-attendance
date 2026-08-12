@@ -810,9 +810,17 @@ def attendance_page():
 # REPORTS
 # =========================================================
 
+# =========================================================
+# REPORTS
+# =========================================================
+
 @app.route("/reports")
 @admin_required
 def reports():
+
+    now = india_now().replace(
+        tzinfo=None
+    )
 
     rows = q(
         """
@@ -821,126 +829,175 @@ def reports():
             s.roll_no,
             s.name,
             s.department,
-            COUNT(c.id) AS total_classes,
-            COALESCE(
-                SUM(
-                    CASE
-                        WHEN a.status='Present'
-                        THEN 1
-                        ELSE 0
-                    END
-                ),
-                0
-            ) AS present
+
+            c.id AS class_id,
+            c.class_date,
+            c.start_time,
+            c.duration_minutes,
+
+            a.status
+
         FROM students s
+
         LEFT JOIN classes c
             ON 1=1
+
         LEFT JOIN attendance a
-            ON a.student_id=s.id
-            AND a.class_id=c.id
-        GROUP BY
-            s.id,
-            s.roll_no,
+            ON a.student_id = s.id
+            AND a.class_id = c.id
+
+        ORDER BY
             s.name,
-            s.department
-        ORDER BY s.name
+            c.class_date,
+            c.start_time
         """,
         fetch=True
     )
 
-    result = []
+    students = {}
 
     for r in rows:
 
         d = dict(r)
 
-        d["percentage"] = (
+        sid = d["id"]
+
+        if sid not in students:
+
+            students[sid] = {
+                "id": sid,
+                "roll_no": d["roll_no"],
+                "name": d["name"],
+                "department": d["department"],
+                "total_classes": 0,
+                "present": 0
+            }
+
+        # No class for this student.
+        if not d["class_id"]:
+            continue
+
+        try:
+
+            start = datetime.strptime(
+                f'{str(d["class_date"])[:10]} '
+                f'{str(d["start_time"])[:5]}',
+                "%Y-%m-%d %H:%M"
+            )
+
+            duration = int(
+                d["duration_minutes"]
+                or 60
+            )
+
+            end = (
+                start
+                + timedelta(
+                    minutes=duration
+                )
+            )
+
+        except (
+            TypeError,
+            ValueError
+        ):
+
+            continue
+
+        # -------------------------------------------------
+        # FUTURE CLASS
+        # Do NOT count it.
+        # -------------------------------------------------
+
+        if now < start:
+            continue
+
+        # -------------------------------------------------
+        # CURRENTLY RUNNING CLASS
+        # Do NOT count it yet.
+        # -------------------------------------------------
+
+        if now < end:
+            continue
+
+        # -------------------------------------------------
+        # CLASS COMPLETED
+        # Count it.
+        # -------------------------------------------------
+
+        students[sid]["total_classes"] += 1
+
+        if d["status"] == "Present":
+
+            students[sid]["present"] += 1
+
+
+    result = []
+
+    for student in students.values():
+
+        total_classes = int(
+            student["total_classes"]
+            or 0
+        )
+
+        present = int(
+            student["present"]
+            or 0
+        )
+
+        percentage = (
+
             round(
                 (
-                    d["present"]
-                    /
-                    d["total_classes"]
+                    present /
+                    total_classes
                 ) * 100,
                 1
             )
-            if d["total_classes"]
+
+            if total_classes
+
             else 0
+
         )
 
-        result.append(d)
+        result.append({
+
+            "id":
+                student["id"],
+
+            "roll_no":
+                student["roll_no"],
+
+            "name":
+                student["name"],
+
+            "department":
+                student["department"],
+
+            "total_classes":
+                total_classes,
+
+            "present":
+                present,
+
+            "percentage":
+                percentage
+
+        })
+
+
+    result.sort(
+        key=lambda x:
+            x["name"].lower()
+    )
+
 
     return render_template(
         "reports.html",
         rows=result
     )
-
-
-# =========================================================
-# SUBJECT CREATE
-# =========================================================
-
-@app.route(
-    "/subjects",
-    methods=["POST"]
-)
-@admin_required
-def create_subject():
-
-    data = request.get_json(
-        force=True
-    )
-
-    code = str(
-        data.get("code", "")
-    ).strip()
-
-    name = str(
-        data.get("name", "")
-    ).strip()
-
-    if not code or not name:
-
-        return jsonify(
-            ok=False,
-            error=(
-                "Subject code and name "
-                "are required."
-            )
-        ), 400
-
-    try:
-
-        q(
-            """
-            INSERT INTO subjects(
-                code,
-                name
-            )
-            VALUES(
-                :c,
-                :n
-            )
-            """,
-            {
-                "c": code,
-                "n": name
-            }
-        )
-
-    except IntegrityError:
-
-        return jsonify(
-            ok=False,
-            error=(
-                "Subject code already exists."
-            )
-        ), 409
-
-    return jsonify(
-        ok=True,
-        message="Subject created successfully."
-    )
-
 
 # =========================================================
 # SUBJECT EDIT
