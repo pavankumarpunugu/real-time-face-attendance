@@ -473,6 +473,140 @@
 </div>
 
 
+<!-- CLASSROOM QR ATTENDANCE -->
+
+<div class="panel">
+
+    <h2>
+        Classroom QR Attendance
+    </h2>
+
+    <p class="muted">
+        Start a temporary QR code for the selected class. Students must scan this QR before face verification.
+        The QR expires automatically after 2 minutes or when the class ends.
+    </p>
+
+    <div class="grid2">
+
+        <div>
+
+            <label>
+                Today's Class
+            </label>
+
+            <select id="qrClassSelect">
+                <option value="">
+                    Loading classes...
+                </option>
+            </select>
+
+        </div>
+
+        <div>
+
+            <label>
+                QR Status
+            </label>
+
+            <div
+                id="qrAdminStatus"
+                class="result-box"
+            >
+                No QR session running.
+            </div>
+
+        </div>
+
+    </div>
+
+    <div
+        style="
+            display:flex;
+            gap:10px;
+            flex-wrap:wrap;
+            margin-top:16px;
+        "
+    >
+
+        <button
+            id="startQrButton"
+            class="primary"
+            type="button"
+            onclick="startQrSession()"
+        >
+            Start Classroom QR
+        </button>
+
+        <button
+            id="endQrButton"
+            class="danger"
+            type="button"
+            onclick="endQrSession()"
+            disabled
+        >
+            End QR
+        </button>
+
+    </div>
+
+    <div
+        id="qrDisplay"
+        style="
+            display:none;
+            margin-top:24px;
+            text-align:center;
+        "
+    >
+
+        <div
+            style="
+                display:inline-block;
+                padding:18px;
+                background:#fff;
+                border-radius:16px;
+                box-shadow:0 8px 30px rgba(0,0,0,.12);
+            "
+        >
+
+            <div
+                id="qrCode"
+                style="
+                    width:280px;
+                    min-height:280px;
+                    display:flex;
+                    align-items:center;
+                    justify-content:center;
+                "
+            ></div>
+
+        </div>
+
+        <h3
+            id="qrSubject"
+            style="margin-top:16px;"
+        ></h3>
+
+        <p
+            id="qrCountdown"
+            class="muted"
+        >
+            QR expires soon.
+        </p>
+
+        <p class="muted">
+            Students: scan this QR from the Attendance page.
+        </p>
+
+    </div>
+
+    <div
+        id="qrMsg"
+        class="status"
+    ></div>
+
+</div>
+
+
 <!-- CLASS ATTENDANCE -->
 
 <div class="panel">
@@ -753,7 +887,21 @@
 
 {% block scripts %}
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
 <script>
+
+let activeQrToken =
+    "";
+
+let activeQrClassId =
+    null;
+
+let qrCountdownTimer =
+    null;
+
+let qrExpiryTimestamp =
+    0;
 
 
 /* =========================================================
@@ -1332,6 +1480,18 @@ async function loadClasses() {
 
         `;
 
+        if (qrSelect) {
+
+            qrSelect.innerHTML = `
+
+                <option value="">
+                    Select today's class
+                </option>
+
+            `;
+
+        }
+
 
         classes.forEach(
             function(c) {
@@ -1438,6 +1598,25 @@ async function loadClasses() {
                 select.appendChild(
                     option
                 );
+
+                if (qrSelect) {
+
+                    const qrOption =
+                        document.createElement(
+                            "option"
+                        );
+
+                    qrOption.value =
+                        c.id;
+
+                    qrOption.textContent =
+                        `${c.code} — ${c.name} — ${c.start_time}`;
+
+                    qrSelect.appendChild(
+                        qrOption
+                    );
+
+                }
 
             }
         );
@@ -2261,6 +2440,504 @@ async function deleteClass(
     }
 
 }
+
+
+
+/* =========================================================
+   CLASSROOM QR SESSION
+========================================================= */
+
+function setQrAdminStatus(
+    message
+) {
+
+    const element =
+        document.getElementById(
+            "qrAdminStatus"
+        );
+
+    if (element) {
+        element.textContent =
+            message;
+    }
+
+}
+
+
+function setQrMessage(
+    message
+) {
+
+    const element =
+        document.getElementById(
+            "qrMsg"
+        );
+
+    if (element) {
+        element.textContent =
+            message;
+    }
+
+}
+
+
+/* =========================================================
+   START QR SESSION
+========================================================= */
+
+async function startQrSession() {
+
+    const select =
+        document.getElementById(
+            "qrClassSelect"
+        );
+
+    const classId =
+        Number(
+            select.value
+        );
+
+    if (!classId) {
+
+        setQrMessage(
+            "Select today's class first."
+        );
+
+        return;
+    }
+
+    const button =
+        document.getElementById(
+            "startQrButton"
+        );
+
+    button.disabled =
+        true;
+
+    button.textContent =
+        "Starting QR...";
+
+    try {
+
+        const response =
+            await fetch(
+                "/api/attendance-sessions/start",
+                {
+                    method:
+                        "POST",
+
+                    credentials:
+                        "same-origin",
+
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
+
+                    body:
+                        JSON.stringify({
+                            class_id:
+                                classId
+                        })
+                }
+            );
+
+        const text =
+            await response.text();
+
+        let data;
+
+        try {
+            data =
+                JSON.parse(text);
+        }
+        catch {
+            throw new Error(
+                `Server returned HTTP ${response.status}.`
+            );
+        }
+
+        if (
+            !response.ok ||
+            !data.ok
+        ) {
+
+            throw new Error(
+                data.error ||
+                "Unable to start QR session."
+            );
+
+        }
+
+        activeQrToken =
+            data.session_token;
+
+        activeQrClassId =
+            Number(
+                data.class_id
+            );
+
+        qrExpiryTimestamp =
+            Date.now() +
+            (
+                Number(
+                    data.expires_in_seconds
+                ) * 1000
+            );
+
+        const qrContainer =
+            document.getElementById(
+                "qrCode"
+            );
+
+        qrContainer.innerHTML =
+            "";
+
+        if (!window.QRCode) {
+
+            throw new Error(
+                "QR code library failed to load."
+            );
+
+        }
+
+        new QRCode(
+            qrContainer,
+            {
+                text:
+                    data.qr_url,
+
+                width:
+                    280,
+
+                height:
+                    280,
+
+                correctLevel:
+                    QRCode.CorrectLevel.H
+            }
+        );
+
+        document.getElementById(
+            "qrDisplay"
+        ).style.display =
+            "block";
+
+        document.getElementById(
+            "qrSubject"
+        ).textContent =
+            `${data.code} — ${data.subject}`;
+
+        document.getElementById(
+            "endQrButton"
+        ).disabled =
+            false;
+
+        button.disabled =
+            true;
+
+        button.textContent =
+            "QR Running";
+
+        setQrAdminStatus(
+            `QR active for ${data.code} — ${data.subject}.`
+        );
+
+        setQrMessage(
+            "Students can now scan the QR code."
+        );
+
+        startQrCountdown();
+
+    }
+
+    catch (error) {
+
+        console.error(
+            "Start QR error:",
+            error
+        );
+
+        button.disabled =
+            false;
+
+        button.textContent =
+            "Start Classroom QR";
+
+        setQrMessage(
+            "Unable to start QR: " +
+            error.message
+        );
+
+    }
+
+}
+
+
+/* =========================================================
+   QR COUNTDOWN
+========================================================= */
+
+function startQrCountdown() {
+
+    clearInterval(
+        qrCountdownTimer
+    );
+
+    const countdown =
+        document.getElementById(
+            "qrCountdown"
+        );
+
+    function update() {
+
+        const remaining =
+            Math.max(
+                0,
+                Math.ceil(
+                    (
+                        qrExpiryTimestamp -
+                        Date.now()
+                    ) / 1000
+                )
+            );
+
+        const minutes =
+            Math.floor(
+                remaining / 60
+            );
+
+        const seconds =
+            remaining % 60;
+
+        countdown.textContent =
+            `QR expires in ${minutes}:${String(seconds).padStart(2, "0")}`;
+
+        if (
+            remaining <= 0
+        ) {
+
+            clearInterval(
+                qrCountdownTimer
+            );
+
+            countdown.textContent =
+                "QR expired. Start a new QR session.";
+
+            activeQrToken =
+                "";
+
+            document.getElementById(
+                "endQrButton"
+            ).disabled =
+                true;
+
+            document.getElementById(
+                "startQrButton"
+            ).disabled =
+                false;
+
+            document.getElementById(
+                "startQrButton"
+            ).textContent =
+                "Start Classroom QR";
+
+            setQrAdminStatus(
+                "QR expired."
+            );
+
+        }
+
+    }
+
+    update();
+
+    qrCountdownTimer =
+        setInterval(
+            update,
+            1000
+        );
+
+}
+
+
+/* =========================================================
+   END QR SESSION
+========================================================= */
+
+async function endQrSession() {
+
+    const endButton =
+        document.getElementById(
+            "endQrButton"
+        );
+
+    const startButton =
+        document.getElementById(
+            "startQrButton"
+        );
+
+    if (
+        !activeQrToken &&
+        !activeQrClassId
+    ) {
+
+        return;
+    }
+
+    endButton.disabled =
+        true;
+
+    endButton.textContent =
+        "Ending...";
+
+    try {
+
+        const response =
+            await fetch(
+                "/api/attendance-sessions/end",
+                {
+                    method:
+                        "POST",
+
+                    credentials:
+                        "same-origin",
+
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
+
+                    body:
+                        JSON.stringify({
+                            session_token:
+                                activeQrToken,
+
+                            class_id:
+                                activeQrClassId
+                        })
+                }
+            );
+
+        const data =
+            await response.json();
+
+        if (
+            !response.ok ||
+            !data.ok
+        ) {
+
+            throw new Error(
+                data.error ||
+                "Unable to end QR session."
+            );
+
+        }
+
+        clearInterval(
+            qrCountdownTimer
+        );
+
+        activeQrToken =
+            "";
+
+        activeQrClassId =
+            null;
+
+        qrExpiryTimestamp =
+            0;
+
+        document.getElementById(
+            "qrDisplay"
+        ).style.display =
+            "none";
+
+        document.getElementById(
+            "qrCode"
+        ).innerHTML =
+            "";
+
+        startButton.disabled =
+            false;
+
+        startButton.textContent =
+            "Start Classroom QR";
+
+        endButton.disabled =
+            true;
+
+        endButton.textContent =
+            "End QR";
+
+        setQrAdminStatus(
+            "No QR session running."
+        );
+
+        setQrMessage(
+            "QR attendance session ended."
+        );
+
+    }
+
+    catch (error) {
+
+        endButton.disabled =
+            false;
+
+        endButton.textContent =
+            "End QR";
+
+        setQrMessage(
+            "Unable to end QR: " +
+            error.message
+        );
+
+    }
+
+}
+
+
+/* =========================================================
+   QR CLASS CHANGE
+========================================================= */
+
+document.addEventListener(
+    "DOMContentLoaded",
+    function() {
+
+        const qrSelect =
+            document.getElementById(
+                "qrClassSelect"
+            );
+
+        if (!qrSelect) {
+            return;
+        }
+
+        qrSelect.addEventListener(
+            "change",
+            function() {
+
+                if (
+                    activeQrToken
+                ) {
+
+                    alert(
+                        "End the current QR session before selecting another class."
+                    );
+
+                    this.value =
+                        String(
+                            activeQrClassId
+                        );
+
+                }
+
+            }
+        );
+
+    }
+);
 
 
 /* =========================================================
