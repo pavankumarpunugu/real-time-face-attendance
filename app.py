@@ -32,6 +32,43 @@ app.secret_key = os.environ.get(
     secrets.token_hex(32)
 )
 
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE="Lax",
+    SESSION_COOKIE_SECURE=(
+        os.environ.get("RENDER", "").lower() == "true"
+        or os.environ.get("FLASK_ENV", "").lower() == "production"
+    )
+)
+
+
+# =========================================================
+# ERROR HANDLING
+# =========================================================
+
+@app.errorhandler(Exception)
+def handle_unexpected_error(error):
+
+    app.logger.exception(
+        "Unhandled application error"
+    )
+
+    if request.path.startswith("/api/"):
+
+        return jsonify(
+            ok=False,
+            error=(
+                "Internal server error. "
+                "Check Render logs for details."
+            )
+        ), 500
+
+    return (
+        "Internal Server Error. "
+        "Check the Render logs for the traceback.",
+        500
+    )
+
 
 # =========================================================
 # DATABASE
@@ -279,6 +316,9 @@ def q(
         if fetch:
 
             rows = result.mappings().all()
+
+            if one:
+                return rows[0] if rows else None
 
             return rows
 
