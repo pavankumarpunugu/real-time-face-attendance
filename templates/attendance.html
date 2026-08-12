@@ -15,7 +15,7 @@
         </h1>
 
         <p class="muted">
-            Select your class and verify your identity using face recognition.
+            Scan the classroom QR code and then verify your identity using face recognition.
         </p>
 
     </div>
@@ -25,7 +25,11 @@
 
 <div class="grid2">
 
-    <!-- LEFT SIDE -->
+
+    <!-- =================================================
+         LEFT
+    ================================================= -->
+
     <div class="panel">
 
         <h2>
@@ -33,53 +37,64 @@
         </h2>
 
         <p class="muted">
-            Scan the classroom QR code first, then verify your identity using face recognition.
+            You must scan the QR code displayed by your teacher before face verification.
         </p>
 
-        <div style="margin-bottom:16px;">
 
-            <label>
-                Classroom QR Code
-            </label>
-
-            <div
-                id="qrReader"
-                style="
-                    width:100%;
-                    max-width:420px;
-                    margin:12px auto;
-                    border-radius:14px;
-                    overflow:hidden;
-                "
-            ></div>
-
-            <button
-                id="scanQrButton"
-                class="secondary full"
-                type="button"
-            >
-                Scan Classroom QR
-            </button>
-
-        </div>
-
-        <div
-            id="qrStatus"
-            class="result-box"
-            style="margin-bottom:16px;"
-        >
-            Scan the QR code displayed by your teacher.
-        </div>
+        <!-- QR SCANNER -->
 
         <label>
+            Classroom QR Code
+        </label>
+
+        <button
+            id="scanQrButton"
+            class="primary full"
+            type="button"
+        >
+            Scan Classroom QR
+        </button>
+
+
+        <div
+            id="qrReader"
+            style="
+                width:100%;
+                margin-top:18px;
+                display:none;
+            "
+        ></div>
+
+
+        <div
+            id="qrResult"
+            class="result-box"
+        >
+            Waiting for classroom QR verification...
+        </div>
+
+
+        <!-- CLASS -->
+
+        <label
+            style="margin-top:18px;"
+        >
             Class Session
         </label>
 
-        <select id="classSelect" disabled>
+        <select
+            id="classSelect"
+            disabled
+        >
+
             <option value="">
                 Scan classroom QR first
             </option>
+
         </select>
+
+
+        <!-- CAMERA -->
 
         <button
             id="start"
@@ -90,14 +105,20 @@
             Start Camera
         </button>
 
+
         <div
             id="result"
             class="result-box"
         >
-            Waiting for classroom QR verification...
+            Scan the classroom QR code first.
         </div>
 
-        <div class="attendance-help">
+
+        <!-- HELP -->
+
+        <div
+            class="attendance-help"
+        >
 
             <strong>
                 How it works
@@ -106,23 +127,27 @@
             <ul>
 
                 <li>
-                    Teacher starts the classroom QR session.
+                    Teacher/Admin starts the QR for the current class.
                 </li>
 
                 <li>
-                    Scan the QR code with your camera.
+                    Scan the displayed QR code.
                 </li>
 
                 <li>
-                    The QR is valid only for the active class session.
+                    The correct class is unlocked automatically.
                 </li>
 
                 <li>
-                    Click Start Camera and look directly at the camera.
+                    Click Start Camera.
                 </li>
 
                 <li>
-                    Attendance is recorded only after QR + face verification.
+                    Look directly at the camera.
+                </li>
+
+                <li>
+                    Attendance is recorded after face verification.
                 </li>
 
             </ul>
@@ -132,7 +157,9 @@
     </div>
 
 
-    <!-- CAMERA -->
+    <!-- =================================================
+         CAMERA
+    ================================================= -->
 
     <div class="camera panel">
 
@@ -145,9 +172,13 @@
                 playsinline
             ></video>
 
-            <div class="camera-overlay">
+            <div
+                class="camera-overlay"
+            >
 
-                <div class="face-frame"></div>
+                <div
+                    class="face-frame"
+                ></div>
 
             </div>
 
@@ -157,570 +188,100 @@
 
 </div>
 
+
 {% endblock %}
 
 
 {% block scripts %}
 
+<!-- FACE API -->
+<script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+
+<!-- QR SCANNER -->
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
 
 <script>
 
-/* =========================================================
-   QR ATTENDANCE CONFIGURATION
-========================================================= */
-
-const INITIAL_QR_TOKEN =
-    {{ qr_session|default("")|tojson }};
-
-let qrToken =
-    INITIAL_QR_TOKEN || "";
-
-let qrScanner = null;
-
-let qrScannerRunning = false;
-
-let qrVerified = false;
-
-let verifiedClassId = null;
-
-
-/* =========================================================
-   QR ELEMENTS
-========================================================= */
-
-const qrReader =
-    document.getElementById("qrReader");
-
-const qrStatus =
-    document.getElementById("qrStatus");
-
-const scanQrButton =
-    document.getElementById("scanQrButton");
-
-
-function setQrStatus(message) {
-
-    qrStatus.textContent =
-        message;
-
-}
-
-
-/* =========================================================
-   STOP QR SCANNER
-========================================================= */
-
-async function stopQrScanner() {
-
-    if (!qrScanner) {
-        return;
-    }
-
-    if (qrScannerRunning) {
-
-        try {
-            await qrScanner.stop();
-        }
-        catch (error) {
-            console.warn(
-                "QR scanner stop error:",
-                error
-            );
-        }
-
-    }
-
-    qrScannerRunning =
-        false;
-
-    try {
-        await qrScanner.clear();
-    }
-    catch (error) {
-        console.warn(
-            "QR scanner clear error:",
-            error
-        );
-    }
-
-    qrScanner =
-        null;
-
-}
-
-
-/* =========================================================
-   START QR SCANNER
-========================================================= */
-
-async function startQrScanner() {
-
-    if (!window.Html5Qrcode) {
-
-        setQrStatus(
-            "QR scanner library failed to load. Check your internet connection."
-        );
-
-        return;
-    }
-
-    await stopQrScanner();
-
-    qrScanner =
-        new Html5Qrcode(
-            "qrReader"
-        );
-
-    setQrStatus(
-        "Point your camera at the classroom QR code."
-    );
-
-    try {
-
-        await qrScanner.start(
-
-            {
-                facingMode:
-                    "environment"
-            },
-
-            {
-                fps:
-                    10,
-
-                qrbox:
-                    {
-                        width: 250,
-                        height: 250
-                    },
-
-                aspectRatio:
-                    1.0
-            },
-
-            async function(decodedText) {
-
-                await handleQrToken(
-                    decodedText
-                );
-
-            },
-
-            function() {
-                // Ignore normal QR scan misses.
-            }
-
-        );
-
-        qrScannerRunning =
-            true;
-
-        scanQrButton.textContent =
-            "Scanning Classroom QR...";
-
-    }
-
-    catch (error) {
-
-        console.error(
-            "QR camera error:",
-            error
-        );
-
-        setQrStatus(
-            "Unable to start QR camera: " +
-            error
-        );
-
-        await stopQrScanner();
-
-    }
-
-}
-
-
-/* =========================================================
-   HANDLE QR TOKEN / URL
-========================================================= */
-
-async function handleQrToken(
-    rawValue
-) {
-
-    if (!rawValue) {
-        return;
-    }
-
-    let token =
-        String(rawValue).trim();
-
-    /*
-     * The admin QR normally contains:
-     *
-     * /attendance?session=TOKEN
-     *
-     * Also accept a raw token.
-     */
-
-    try {
-
-        const url =
-            new URL(
-                token,
-                window.location.origin
-            );
-
-        const sessionParam =
-            url.searchParams.get(
-                "session"
-            );
-
-        if (sessionParam) {
-            token =
-                sessionParam;
-        }
-
-    }
-    catch (error) {
-        // Treat it as a raw token.
-    }
-
-    if (!token) {
-
-        setQrStatus(
-            "QR code does not contain a valid attendance session."
-        );
-
-        return;
-    }
-
-    setQrStatus(
-        "QR detected. Verifying classroom session..."
-    );
-
-    await stopQrScanner();
-
-    scanQrButton.textContent =
-        "Scan Classroom QR Again";
-
-    try {
-
-        const response =
-            await fetch(
-                "/api/attendance-session/validate",
-                {
-                    method:
-                        "POST",
-
-                    credentials:
-                        "same-origin",
-
-                    headers: {
-                        "Content-Type":
-                            "application/json"
-                    },
-
-                    body:
-                        JSON.stringify({
-                            session_token:
-                                token
-                        })
-                }
-            );
-
-        const text =
-            await response.text();
-
-        let data;
-
-        try {
-
-            data =
-                JSON.parse(text);
-
-        }
-        catch {
-
-            throw new Error(
-                `Server returned HTTP ${response.status}.`
-            );
-
-        }
-
-        if (
-            !response.ok ||
-            !data.ok
-        ) {
-
-            throw new Error(
-                data.error ||
-                "QR verification failed."
-            );
-
-        }
-
-        qrToken =
-            token;
-
-        qrVerified =
-            true;
-
-        verifiedClassId =
-            Number(
-                data.class_id
-            );
-
-        /*
-         * Select the exact class returned by
-         * the server.
-         */
-
-        classSelect.value =
-            String(
-                verifiedClassId
-            );
-
-        classSelect.disabled =
-            false;
-
-        startButton.disabled =
-            false;
-
-        setQrStatus(
-            `✓ Classroom verified: ${data.code} — ${data.subject}.`
-        );
-
-        setStatus(
-            "Classroom QR verified. Click Start Camera for face verification."
-        );
-
-    }
-
-    catch (error) {
-
-        qrToken =
-            "";
-
-        qrVerified =
-            false;
-
-        verifiedClassId =
-            null;
-
-        classSelect.value =
-            "";
-
-        classSelect.disabled =
-            true;
-
-        startButton.disabled =
-            true;
-
-        setQrStatus(
-            "QR verification failed: " +
-            error.message
-        );
-
-    }
-
-}
-
-
-/* =========================================================
-   INITIAL QR TOKEN FROM URL
-========================================================= */
-
-async function initializeQrFromUrl() {
-
-    if (!INITIAL_QR_TOKEN) {
-        return;
-    }
-
-    setQrStatus(
-        "QR session found in the URL. Verifying..."
-    );
-
-    await handleQrToken(
-        INITIAL_QR_TOKEN
-    );
-
-}
-
-
-/* =========================================================
-   QR BUTTON
-========================================================= */
-
-scanQrButton.addEventListener(
-    "click",
-    async function() {
-
-        if (qrScannerRunning) {
-            return;
-        }
-
-        await startQrScanner();
-
-    }
-);
-
-
-/* =========================================================
-   FACE CONFIGURATION
-========================================================= */
+/* =====================================================
+   CONFIG
+===================================================== */
 
 const MODEL_URL =
     "https://justadudewhohacks.github.io/face-api.js/models";
 
-const MATCH_THRESHOLD = 0.55;
-========================================================= */
 
-const MODEL_URL =
-    "https://justadudewhohacks.github.io/face-api.js/models";
-
-const MATCH_THRESHOLD = 0.55;
+const THRESHOLD =
+    0.50;
 
 
-/* =========================================================
-   LOAD FACE-API ONLY WHEN NEEDED
-========================================================= */
-
-let faceApiPromise = null;
-
-function loadFaceApi() {
-
-    if (window.faceapi) {
-        return Promise.resolve(window.faceapi);
-    }
-
-    if (faceApiPromise) {
-        return faceApiPromise;
-    }
-
-    faceApiPromise = new Promise(
-        function(resolve, reject) {
-
-            const script =
-                document.createElement("script");
-
-            script.src =
-                "https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js";
-
-            script.async = true;
-
-            script.onload =
-                function() {
-
-                    if (window.faceapi) {
-
-                        resolve(
-                            window.faceapi
-                        );
-
-                    }
-
-                    else {
-
-                        reject(
-                            new Error(
-                                "Face recognition library did not load."
-                            )
-                        );
-
-                    }
-
-                };
-
-            script.onerror =
-                function() {
-
-                    reject(
-                        new Error(
-                            "Unable to load face recognition library. Check your internet connection."
-                        )
-                    );
-
-                };
-
-            document.head.appendChild(
-                script
-            );
-
-        }
-    );
-
-    return faceApiPromise;
-
-}
-
-
-/* =========================================================
+/* =====================================================
    ELEMENTS
-========================================================= */
+===================================================== */
 
 const video =
-    document.getElementById("video");
+    document.getElementById(
+        "video"
+    );
 
 const classSelect =
-    document.getElementById("classSelect");
+    document.getElementById(
+        "classSelect"
+    );
 
 const startButton =
-    document.getElementById("start");
+    document.getElementById(
+        "start"
+    );
 
 const result =
-    document.getElementById("result");
+    document.getElementById(
+        "result"
+    );
+
+const qrResult =
+    document.getElementById(
+        "qrResult"
+    );
+
+const scanQrButton =
+    document.getElementById(
+        "scanQrButton"
+    );
+
+const qrReader =
+    document.getElementById(
+        "qrReader"
+    );
 
 
-/* =========================================================
-   VARIABLES
-========================================================= */
+/* =====================================================
+   STATE
+===================================================== */
 
 let stream = null;
 
 let students = [];
 
-let modelsLoaded = false;
-
 let scanning = false;
 
-let recognitionRunning = false;
+let modelsLoaded = false;
+
+let qrScanner = null;
+
+let qrToken = null;
+
+let verifiedClassId = null;
 
 
-/* =========================================================
-   STATUS
-========================================================= */
-
-function setStatus(message) {
-
-    result.textContent =
-        message;
-
-}
-
-
-/* =========================================================
+/* =====================================================
    FACE DISTANCE
-========================================================= */
+===================================================== */
 
-function faceDistance(a, b) {
-
-    if (
-        !Array.isArray(a) ||
-        !Array.isArray(b)
-    ) {
-
-        return Infinity;
-
-    }
-
-    if (
-        a.length !== b.length
-    ) {
-
-        return Infinity;
-
-    }
+function distance(
+    a,
+    b
+) {
 
     let sum = 0;
 
@@ -730,345 +291,256 @@ function faceDistance(a, b) {
         i++
     ) {
 
-        const difference =
-            Number(a[i]) -
-            Number(b[i]);
+        const d =
+            a[i] - b[i];
 
         sum +=
-            difference *
-            difference;
-
+            d * d;
     }
 
-    return Math.sqrt(sum);
-
+    return Math.sqrt(
+        sum
+    );
 }
 
 
-/* =========================================================
-   LOAD TODAY'S CLASSES
-========================================================= */
+/* =====================================================
+   QR TOKEN FROM URL
+===================================================== */
 
-async function loadClasses() {
+function extractToken(
+    text
+) {
+
+    text =
+        String(
+            text || ""
+        ).trim();
+
+    if (!text)
+        return "";
 
     try {
 
-        setStatus(
-            "Checking today's timetable..."
-        );
-
-
-        /* CHECK HOLIDAY */
-
-        const statusResponse =
-            await fetch(
-                "/api/today-status",
-                {
-                    credentials:
-                        "same-origin"
-                }
+        const url =
+            new URL(
+                text
             );
 
-
-        if (!statusResponse.ok) {
-
-            throw new Error(
-                "Unable to check today's status."
-            );
-
-        }
-
-
-        const status =
-            await statusResponse.json();
-
-
-        classSelect.innerHTML =
-            "";
-
-
-        /* HOLIDAY */
-
-        if (
-            status.is_holiday
-        ) {
-
-            const option =
-                document.createElement(
-                    "option"
-                );
-
-            option.value =
-                "";
-
-            option.textContent =
-                status.holiday_type === "Sunday"
-                    ? "Sunday — Holiday"
-                    : `${status.holiday_name} — Holiday`;
-
-
-            classSelect.appendChild(
-                option
-            );
-
-
-            startButton.disabled =
-                true;
-
-
-            setStatus(
-                status.holiday_type === "Sunday"
-                    ? "Today is Sunday. Attendance is not available."
-                    : `Today is a holiday: ${status.holiday_name}. Attendance is not available.`
-            );
-
-
-            return;
-
-        }
-
-
-        /* LOAD TODAY'S CLASSES */
-
-        const response =
-            await fetch(
-                "/api/classes",
-                {
-                    credentials:
-                        "same-origin"
-                }
-            );
-
-
-        if (!response.ok) {
-
-            throw new Error(
-                `Unable to load today's classes. Server returned ${response.status}.`
-            );
-
-        }
-
-
-        const classes =
-            await response.json();
-
-
-        classSelect.innerHTML =
-            "";
-
-
-        /* NO CLASSES */
-
-        if (
-            !Array.isArray(classes) ||
-            classes.length === 0
-        ) {
-
-            const option =
-                document.createElement(
-                    "option"
-                );
-
-            option.value =
-                "";
-
-            option.textContent =
-                "No classes scheduled today";
-
-
-            classSelect.appendChild(
-                option
-            );
-
-
-            startButton.disabled =
-                true;
-
-
-            setStatus(
-                "No classes are scheduled for today."
-            );
-
-
-            return;
-
-        }
-
-
-        /* DEFAULT OPTION */
-
-        const defaultOption =
-            document.createElement(
-                "option"
-            );
-
-        defaultOption.value =
-            "";
-
-        defaultOption.textContent =
-            "Select today's class";
-
-
-        classSelect.appendChild(
-            defaultOption
-        );
-
-
-        /* CLASSES */
-
-        classes.forEach(
-            function(c) {
-
-                const option =
-                    document.createElement(
-                        "option"
-                    );
-
-
-                option.value =
-                    c.id;
-
-
-                option.textContent =
-                    `${c.code} — ${c.name} — ` +
-                    `${c.start_time} (${c.duration_minutes} min)`;
-
-
-                classSelect.appendChild(
-                    option
-                );
-
-            }
-        );
-
-
-        startButton.disabled =
-            true;
-
-
-        setStatus(
-            "Select today's class."
-        );
-
+        return (
+            url.searchParams
+                .get("qr")
+            || ""
+        ).trim();
+
+    } catch {
+
+        return text;
     }
-
-    catch (error) {
-
-        console.error(
-            "Class loading error:",
-            error
-        );
-
-
-        classSelect.innerHTML =
-            `
-            <option value="">
-                Failed to load classes
-            </option>
-            `;
-
-
-        startButton.disabled =
-            true;
-
-
-        setStatus(
-            "Class loading failed: " +
-            error.message
-        );
-
-    }
-
 }
 
 
-/* =========================================================
-   CLASS SELECTION
-========================================================= */
+/* =====================================================
+   VERIFY QR
+===================================================== */
 
-classSelect.addEventListener(
-    "change",
-    function() {
+async function verifyQR(
+    rawText
+) {
 
-        if (!qrVerified) {
+    const token =
+        extractToken(
+            rawText
+        );
 
-            classSelect.value =
-                verifiedClassId
-                    ? String(verifiedClassId)
-                    : "";
+    if (!token) {
 
-            setStatus(
-                "Scan the classroom QR code first."
-            );
-
-            return;
-        }
-
-        if (
-            Number(classSelect.value) !==
-            Number(verifiedClassId)
-        ) {
-
-            classSelect.value =
-                String(verifiedClassId);
-
-            setStatus(
-                "The selected class must match the scanned classroom QR."
-            );
-
-            return;
-        }
-
-        if (
-            classSelect.value
-        ) {
-
-            startButton.disabled =
-                false;
-
-            setStatus(
-                "Classroom verified. Click Start Camera."
-            );
-
-        }
-
-        else {
-
-            startButton.disabled =
-                true;
-
-            setStatus(
-                "Please scan the classroom QR."
-            );
-
-        }
-
+        throw new Error(
+            "Invalid QR code."
+        );
     }
+
+    const response =
+        await fetch(
+            `/api/qr/verify?token=${encodeURIComponent(token)}`,
+            {
+                credentials:
+                    "same-origin"
+            }
+        );
+
+    const data =
+        await response.json();
+
+    if (
+        !response.ok
+        || !data.ok
+    ) {
+
+        throw new Error(
+            data.error ||
+            "QR verification failed."
+        );
+    }
+
+    qrToken =
+        token;
+
+    verifiedClassId =
+        Number(
+            data.class_id
+        );
+
+    classSelect.innerHTML =
+        "";
+
+    const option =
+        document.createElement(
+            "option"
+        );
+
+    option.value =
+        data.class_id;
+
+    option.textContent =
+        `${data.subject_code} — ` +
+        `${data.subject} — ` +
+        `${data.start_time}`;
+
+    option.selected =
+        true;
+
+    classSelect.appendChild(
+        option
+    );
+
+    classSelect.disabled =
+        false;
+
+    startButton.disabled =
+        false;
+
+    qrResult.textContent =
+        `QR verified: ${data.subject_code} — ${data.subject}`;
+
+    result.textContent =
+        "Class verified. Click Start Camera.";
+
+    scanQrButton.disabled =
+        true;
+}
+
+
+/* =====================================================
+   QR SCANNER
+===================================================== */
+
+async function startQRScanner() {
+
+    qrReader.style.display =
+        "block";
+
+    qrResult.textContent =
+        "Opening camera for QR scanning...";
+
+    scanQrButton.disabled =
+        true;
+
+    try {
+
+        qrScanner =
+            new Html5Qrcode(
+                "qrReader"
+            );
+
+        await qrScanner.start(
+
+            {
+                facingMode:
+                    "environment"
+            },
+
+            {
+                fps: 10,
+
+                qrbox: {
+                    width: 250,
+                    height: 250
+                }
+            },
+
+            async function(
+                decodedText
+            ) {
+
+                try {
+
+                    await qrScanner.stop();
+
+                } catch {}
+
+                qrScanner =
+                    null;
+
+                qrReader.style.display =
+                    "none";
+
+                try {
+
+                    await verifyQR(
+                        decodedText
+                    );
+
+                } catch (error) {
+
+                    qrResult.textContent =
+                        error.message;
+
+                    scanQrButton.disabled =
+                        false;
+                }
+
+            },
+
+            function() {
+                // Ignore scan-frame errors.
+            }
+        );
+
+    } catch (error) {
+
+        console.error(error);
+
+        qrReader.style.display =
+            "none";
+
+        scanQrButton.disabled =
+            false;
+
+        qrResult.textContent =
+            "Unable to start QR scanner: "
+            + error.message;
+    }
+}
+
+
+scanQrButton.addEventListener(
+    "click",
+    startQRScanner
 );
 
 
-/* =========================================================
-   LOAD FACE MODELS
-========================================================= */
+/* =====================================================
+   LOAD MODELS
+===================================================== */
 
 async function loadModels() {
 
-    await loadFaceApi();
-
-
-    if (
-        modelsLoaded
-    ) {
-
+    if (modelsLoaded)
         return;
 
-    }
-
-
-    setStatus(
-        "Loading face recognition models..."
-    );
-
+    result.textContent =
+        "Loading face recognition models...";
 
     await Promise.all([
 
@@ -1092,23 +564,19 @@ async function loadModels() {
 
     ]);
 
-
     modelsLoaded =
         true;
-
 }
 
 
-/* =========================================================
-   LOAD REGISTERED STUDENTS
-========================================================= */
+/* =====================================================
+   LOAD STUDENTS
+===================================================== */
 
 async function loadStudents() {
 
-    setStatus(
-        "Loading registered students..."
-    );
-
+    result.textContent =
+        "Loading registered face data...";
 
     const response =
         await fetch(
@@ -1119,75 +587,51 @@ async function loadStudents() {
             }
         );
 
-
-    const text =
+    const responseText =
         await response.text();
 
-
     let data;
-
 
     try {
 
         data =
-            JSON.parse(text);
+            JSON.parse(
+                responseText
+            );
 
-    }
-
-    catch {
-
-        console.error(
-            "Invalid recognition response:",
-            text
-        );
-
+    } catch {
 
         throw new Error(
             "Server returned invalid recognition data."
         );
-
     }
 
-
-    if (
-        !response.ok
-    ) {
+    if (!response.ok) {
 
         throw new Error(
             data.error ||
             "Unable to load recognition data."
         );
-
     }
 
-
     if (
-        !Array.isArray(data) ||
-        data.length === 0
+        !Array.isArray(data)
+        || !data.length
     ) {
 
         throw new Error(
             "No registered students found."
         );
-
     }
-
 
     students =
         data;
-
-
-    console.log(
-        "Registered students:",
-        students.length
-    );
-
 }
 
 
-/* =========================================================
-   FIND BEST MATCH
-========================================================= */
+/* =====================================================
+   FIND FACE
+===================================================== */
 
 function findBestMatch(
     descriptor
@@ -1199,9 +643,9 @@ function findBestMatch(
     let bestDistance =
         Infinity;
 
-
     for (
-        const student of students
+        const student
+        of students
     ) {
 
         if (
@@ -1211,73 +655,133 @@ function findBestMatch(
         ) {
 
             continue;
-
         }
-
 
         for (
             const embedding
             of student.embeddings
         ) {
 
-            const distance =
-                faceDistance(
+            if (
+                !Array.isArray(
+                    embedding
+                )
+            ) {
+
+                continue;
+            }
+
+            const d =
+                distance(
                     descriptor,
                     embedding
                 );
 
-
             if (
-                distance <
+                d <
                 bestDistance
             ) {
 
                 bestDistance =
-                    distance;
+                    d;
 
                 bestStudent =
                     student;
-
             }
-
         }
-
     }
 
-
     return {
-
         student:
             bestStudent,
 
         distance:
             bestDistance
-
     };
-
 }
 
 
-/* =========================================================
-   START CAMERA
-========================================================= */
+/* =====================================================
+   MARK ATTENDANCE
+===================================================== */
+
+async function markAttendance(
+    studentId
+) {
+
+    if (
+        !qrToken
+        || !verifiedClassId
+    ) {
+
+        throw new Error(
+            "Classroom QR verification is required."
+        );
+    }
+
+    const response =
+        await fetch(
+            "/api/mark-attendance",
+            {
+                method:
+                    "POST",
+
+                credentials:
+                    "same-origin",
+
+                headers: {
+                    "Content-Type":
+                        "application/json"
+                },
+
+                body:
+                    JSON.stringify({
+
+                        student_id:
+                            studentId,
+
+                        class_id:
+                            verifiedClassId,
+
+                        qr_token:
+                            qrToken
+                    })
+            }
+        );
+
+    const data =
+        await response.json();
+
+    if (!response.ok) {
+
+        throw new Error(
+            data.error ||
+            "Attendance failed."
+        );
+    }
+
+    return data;
+}
+
+
+/* =====================================================
+   START FACE CAMERA
+===================================================== */
 
 startButton.addEventListener(
     "click",
     async function() {
 
         if (
-            !classSelect.value
+            !qrToken
+            || !verifiedClassId
         ) {
 
-            setStatus(
-                "Please select a class first."
-            );
+            result.textContent =
+                "Scan the classroom QR first.";
 
             return;
-
         }
-
 
         try {
 
@@ -1288,40 +792,38 @@ startButton.addEventListener(
                 "Starting...";
 
 
-            scanning =
-                false;
+            /*
+             * Verify QR AGAIN immediately
+             * before opening face recognition.
+             */
 
-            recognitionRunning =
-                false;
+            const response =
+                await fetch(
+                    `/api/qr/verify?token=${encodeURIComponent(qrToken)}`
+                );
 
+            const qrData =
+                await response.json();
 
-            /* LOAD FACE API */
+            if (
+                !response.ok
+                || !qrData.ok
+            ) {
+
+                throw new Error(
+                    qrData.error ||
+                    "QR verification failed."
+                );
+            }
+
 
             await loadModels();
-
-
-            /* LOAD STUDENTS */
 
             await loadStudents();
 
 
-            /* CAMERA */
-
-            setStatus(
-                "Requesting camera permission..."
-            );
-
-
-            if (
-                !navigator.mediaDevices ||
-                !navigator.mediaDevices.getUserMedia
-            ) {
-
-                throw new Error(
-                    "Camera access is not supported by this browser."
-                );
-
-            }
+            result.textContent =
+                "Requesting camera permission...";
 
 
             stream =
@@ -1330,211 +832,61 @@ startButton.addEventListener(
                     .getUserMedia({
 
                         video: {
-
                             facingMode:
-                                "user",
-
-                            width: {
-
-                                ideal:
-                                    640
-
-                            },
-
-                            height: {
-
-                                ideal:
-                                    480
-
-                            }
-
+                                "user"
                         },
 
                         audio:
                             false
-
                     });
 
 
             video.srcObject =
                 stream;
 
-
-            await waitForVideo();
-
-
-            await video.play();
-
-
             scanning =
                 true;
-
-
-            recognitionRunning =
-                false;
-
 
             startButton.textContent =
                 "Scanning...";
 
-
-            setStatus(
-                "Camera ready. Look directly at the camera."
-            );
-
+            result.textContent =
+                "Camera ready. Look directly at the camera.";
 
             scanFace();
 
-        }
-
-        catch (error) {
+        } catch (error) {
 
             console.error(
-                "Attendance start error:",
                 error
             );
 
-
-            scanning =
-                false;
-
-            recognitionRunning =
-                false;
-
-
             stopCamera();
 
+            result.textContent =
+                "Unable to start attendance: "
+                + error.message;
 
             startButton.disabled =
                 false;
 
-
             startButton.textContent =
                 "Start Camera";
-
-
-            setStatus(
-                "Unable to start attendance: " +
-                error.message
-            );
-
         }
-
     }
 );
 
 
-/* =========================================================
-   WAIT FOR VIDEO
-========================================================= */
-
-function waitForVideo() {
-
-    return new Promise(
-        function(resolve, reject) {
-
-            let attempts =
-                0;
-
-
-            const maxAttempts =
-                100;
-
-
-            const timer =
-                setInterval(
-                    function() {
-
-                        attempts++;
-
-
-                        if (
-                            video.readyState >= 2 &&
-                            video.videoWidth > 0 &&
-                            video.videoHeight > 0
-                        ) {
-
-                            clearInterval(
-                                timer
-                            );
-
-
-                            resolve();
-
-                            return;
-
-                        }
-
-
-                        if (
-                            attempts >=
-                            maxAttempts
-                        ) {
-
-                            clearInterval(
-                                timer
-                            );
-
-
-                            reject(
-                                new Error(
-                                    "Camera video did not become ready."
-                                )
-                            );
-
-                        }
-
-                    },
-                    100
-                );
-
-        }
-    );
-
-}
-
-
-/* =========================================================
-   FACE SCANNING
-========================================================= */
+/* =====================================================
+   FACE SCAN
+===================================================== */
 
 async function scanFace() {
 
-    if (
-        !scanning ||
-        recognitionRunning
-    ) {
-
+    if (!scanning)
         return;
 
-    }
-
-
-    recognitionRunning =
-        true;
-
-
     try {
-
-        if (
-            video.readyState < 2 ||
-            !video.videoWidth
-        ) {
-
-            recognitionRunning =
-                false;
-
-
-            setTimeout(
-                scanFace,
-                500
-            );
-
-
-            return;
-
-        }
-
 
         const detection =
             await faceapi
@@ -1546,11 +898,10 @@ async function scanFace() {
                         .TinyFaceDetectorOptions({
 
                             inputSize:
-                                320,
+                                224,
 
                             scoreThreshold:
-                                0.35
-
+                                0.5
                         })
 
                 )
@@ -1558,33 +909,19 @@ async function scanFace() {
                 .withFaceDescriptor();
 
 
-        /* NO FACE */
+        if (!detection) {
 
-        if (
-            !detection
-        ) {
-
-            recognitionRunning =
-                false;
-
-
-            setStatus(
-                "No face detected. Move closer and look at the camera."
-            );
-
+            result.textContent =
+                "Looking for a face...";
 
             setTimeout(
                 scanFace,
-                500
+                350
             );
 
-
             return;
-
         }
 
-
-        /* FACE FOUND */
 
         const descriptor =
             Array.from(
@@ -1598,353 +935,129 @@ async function scanFace() {
             );
 
 
-        console.log(
-            "Best match:",
-            match.student
-                ? match.student.name
-                : "none",
-
-            "distance:",
-            match.distance
-        );
-
-
-        /* MATCH */
-
         if (
-            match.student &&
+            match.student
+            &&
             match.distance <=
-                MATCH_THRESHOLD
+                THRESHOLD
         ) {
 
             scanning =
                 false;
 
-
-            recognitionRunning =
-                false;
-
-
-            setStatus(
-                `Face matched: ${match.student.name}. Recording attendance...`
-            );
+            result.textContent =
+                `Face matched: ${match.student.name}. Recording attendance...`;
 
 
-            try {
-
-                const attendance =
-                    await markAttendance(
-                        match.student.id
-                    );
-
-
-                if (
-                    attendance.already
-                ) {
-
-                    setStatus(
-                        `Attendance already marked for ${match.student.name}.`
-                    );
-
-                }
-
-                else {
-
-                    setStatus(
-                        `✓ Attendance recorded for ${match.student.name}.`
-                    );
-
-                }
-
-
-                stopCamera();
-
-
-                startButton.disabled =
-                    false;
-
-
-                startButton.textContent =
-                    "Take Again";
-
-
-                return;
-
-            }
-
-            catch (error) {
-
-                stopCamera();
-
-
-                startButton.disabled =
-                    false;
-
-
-                startButton.textContent =
-                    "Start Camera";
-
-
-                setStatus(
-                    "Attendance error: " +
-                    error.message
+            const data =
+                await markAttendance(
+                    match.student.id
                 );
 
 
-                return;
+            result.textContent =
+                data.message;
 
-            }
 
+            stopCamera();
+
+
+            startButton.disabled =
+                false;
+
+            startButton.textContent =
+                "Take Again";
+
+            return;
         }
 
 
-        /* NOT RECOGNIZED */
-
-        recognitionRunning =
-            false;
-
-
-        setStatus(
-            "Face detected, but not recognized. Look directly at the camera."
-        );
-
+        result.textContent =
+            "Face not recognized. Please look at the camera.";
 
         setTimeout(
             scanFace,
-            700
+            900
         );
 
-    }
-
-    catch (error) {
+    } catch (error) {
 
         console.error(
-            "Face recognition error:",
             error
         );
 
-
-        recognitionRunning =
+        scanning =
             false;
 
+        stopCamera();
 
-        if (
-            scanning
-        ) {
+        result.textContent =
+            "Recognition error: "
+            + error.message;
 
-            setStatus(
-                "Recognition error. Trying again..."
-            );
+        startButton.disabled =
+            false;
 
-
-            setTimeout(
-                scanFace,
-                1000
-            );
-
-        }
-
+        startButton.textContent =
+            "Start Camera";
     }
-
 }
 
 
-/* =========================================================
-   MARK ATTENDANCE
-========================================================= */
+/* =====================================================
+   STOP CAMERA
+===================================================== */
 
-async function markAttendance(
-    studentId
-) {
+function stopCamera() {
 
-    const classId =
-        Number(
-            classSelect.value
-        );
+    if (!stream)
+        return;
 
+    stream
+        .getTracks()
+        .forEach(
+            function(track) {
 
-    if (
-        !classId
-    ) {
-
-        throw new Error(
-            "No class selected."
-        );
-
-    }
-
-
-    const response =
-        await fetch(
-            "/api/mark-attendance",
-            {
-
-                method:
-                    "POST",
-
-                credentials:
-                    "same-origin",
-
-                headers: {
-
-                    "Content-Type":
-                        "application/json"
-
-                },
-
-                body:
-                    JSON.stringify({
-
-                        student_id:
-                            studentId,
-
-                        class_id:
-                            classId,
-
-                        session_token:
-                            qrToken
-
-                    })
+                track.stop();
 
             }
         );
 
-
-    const text =
-        await response.text();
-
-
-    let data;
-
-
-    try {
-
-        data =
-            JSON.parse(text);
-
-    }
-
-    catch {
-
-        console.error(
-            "Invalid attendance response:",
-            text
-        );
-
-
-        throw new Error(
-            `Server returned HTTP ${response.status}.`
-        );
-
-    }
-
-
-    if (
-        !response.ok
-    ) {
-
-        throw new Error(
-            data.error ||
-            "Attendance failed."
-        );
-
-    }
-
-
-    return data;
-
-}
-
-
-/* =========================================================
-   STOP CAMERA
-========================================================= */
-
-function stopCamera() {
-
-    scanning =
-        false;
-
-
-    recognitionRunning =
-        false;
-
-
-    if (
-        stream
-    ) {
-
-        stream
-            .getTracks()
-            .forEach(
-                function(track) {
-
-                    track.stop();
-
-                }
-            );
-
-
-        stream =
-            null;
-
-    }
-
-
-    video.srcObject =
+    stream =
         null;
-
 }
 
 
-/* =========================================================
-   PAGE INITIALIZATION
-========================================================= */
+/* =====================================================
+   INITIAL LOAD
+===================================================== */
 
 document.addEventListener(
     "DOMContentLoaded",
     function() {
 
-        loadClasses();
+        /*
+         * IMPORTANT:
+         * We intentionally DO NOT load classes here.
+         *
+         * Student must scan classroom QR first.
+         */
 
-        initializeQrFromUrl();
+        classSelect.innerHTML =
+            `
+            <option value="">
+                Scan classroom QR first
+            </option>
+            `;
 
-    }
-);
+        classSelect.disabled =
+            true;
 
+        startButton.disabled =
+            true;
 
-/* =========================================================
-   REFRESH CLASSES EVERY MINUTE
-========================================================= */
-
-setInterval(
-    async function() {
-
-        if (
-            scanning
-        ) {
-
-            return;
-
-        }
-
-
-        await loadClasses();
-
-    },
-    60000
-);
-
-
-/* =========================================================
-   CLEAN CAMERA WHEN LEAVING PAGE
-========================================================= */
-
-window.addEventListener(
-    "beforeunload",
-    function() {
-
-        stopCamera();
+        result.textContent =
+            "Scan the classroom QR code first.";
 
     }
 );
