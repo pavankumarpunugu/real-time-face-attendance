@@ -2,7 +2,8 @@ import os
 import json
 import secrets
 
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
+from zoneinfo import ZoneInfo
 from functools import wraps
 
 from flask import (
@@ -1487,6 +1488,7 @@ def mark_attendance():
             )
         ), 403
 
+
     student = q(
         """
         SELECT *
@@ -1499,6 +1501,7 @@ def mark_attendance():
         True,
         True
     )
+
 
     class_info = q(
         """
@@ -1518,6 +1521,7 @@ def mark_attendance():
         True
     )
 
+
     if not student or not class_info:
 
         return jsonify(
@@ -1527,6 +1531,108 @@ def mark_attendance():
                 "not found."
             )
         ), 404
+
+
+    # =====================================================
+    # CHECK CLASS TIMING
+    # =====================================================
+
+    try:
+
+        india = ZoneInfo(
+            "Asia/Kolkata"
+        )
+
+        now = datetime.now(
+            india
+        )
+
+
+        class_date_str = str(
+            class_info["class_date"]
+        )
+
+
+        start_time_str = str(
+            class_info["start_time"]
+        )
+
+
+        # Convert HH:MM to HH:MM:SS
+        if len(
+            start_time_str.split(":")
+        ) == 2:
+
+            start_time_str += ":00"
+
+
+        class_start = datetime.strptime(
+            f"{class_date_str} {start_time_str}",
+            "%Y-%m-%d %H:%M:%S"
+        ).replace(
+            tzinfo=india
+        )
+
+
+        # Class duration = 1 hour
+        class_end = (
+            class_start
+            + timedelta(hours=1)
+        )
+
+
+        # -------------------------------------------------
+        # BEFORE CLASS
+        # -------------------------------------------------
+
+        if now < class_start:
+
+            return jsonify(
+                ok=False,
+                error=(
+                    "Class has not "
+                    "started yet. "
+                    f"Please wait until "
+                    f"{class_start.strftime('%I:%M %p')}."
+                )
+            ), 403
+
+
+        # -------------------------------------------------
+        # AFTER CLASS
+        # -------------------------------------------------
+
+        if now >= class_end:
+
+            return jsonify(
+                ok=False,
+                error=(
+                    "This class has "
+                    "already ended. "
+                    "Attendance is no "
+                    "longer available."
+                )
+            ), 403
+
+
+    except Exception as e:
+
+        app.logger.exception(
+            "Class timing validation failed"
+        )
+
+        return jsonify(
+            ok=False,
+            error=(
+                "Unable to verify "
+                "class timing."
+            )
+        ), 500
+
+
+    # =====================================================
+    # RECORD ATTENDANCE
+    # =====================================================
 
     try:
 
@@ -1549,6 +1655,7 @@ def mark_attendance():
             }
         )
 
+
         return jsonify(
             ok=True,
             already=False,
@@ -1560,6 +1667,7 @@ def mark_attendance():
                 class_info["class_date"]
             )
         )
+
 
     except IntegrityError:
 
@@ -1574,7 +1682,6 @@ def mark_attendance():
             roll_no=student["roll_no"],
             subject=class_info["subject_name"]
         )
-
 
 # =========================================================
 # CLASSES API
