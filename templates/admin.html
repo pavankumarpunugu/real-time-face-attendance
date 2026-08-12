@@ -3,7 +3,9 @@
 {% block content %}
 
 <div class="page-head">
+
     <div>
+
         <div class="eyebrow">
             ADMIN DASHBOARD
         </div>
@@ -13,42 +15,72 @@
         </h1>
 
         <p class="muted">
-            Manage students, subjects, timetable and classroom attendance.
+            Students, subjects, classes and attendance.
         </p>
+
     </div>
+
 </div>
 
 
-<!-- =====================================================
-     STATS
-===================================================== -->
+<!-- STAT CARDS -->
 
 <div class="cards">
 
     <div class="card stat-card">
-        <span>Students</span>
-        <strong>{{ students|length }}</strong>
-        <small>Registered students</small>
+
+        <span>
+            Students
+        </span>
+
+        <strong>
+            {{ students|length }}
+        </strong>
+
+        <small>
+            Registered students
+        </small>
+
     </div>
 
-    <div class="card stat-card">
-        <span>Present Today</span>
-        <strong>{{ present_today }}</strong>
-        <small>Attendance marked today</small>
-    </div>
 
     <div class="card stat-card">
-        <span>Subjects</span>
-        <strong>{{ subjects|length }}</strong>
-        <small>Available subjects</small>
+
+        <span>
+            Present Today
+        </span>
+
+        <strong>
+            {{ present_today }}
+        </strong>
+
+        <small>
+            Attendance marked today
+        </small>
+
+    </div>
+
+
+    <div class="card stat-card">
+
+        <span>
+            Subjects
+        </span>
+
+        <strong>
+            {{ subjects|length }}
+        </strong>
+
+        <small>
+            Available subjects
+        </small>
+
     </div>
 
 </div>
 
 
-<!-- =====================================================
-     CREATE SUBJECT
-===================================================== -->
+<!-- CREATE SUBJECT -->
 
 <div class="panel">
 
@@ -60,6 +92,7 @@
         Add a new subject.
     </p>
 
+
     <div class="grid2">
 
         <div>
@@ -70,10 +103,11 @@
 
             <input
                 id="scode"
-                placeholder="CS101"
+                placeholder="CS301"
             >
 
         </div>
+
 
         <div>
 
@@ -90,12 +124,14 @@
 
     </div>
 
+
     <button
         class="primary"
         onclick="createSubject()"
     >
         Create Subject
     </button>
+
 
     <div
         id="subjectMsg"
@@ -105,15 +141,14 @@
 </div>
 
 
-<!-- =====================================================
-     SUBJECTS
-===================================================== -->
+<!-- SUBJECTS -->
 
 <div class="panel">
 
     <h2>
         Subject Management
     </h2>
+
 
     <div class="table-wrap">
 
@@ -122,12 +157,23 @@
             <thead>
 
                 <tr>
-                    <th>Code</th>
-                    <th>Subject</th>
-                    <th>Actions</th>
+
+                    <th>
+                        Code
+                    </th>
+
+                    <th>
+                        Subject
+                    </th>
+
+                    <th>
+                        Actions
+                    </th>
+
                 </tr>
 
             </thead>
+
 
             <tbody>
 
@@ -136,14 +182,18 @@
                 <tr>
 
                     <td>
+
                         <strong>
                             {{ s.code }}
                         </strong>
+
                     </td>
+
 
                     <td>
                         {{ s.name }}
                     </td>
+
 
                     <td>
 
@@ -157,6 +207,7 @@
                         >
                             Edit
                         </button>
+
 
                         <button
                             class="danger"
@@ -173,12 +224,15 @@
 
                 </tr>
 
+
                 {% else %}
 
                 <tr>
+
                     <td colspan="3">
                         No subjects yet.
                     </td>
+
                 </tr>
 
                 {% endfor %}
@@ -192,19 +246,20 @@
 </div>
 
 
-<!-- =====================================================
-     DAILY TIMETABLE
-===================================================== -->
+<!-- DAILY CLASS SCHEDULE -->
 
 <div class="panel">
 
     <h2>
-        Manage Daily Timetable
+        Daily Class Schedule
     </h2>
 
     <p class="muted">
-        These fixed timings automatically generate today's classes.
+        Create fixed daily class timings once.
+        The system automatically creates today's sessions.
+        Sundays and holidays are excluded.
     </p>
+
 
     <div class="grid2">
 
@@ -214,7 +269,7 @@
                 Subject
             </label>
 
-            <select id="scheduleSubject">
+            <select id="subject">
 
                 <option value="">
                     Select subject
@@ -232,6 +287,7 @@
 
         </div>
 
+
         <div>
 
             <label>
@@ -239,7 +295,7 @@
             </label>
 
             <input
-                id="scheduleTime"
+                id="ctime"
                 type="time"
             >
 
@@ -248,32 +304,272 @@
     </div>
 
 
-    <div style="max-width:300px;">
+    <label>
+        Duration
+    </label>
 
-        <label>
-            Duration (minutes)
-        </label>
 
-        <input
-            id="scheduleDuration"
-            type="number"
-            value="60"
-            min="1"
-            max="480"
-        >
+    <select id="cduration">
+
+        <option value="60">
+            1 hour
+        </option>
+
+        <option value="30">
+            30 minutes
+        </option>
+
+        <option value="45">
+            45 minutes
+        </option>
+
+        <option value="90">
+            1 hour 30 minutes
+        </option>
+
+        <option value="120">
+            2 hours
+        </option>
+
+    </select>
+
+
+    <button
+        class="primary"
+        onclick="createClass()"
+    >
+        Add Daily Class
+    </button>
+
+
+    <div
+        id="classMsg"
+        class="status"
+    ></div>
+
+</div>
+
+
+<!-- SCHEDULE MANAGEMENT -->
+
+<div class="panel">
+
+    <h2>
+        Manage Daily Timetable
+    </h2>
+
+    <p class="muted">
+        Edit or delete fixed class timings.
+        Changes apply to future automatically
+        generated sessions.
+    </p>
+
+
+    <div class="table-wrap">
+
+        <table>
+
+            <thead>
+
+                <tr>
+
+                    <th>
+                        Subject
+                    </th>
+
+                    <th>
+                        Time
+                    </th>
+
+                    <th>
+                        Duration
+                    </th>
+
+                    <th>
+                        Actions
+                    </th>
+
+                </tr>
+
+            </thead>
+
+
+            <tbody id="scheduleBody">
+
+                <tr>
+
+                    <td colspan="4">
+                        Loading timetable...
+                    </td>
+
+                </tr>
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</div>
+<!-- CLASS SESSIONS -->
+
+<div class="panel">
+
+    <h2>
+        Today's Class Sessions
+    </h2>
+
+    <p class="muted">
+        Today's sessions are generated automatically
+        from the daily timetable.
+    </p>
+
+
+    <div class="table-wrap">
+
+        <table>
+
+            <thead>
+
+                <tr>
+
+                    <th>
+                        Subject
+                    </th>
+
+                    <th>
+                        Date
+                    </th>
+
+                    <th>
+                        Time
+                    </th>
+
+                    <th>
+                        Actions
+                    </th>
+
+                </tr>
+
+            </thead>
+
+
+            <tbody id="classSessionsBody">
+
+                <tr>
+
+                    <td colspan="4">
+                        Loading classes...
+                    </td>
+
+                </tr>
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</div>
+
+
+<!-- CLASS ATTENDANCE -->
+
+<div class="panel">
+
+    <h2>
+        Class-wise Attendance
+    </h2>
+
+
+    <select id="attendanceClass">
+
+        <option value="">
+            Loading classes...
+        </option>
+
+    </select>
+
+
+    <button
+        class="primary"
+        onclick="loadClassAttendance()"
+    >
+        View Attendance
+    </button>
+
+
+    <div
+        id="classAttendanceMsg"
+        class="status"
+    ></div>
+
+
+    <div
+        id="classAttendanceResult"
+        style="margin-top:20px;"
+    ></div>
+
+</div>
+
+
+<!-- HOLIDAYS -->
+
+<div class="panel">
+
+    <h2>
+        Holidays
+    </h2>
+
+    <p class="muted">
+        Sundays are automatically holidays.
+        Add college holidays here so attendance
+        is disabled automatically.
+    </p>
+
+
+    <div class="grid2">
+
+        <div>
+
+            <label>
+                Holiday Date
+            </label>
+
+            <input
+                id="holidayDate"
+                type="date"
+            >
+
+        </div>
+
+
+        <div>
+
+            <label>
+                Holiday Name
+            </label>
+
+            <input
+                id="holidayName"
+                placeholder="Independence Day"
+            >
+
+        </div>
 
     </div>
 
 
     <button
         class="primary"
-        onclick="createSchedule()"
+        onclick="createHoliday()"
     >
-        Add Timetable Class
+        Add Holiday
     </button>
 
+
     <div
-        id="scheduleMsg"
+        id="holidayMsg"
         class="status"
     ></div>
 
@@ -288,20 +584,32 @@
             <thead>
 
                 <tr>
-                    <th>Subject</th>
-                    <th>Time</th>
-                    <th>Duration</th>
-                    <th>Actions</th>
+
+                    <th>
+                        Date
+                    </th>
+
+                    <th>
+                        Holiday
+                    </th>
+
+                    <th>
+                        Action
+                    </th>
+
                 </tr>
 
             </thead>
 
-            <tbody id="scheduleBody">
+
+            <tbody id="holidayBody">
 
                 <tr>
-                    <td colspan="4">
-                        Loading timetable...
+
+                    <td colspan="3">
+                        Loading holidays...
                     </td>
+
                 </tr>
 
             </tbody>
@@ -313,175 +621,7 @@
 </div>
 
 
-<!-- =====================================================
-     TODAY'S CLASSES + QR
-===================================================== -->
-
-<div class="panel">
-
-    <h2>
-        Today's Classroom QR
-    </h2>
-
-    <p class="muted">
-        Select a class and start a temporary QR code.
-        Students must scan this QR before face verification.
-        The QR expires after 2 minutes or when the class ends.
-    </p>
-
-
-    <label>
-        Today's Class
-    </label>
-
-    <select id="qrClass">
-
-        <option value="">
-            Loading classes...
-        </option>
-
-    </select>
-
-
-    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:16px;">
-
-        <button
-            id="startQrButton"
-            class="primary"
-            onclick="startQR()"
-            disabled
-        >
-            Start Classroom QR
-        </button>
-
-        <button
-            id="endQrButton"
-            class="danger"
-            onclick="endQR()"
-            disabled
-        >
-            End QR
-        </button>
-
-    </div>
-
-
-    <div
-        id="qrMessage"
-        class="status"
-        style="margin-top:12px;"
-    >
-        Select today's class first.
-    </div>
-
-
-    <!-- QR DISPLAY -->
-
-    <div
-        id="qrPanel"
-        style="
-            display:none;
-            margin-top:25px;
-            padding:25px;
-            border:1px solid #e1e5ec;
-            border-radius:16px;
-            text-align:center;
-            background:#fafcff;
-        "
-    >
-
-        <h3 id="qrSubject">
-            Classroom QR
-        </h3>
-
-        <p
-            class="muted"
-            id="qrClassInfo"
-        ></p>
-
-        <div
-            id="qrcode"
-            style="
-                width:260px;
-                min-height:260px;
-                margin:20px auto;
-                display:flex;
-                justify-content:center;
-                align-items:center;
-                background:white;
-                padding:12px;
-                border-radius:12px;
-            "
-        ></div>
-
-        <h3>
-            QR expires in
-        </h3>
-
-        <div
-            id="qrCountdown"
-            style="
-                font-size:32px;
-                font-weight:800;
-            "
-        >
-            02:00
-        </div>
-
-        <p class="muted">
-            Students must scan this QR from the classroom.
-        </p>
-
-    </div>
-
-</div>
-
-
-<!-- =====================================================
-     CLASS ATTENDANCE
-===================================================== -->
-
-<div class="panel">
-
-    <h2>
-        Class-wise Attendance
-    </h2>
-
-    <label>
-        Class
-    </label>
-
-    <select id="attendanceClass">
-
-        <option value="">
-            Loading classes...
-        </option>
-
-    </select>
-
-    <button
-        class="primary"
-        onclick="loadClassAttendance()"
-    >
-        View Attendance
-    </button>
-
-    <div
-        id="classAttendanceMsg"
-        class="status"
-    ></div>
-
-    <div
-        id="classAttendanceResult"
-        style="margin-top:20px;"
-    ></div>
-
-</div>
-
-
-<!-- =====================================================
-     STUDENTS
-===================================================== -->
+<!-- STUDENTS -->
 
 <div class="panel">
 
@@ -493,6 +633,7 @@
         Manage registered students.
     </p>
 
+
     <div class="table-wrap">
 
         <table>
@@ -500,14 +641,31 @@
             <thead>
 
                 <tr>
-                    <th>Roll</th>
-                    <th>Name</th>
-                    <th>Department</th>
-                    <th>Email</th>
-                    <th>Actions</th>
+
+                    <th>
+                        Roll
+                    </th>
+
+                    <th>
+                        Name
+                    </th>
+
+                    <th>
+                        Department
+                    </th>
+
+                    <th>
+                        Email
+                    </th>
+
+                    <th>
+                        Actions
+                    </th>
+
                 </tr>
 
             </thead>
+
 
             <tbody>
 
@@ -516,22 +674,28 @@
                 <tr>
 
                     <td>
+
                         <strong>
                             {{ s.roll_no }}
                         </strong>
+
                     </td>
+
 
                     <td>
                         {{ s.name }}
                     </td>
 
+
                     <td>
                         {{ s.department or '-' }}
                     </td>
 
+
                     <td>
                         {{ s.email or '-' }}
                     </td>
+
 
                     <td>
 
@@ -547,6 +711,7 @@
                             Edit
                         </button>
 
+
                         <button
                             class="danger"
                             onclick='deleteStudent(
@@ -560,6 +725,7 @@
                     </td>
 
                 </tr>
+
 
                 {% else %}
 
@@ -582,112 +748,17 @@
 </div>
 
 
-<!-- =====================================================
-     HOLIDAYS
-===================================================== -->
-
-<div class="panel">
-
-    <h2>
-        Holidays
-    </h2>
-
-    <p class="muted">
-        Sundays are automatically holidays.
-        Add college holidays here.
-    </p>
-
-    <div class="grid2">
-
-        <div>
-
-            <label>
-                Holiday Date
-            </label>
-
-            <input
-                id="holidayDate"
-                type="date"
-            >
-
-        </div>
-
-        <div>
-
-            <label>
-                Holiday Name
-            </label>
-
-            <input
-                id="holidayName"
-                placeholder="Independence Day"
-            >
-
-        </div>
-
-    </div>
-
-    <button
-        class="primary"
-        onclick="addHoliday()"
-    >
-        Add Holiday
-    </button>
-
-    <div
-        id="holidayMsg"
-        class="status"
-    ></div>
-
-
-    <div
-        class="table-wrap"
-        style="margin-top:20px;"
-    >
-
-        <table>
-
-            <thead>
-
-                <tr>
-                    <th>Date</th>
-                    <th>Holiday</th>
-                    <th>Action</th>
-                </tr>
-
-            </thead>
-
-            <tbody id="holidayBody">
-
-                <tr>
-                    <td colspan="3">
-                        Loading holidays...
-                    </td>
-                </tr>
-
-            </tbody>
-
-        </table>
-
-    </div>
-
-</div>
-
-
 {% endblock %}
 
 
 {% block scripts %}
 
-<!-- QR GENERATOR -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-
-
 <script>
 
-/* =====================================================
-   SUBJECT
-===================================================== */
+
+/* =========================================================
+   CREATE SUBJECT
+========================================================= */
 
 async function createSubject() {
 
@@ -697,24 +768,33 @@ async function createSubject() {
             .value
             .trim();
 
+
     const name =
         document
             .getElementById("sname")
             .value
             .trim();
 
-    const msg =
-        document.getElementById(
-            "subjectMsg"
-        );
 
-    if (!code || !name) {
+    const msg =
+        document
+            .getElementById(
+                "subjectMsg"
+            );
+
+
+    if (
+        !code ||
+        !name
+    ) {
 
         msg.textContent =
             "Enter subject code and name.";
 
         return;
+
     }
+
 
     try {
 
@@ -722,39 +802,62 @@ async function createSubject() {
             await fetch(
                 "/subjects",
                 {
-                    method: "POST",
+                    method:
+                        "POST",
+
                     headers: {
                         "Content-Type":
                             "application/json"
                     },
+
                     body:
                         JSON.stringify({
-                            code,
-                            name
+
+                            code:
+                                code,
+
+                            name:
+                                name
+
                         })
                 }
             );
 
+
         const data =
             await response.json();
 
-        if (!response.ok || !data.ok) {
+
+        if (
+            !response.ok ||
+            !data.ok
+        ) {
 
             throw new Error(
                 data.error ||
                 "Failed."
             );
+
         }
+
 
         location.reload();
 
-    } catch (error) {
+    }
+
+    catch (error) {
 
         msg.textContent =
             error.message;
+
     }
+
 }
 
+
+/* =========================================================
+   EDIT SUBJECT
+========================================================= */
 
 async function editSubject(
     id,
@@ -768,8 +871,13 @@ async function editSubject(
             oldCode
         );
 
-    if (code === null)
+
+    if (
+        code === null
+    ) {
         return;
+    }
+
 
     const name =
         prompt(
@@ -777,8 +885,13 @@ async function editSubject(
             oldName
         );
 
-    if (name === null)
+
+    if (
+        name === null
+    ) {
         return;
+    }
+
 
     try {
 
@@ -786,40 +899,68 @@ async function editSubject(
             await fetch(
                 `/subjects/${id}`,
                 {
-                    method: "PUT",
+                    method:
+                        "PUT",
+
                     headers: {
                         "Content-Type":
                             "application/json"
                     },
+
                     body:
                         JSON.stringify({
+
                             code:
                                 code.trim(),
+
                             name:
                                 name.trim()
+
                         })
                 }
             );
 
+
         const data =
             await response.json();
 
-        if (!response.ok || !data.ok) {
+
+        if (
+            !response.ok ||
+            !data.ok
+        ) {
 
             throw new Error(
                 data.error ||
                 "Update failed."
             );
+
         }
+
+
+        alert(
+            data.message
+        );
+
 
         location.reload();
 
-    } catch (error) {
-
-        alert(error.message);
     }
+
+    catch (error) {
+
+        alert(
+            error.message
+        );
+
+    }
+
 }
 
+
+/* =========================================================
+   DELETE SUBJECT
+========================================================= */
 
 async function deleteSubject(
     id,
@@ -827,13 +968,24 @@ async function deleteSubject(
     name
 ) {
 
-    if (
-        !confirm(
-            `DELETE SUBJECT?\n\n${code} — ${name}\n\n` +
-            "This deletes the subject, timetable, classes and attendance."
-        )
-    )
+    const ok =
+        confirm(
+            "DELETE SUBJECT?\n\n" +
+            code +
+            " — " +
+            name +
+            "\n\n" +
+            "This will delete the subject, " +
+            "its timetable and its attendance " +
+            "history.\n\n" +
+            "This cannot be undone."
+        );
+
+
+    if (!ok) {
         return;
+    }
+
 
     try {
 
@@ -841,71 +993,102 @@ async function deleteSubject(
             await fetch(
                 `/subjects/${id}`,
                 {
-                    method: "DELETE"
+                    method:
+                        "DELETE",
+
+                    credentials:
+                        "same-origin"
                 }
             );
+
 
         const data =
             await response.json();
 
-        if (!response.ok || !data.ok) {
+
+        if (
+            !response.ok ||
+            !data.ok
+        ) {
 
             throw new Error(
                 data.error ||
                 "Delete failed."
             );
+
         }
 
-        alert(data.message);
+
+        alert(
+            data.message
+        );
+
 
         location.reload();
 
-    } catch (error) {
-
-        alert(error.message);
     }
+
+    catch (error) {
+
+        alert(
+            error.message
+        );
+
+    }
+
 }
 
 
-/* =====================================================
-   DAILY TIMETABLE
-===================================================== */
+/* =========================================================
+   CREATE DAILY CLASS
+========================================================= */
 
-async function createSchedule() {
+async function createClass() {
 
     const subject =
         document
             .getElementById(
-                "scheduleSubject"
+                "subject"
             )
             .value;
 
-    const time =
+
+    const startTime =
         document
             .getElementById(
-                "scheduleTime"
+                "ctime"
             )
             .value;
+
 
     const duration =
         document
             .getElementById(
-                "scheduleDuration"
+                "cduration"
             )
             .value;
 
-    const msg =
-        document.getElementById(
-            "scheduleMsg"
-        );
 
-    if (!subject || !time) {
+    const msg =
+        document
+            .getElementById(
+                "classMsg"
+            );
+
+
+    if (
+        !subject ||
+        !startTime ||
+        !duration
+    ) {
 
         msg.textContent =
-            "Select subject and time.";
+            "Select subject, time and duration.";
 
         return;
+
     }
+
 
     try {
 
@@ -913,277 +1096,167 @@ async function createSchedule() {
             await fetch(
                 "/classes",
                 {
-                    method: "POST",
+                    method:
+                        "POST",
+
                     headers: {
                         "Content-Type":
                             "application/json"
                     },
+
                     body:
                         JSON.stringify({
+
                             subject_id:
                                 subject,
+
                             start_time:
-                                time,
+                                startTime,
+
                             duration_minutes:
-                                duration
+                                Number(
+                                    duration
+                                )
+
                         })
                 }
             );
 
+
         const data =
             await response.json();
 
-        if (!response.ok || !data.ok) {
+
+        if (
+            !response.ok ||
+            !data.ok
+        ) {
 
             throw new Error(
                 data.error ||
                 "Failed."
             );
+
         }
 
+
         msg.textContent =
-            data.message;
+            "Daily class schedule created successfully.";
+
+
+        document
+            .getElementById(
+                "ctime"
+            )
+            .value = "";
+
 
         await loadSchedules();
+
         await loadClasses();
 
-    } catch (error) {
+    }
+
+    catch (error) {
 
         msg.textContent =
             error.message;
+
     }
+
 }
 
 
-async function loadSchedules() {
-
-    const body =
-        document.getElementById(
-            "scheduleBody"
-        );
-
-    try {
-
-        const response =
-            await fetch(
-                "/api/class-schedules"
-            );
-
-        const data =
-            await response.json();
-
-        body.innerHTML = "";
-
-        if (!data.length) {
-
-            body.innerHTML =
-                `
-                <tr>
-                    <td colspan="4">
-                        No timetable entries.
-                    </td>
-                </tr>
-                `;
-
-            return;
-        }
-
-        data.forEach(
-            function(item) {
-
-                const row =
-                    document.createElement(
-                        "tr"
-                    );
-
-                row.innerHTML =
-                    `
-                    <td>
-                        <strong>
-                            ${escapeHtml(item.code)}
-                        </strong>
-                        <br>
-                        <span class="muted">
-                            ${escapeHtml(item.name)}
-                        </span>
-                    </td>
-
-                    <td>
-                        ${escapeHtml(item.start_time)}
-                    </td>
-
-                    <td>
-                        ${item.duration_minutes} min
-                    </td>
-
-                    <td>
-
-                        <button
-                            class="secondary"
-                            onclick="editSchedule(
-                                ${item.id},
-                                ${item.subject_id},
-                                '${item.start_time}',
-                                ${item.duration_minutes}
-                            )"
-                        >
-                            Edit
-                        </button>
-
-                        <button
-                            class="danger"
-                            onclick="deleteSchedule(
-                                ${item.id}
-                            )"
-                        >
-                            Delete
-                        </button>
-
-                    </td>
-                    `;
-
-                body.appendChild(row);
-            }
-        );
-
-    } catch (error) {
-
-        body.innerHTML =
-            `
-            <tr>
-                <td colspan="4">
-                    Failed to load timetable.
-                </td>
-            </tr>
-            `;
-    }
-}
-
-
-async function editSchedule(
-    id,
-    subjectId,
-    oldTime,
-    oldDuration
-) {
-
-    const time =
-        prompt(
-            "Start time (HH:MM):",
-            oldTime
-        );
-
-    if (time === null)
-        return;
-
-    const duration =
-        prompt(
-            "Duration in minutes:",
-            oldDuration
-        );
-
-    if (duration === null)
-        return;
-
-    try {
-
-        const response =
-            await fetch(
-                `/api/class-schedules/${id}`,
-                {
-                    method: "PUT",
-                    headers: {
-                        "Content-Type":
-                            "application/json"
-                    },
-                    body:
-                        JSON.stringify({
-                            subject_id:
-                                subjectId,
-                            start_time:
-                                time,
-                            duration_minutes:
-                                duration
-                        })
-                }
-            );
-
-        const data =
-            await response.json();
-
-        if (!response.ok || !data.ok) {
-
-            throw new Error(
-                data.error
-            );
-        }
-
-        await loadSchedules();
-        await loadClasses();
-
-    } catch (error) {
-
-        alert(error.message);
-    }
-}
-
-
-async function deleteSchedule(id) {
-
-    if (
-        !confirm(
-            "Delete this timetable entry?"
-        )
-    )
-        return;
-
-    try {
-
-        const response =
-            await fetch(
-                `/api/class-schedules/${id}`,
-                {
-                    method: "DELETE"
-                }
-            );
-
-        const data =
-            await response.json();
-
-        if (!response.ok || !data.ok) {
-
-            throw new Error(
-                data.error
-            );
-        }
-
-        await loadSchedules();
-        await loadClasses();
-
-    } catch (error) {
-
-        alert(error.message);
-    }
-}
-
-
-/* =====================================================
-   TODAY'S CLASSES
-===================================================== */
+/* =========================================================
+   LOAD TODAY'S CLASSES
+========================================================= */
 
 async function loadClasses() {
 
     const body =
-        document.getElementById(
-            "qrClass"
-        );
+        document
+            .getElementById(
+                "classSessionsBody"
+            );
 
-    const attendance =
-        document.getElementById(
-            "attendanceClass"
-        );
+
+    const select =
+        document
+            .getElementById(
+                "attendanceClass"
+            );
+
 
     try {
+
+        const statusResponse =
+            await fetch(
+                "/api/today-status",
+                {
+                    credentials:
+                        "same-origin"
+                }
+            );
+
+
+        const status =
+            await statusResponse.json();
+
+
+        if (
+            status.is_holiday
+        ) {
+
+            body.innerHTML = `
+
+                <tr>
+
+                    <td colspan="4">
+
+                        <strong>
+                            ${
+                                status.holiday_type ===
+                                "Sunday"
+
+                                ? "Sunday — Holiday"
+
+                                : (
+                                    status.holiday_name +
+                                    " — Holiday"
+                                )
+                            }
+                        </strong>
+
+                    </td>
+
+                </tr>
+
+            `;
+
+
+            select.innerHTML = `
+
+                <option value="">
+                    ${
+                        status.holiday_type ===
+                        "Sunday"
+
+                        ? "Sunday — Holiday"
+
+                        : (
+                            status.holiday_name +
+                            " — Holiday"
+                        )
+                    }
+                </option>
+
+            `;
+
+
+            return;
+
+        }
+
 
         const response =
             await fetch(
@@ -1194,885 +1267,670 @@ async function loadClasses() {
                 }
             );
 
-        const data =
-            await response.json();
 
-        if (!response.ok) {
+        if (
+            !response.ok
+        ) {
 
             throw new Error(
-                data.error ||
-                "Failed to load classes."
+                "Unable to load today's classes."
             );
+
         }
 
+
+        const classes =
+            await response.json();
+
+
         body.innerHTML =
-            `
+            "";
+
+        select.innerHTML =
+            "";
+
+
+        if (
+            !Array.isArray(
+                classes
+            ) ||
+            classes.length === 0
+        ) {
+
+            body.innerHTML = `
+
+                <tr>
+
+                    <td colspan="4">
+                        No classes scheduled today.
+                    </td>
+
+                </tr>
+
+            `;
+
+
+            select.innerHTML = `
+
+                <option value="">
+                    No classes today
+                </option>
+
+            `;
+
+
+            return;
+
+        }
+
+
+        select.innerHTML = `
+
             <option value="">
                 Select today's class
             </option>
-            `;
 
-        attendance.innerHTML =
-            `
-            <option value="">
-                Select class
-            </option>
-            `;
+        `;
 
-        data.forEach(
+
+        classes.forEach(
             function(c) {
 
-                const label =
-                    `${c.code} — ${c.name} — ` +
-                    `${c.start_time} ` +
-                    `(${c.duration_minutes} min)`;
+                const row =
+                    document
+                        .createElement(
+                            "tr"
+                        );
 
-                const option1 =
-                    document.createElement(
-                        "option"
-                    );
 
-                option1.value =
-                    c.id;
+                row.innerHTML = `
 
-                option1.textContent =
-                    label;
+                    <td>
+
+                        <strong>
+                            ${escapeHtml(
+                                c.code
+                            )}
+                        </strong>
+
+                        <br>
+
+                        <span class="muted">
+                            ${escapeHtml(
+                                c.name
+                            )}
+                        </span>
+
+                    </td>
+
+
+                    <td>
+                        ${escapeHtml(
+                            c.class_date
+                        )}
+                    </td>
+
+
+                    <td>
+                        ${escapeHtml(
+                            c.start_time
+                        )}
+
+                        <br>
+
+                        <span class="muted">
+                            ${escapeHtml(
+                                String(
+                                    c.duration_minutes
+                                )
+                            )} min
+                        </span>
+
+                    </td>
+
+
+                    <td>
+
+                        <button
+                            class="secondary"
+                            onclick="viewAttendance(
+                                ${c.id}
+                            )"
+                        >
+                            View Attendance
+                        </button>
+
+
+                        <button
+                            class="danger"
+                            onclick="deleteClass(
+                                ${c.id}
+                            )"
+                        >
+                            Delete
+                        </button>
+
+                    </td>
+
+                `;
+
 
                 body.appendChild(
-                    option1
+                    row
                 );
 
 
-                const option2 =
-                    document.createElement(
-                        "option"
-                    );
+                const option =
+                    document
+                        .createElement(
+                            "option"
+                        );
 
-                option2.value =
+
+                option.value =
                     c.id;
 
-                option2.textContent =
-                    label;
 
-                attendance.appendChild(
-                    option2
+                option.textContent =
+                    `${c.code} — ${c.name} — ${c.start_time}`;
+
+
+                select.appendChild(
+                    option
                 );
+
             }
         );
 
-        if (!data.length) {
+    }
 
-            body.innerHTML =
-                `
-                <option value="">
-                    No classes available today
-                </option>
-                `;
+    catch (error) {
 
-            attendance.innerHTML =
-                `
-                <option value="">
-                    No classes available today
-                </option>
-                `;
-        }
+        body.innerHTML = `
 
-    } catch (error) {
+            <tr>
+
+                <td colspan="4">
+
+                    ${escapeHtml(
+                        error.message
+                    )}
+
+                </td>
+
+            </tr>
+
+        `;
+
+    }
+
+}
+
+
+/* =========================================================
+   LOAD DAILY SCHEDULES
+========================================================= */
+
+async function loadSchedules() {
+
+    const body =
+        document
+            .getElementById(
+                "scheduleBody"
+            );
+
+
+    if (!body) {
+        return;
+    }
+
+
+    try {
+
+        const response =
+            await fetch(
+                "/api/class-schedules",
+                {
+                    credentials:
+                        "same-origin"
+                }
+            );
+
+
+        const schedules =
+            await response.json();
+
 
         body.innerHTML =
-            `
-            <option value="">
-                Failed to load classes
-            </option>
-            `;
+            "";
 
-        attendance.innerHTML =
-            `
-            <option value="">
-                Failed to load classes
-            </option>
-            `;
-
-        console.error(error);
-    }
-}
-
-
-document
-    .getElementById("qrClass")
-    .addEventListener(
-        "change",
-        async function() {
-
-            const id =
-                this.value;
-
-            document
-                .getElementById(
-                    "startQrButton"
-                )
-                .disabled =
-                    !id;
-
-            document
-                .getElementById(
-                    "endQrButton"
-                )
-                .disabled =
-                    true;
-
-            hideQR();
-
-            if (id) {
-
-                await checkExistingQR(
-                    id
-                );
-            }
-        }
-    );
-
-
-/* =====================================================
-   QR
-===================================================== */
-
-let qrTimer = null;
-let qrExpiry = null;
-
-
-async function startQR() {
-
-    const classId =
-        document
-            .getElementById(
-                "qrClass"
-            )
-            .value;
-
-    const message =
-        document
-            .getElementById(
-                "qrMessage"
-            );
-
-    if (!classId) {
-
-        message.textContent =
-            "Select today's class first.";
-
-        return;
-    }
-
-    message.textContent =
-        "Starting classroom QR...";
-
-    try {
-
-        const response =
-            await fetch(
-                "/api/qr/start",
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type":
-                            "application/json"
-                    },
-                    body:
-                        JSON.stringify({
-                            class_id:
-                                Number(
-                                    classId
-                                )
-                        })
-                }
-            );
-
-        const data =
-            await response.json();
-
-        if (!response.ok || !data.ok) {
-
-            throw new Error(
-                data.error ||
-                "Unable to start QR."
-            );
-        }
-
-        showQR(data);
-
-        message.textContent =
-            "Classroom QR is active.";
-
-    } catch (error) {
-
-        message.textContent =
-            error.message;
-
-        hideQR();
-    }
-}
-
-
-function showQR(data) {
-
-    const panel =
-        document.getElementById(
-            "qrPanel"
-        );
-
-    const qrBox =
-        document.getElementById(
-            "qrcode"
-        );
-
-    qrBox.innerHTML = "";
-
-    new QRCode(
-        qrBox,
-        {
-            text:
-                data.scan_url,
-            width:
-                230,
-            height:
-                230,
-            correctLevel:
-                QRCode.CorrectLevel.H
-        }
-    );
-
-    document
-        .getElementById(
-            "qrSubject"
-        )
-        .textContent =
-            `${data.subject_code} — ${data.subject}`;
-
-    document
-        .getElementById(
-            "qrClassInfo"
-        )
-        .textContent =
-            `Class time: ${data.start_time}`;
-
-    panel.style.display =
-        "block";
-
-    document
-        .getElementById(
-            "endQrButton"
-        )
-        .disabled =
-            false;
-
-    qrExpiry =
-        new Date(
-            data.expires_at
-        );
-
-    startCountdown();
-}
-
-
-function hideQR() {
-
-    document
-        .getElementById(
-            "qrPanel"
-        )
-        .style.display =
-            "none";
-
-    if (qrTimer) {
-
-        clearInterval(
-            qrTimer
-        );
-
-        qrTimer = null;
-    }
-}
-
-
-function startCountdown() {
-
-    if (qrTimer) {
-
-        clearInterval(
-            qrTimer
-        );
-    }
-
-    function update() {
-
-        if (!qrExpiry)
-            return;
-
-        const remaining =
-            Math.max(
-                0,
-                qrExpiry.getTime()
-                - Date.now()
-            );
-
-        const seconds =
-            Math.floor(
-                remaining / 1000
-            );
-
-        const minutes =
-            Math.floor(
-                seconds / 60
-            );
-
-        const secs =
-            seconds % 60;
-
-        document
-            .getElementById(
-                "qrCountdown"
-            )
-            .textContent =
-                `${String(minutes).padStart(2,"0")}:` +
-                `${String(secs).padStart(2,"0")}`;
-
-        if (remaining <= 0) {
-
-            clearInterval(
-                qrTimer
-            );
-
-            qrTimer = null;
-
-            document
-                .getElementById(
-                    "qrMessage"
-                )
-                .textContent =
-                    "QR expired.";
-
-            document
-                .getElementById(
-                    "endQrButton"
-                )
-                .disabled =
-                    true;
-
-            hideQR();
-        }
-    }
-
-    update();
-
-    qrTimer =
-        setInterval(
-            update,
-            1000
-        );
-}
-
-
-async function checkExistingQR(
-    classId
-) {
-
-    try {
-
-        const response =
-            await fetch(
-                `/api/qr/status?class_id=${classId}`
-            );
-
-        const data =
-            await response.json();
 
         if (
-            response.ok
-            && data.ok
-            && data.active
+            !Array.isArray(
+                schedules
+            ) ||
+            schedules.length === 0
         ) {
 
-            showQR(data);
+            body.innerHTML = `
 
-            document
-                .getElementById(
-                    "qrMessage"
-                )
-                .textContent =
-                    "QR is already active.";
+                <tr>
 
-        }
+                    <td colspan="4">
+                        No daily schedules yet.
+                    </td>
 
-    } catch (error) {
+                </tr>
 
-        console.error(error);
-    }
-}
-
-
-async function endQR() {
-
-    const classId =
-        document
-            .getElementById(
-                "qrClass"
-            )
-            .value;
-
-    if (!classId)
-        return;
-
-    try {
-
-        const response =
-            await fetch(
-                "/api/qr/end",
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type":
-                            "application/json"
-                    },
-                    body:
-                        JSON.stringify({
-                            class_id:
-                                Number(
-                                    classId
-                                )
-                        })
-                }
-            );
-
-        const data =
-            await response.json();
-
-        if (!response.ok || !data.ok) {
-
-            throw new Error(
-                data.error ||
-                "Failed to end QR."
-            );
-        }
-
-        hideQR();
-
-        document
-            .getElementById(
-                "endQrButton"
-            )
-            .disabled =
-                true;
-
-        document
-            .getElementById(
-                "qrMessage"
-            )
-            .textContent =
-                "QR ended.";
-
-    } catch (error) {
-
-        alert(error.message);
-    }
-}
-
-
-/* =====================================================
-   CLASS ATTENDANCE
-===================================================== */
-
-async function loadClassAttendance() {
-
-    const id =
-        document
-            .getElementById(
-                "attendanceClass"
-            )
-            .value;
-
-    const msg =
-        document
-            .getElementById(
-                "classAttendanceMsg"
-            );
-
-    const result =
-        document
-            .getElementById(
-                "classAttendanceResult"
-            );
-
-    if (!id) {
-
-        msg.textContent =
-            "Select a class.";
-
-        return;
-    }
-
-    msg.textContent =
-        "Loading...";
-
-    try {
-
-        const response =
-            await fetch(
-                `/api/class-attendance/${id}`
-            );
-
-        const data =
-            await response.json();
-
-        if (!response.ok || !data.ok) {
-
-            throw new Error(
-                data.error ||
-                "Failed."
-            );
-        }
-
-        const students =
-            data.students;
-
-        const present =
-            students.filter(
-                s =>
-                    s.status ===
-                    "Present"
-            ).length;
-
-        const absent =
-            students.length -
-            present;
-
-        const percentage =
-            students.length
-                ? (
-                    present /
-                    students.length *
-                    100
-                ).toFixed(1)
-                : "0.0";
-
-        let html =
-            `
-            <div class="cards">
-
-                <div class="card">
-                    <span>Present</span>
-                    <strong>
-                        ${present}
-                    </strong>
-                </div>
-
-                <div class="card">
-                    <span>Absent</span>
-                    <strong>
-                        ${absent}
-                    </strong>
-                </div>
-
-                <div class="card">
-                    <span>Attendance</span>
-                    <strong>
-                        ${percentage}%
-                    </strong>
-                </div>
-
-            </div>
-
-            <div class="table-wrap">
-
-                <table>
-
-                    <thead>
-
-                        <tr>
-                            <th>Roll</th>
-                            <th>Name</th>
-                            <th>Department</th>
-                            <th>Status</th>
-                        </tr>
-
-                    </thead>
-
-                    <tbody>
             `;
 
-        students.forEach(
+            return;
+
+        }
+
+
+        schedules.forEach(
             function(s) {
 
-                html +=
-                    `
-                    <tr>
+                const row =
+                    document
+                        .createElement(
+                            "tr"
+                        );
 
-                        <td>
+
+                row.innerHTML = `
+
+                    <td>
+
+                        <strong>
                             ${escapeHtml(
-                                s.roll_no
+                                s.code
                             )}
-                        </td>
+                        </strong>
 
-                        <td>
+                        <br>
+
+                        <span class="muted">
                             ${escapeHtml(
                                 s.name
                             )}
-                        </td>
+                        </span>
 
-                        <td>
-                            ${escapeHtml(
-                                s.department ||
-                                "-"
-                            )}
-                        </td>
+                    </td>
 
-                        <td>
 
-                            ${
-                                s.status ===
-                                "Present"
+                    <td>
+                        ${escapeHtml(
+                            s.start_time
+                        )}
+                    </td>
 
-                                ? `
-                                <span
-                                    class="status-badge present"
-                                >
-                                    ✓ Present
-                                </span>
-                                `
 
-                                : `
-                                <span
-                                    class="status-badge absent"
-                                >
-                                    ✕ Absent
-                                </span>
-                                `
-                            }
+                    <td>
+                        ${escapeHtml(
+                            String(
+                                s.duration_minutes
+                            )
+                        )}
+                        min
+                    </td>
 
-                        </td>
 
-                    </tr>
-                    `;
+                    <td>
+
+                        <button
+                            class="secondary"
+                            onclick="editSchedule(
+                                ${s.id},
+                                ${s.subject_id},
+                                '${String(
+                                    s.start_time
+                                ).substring(0,5)}',
+                                ${s.duration_minutes}
+                            )"
+                        >
+                            Edit
+                        </button>
+
+
+                        <button
+                            class="danger"
+                            onclick="deleteSchedule(
+                                ${s.id},
+                                '${escapeHtml(
+                                    s.code
+                                )}'
+                            )"
+                        >
+                            Delete
+                        </button>
+
+                    </td>
+
+                `;
+
+
+                body.appendChild(
+                    row
+                );
+
             }
         );
 
-        html +=
-            `
-                    </tbody>
-
-                </table>
-
-            </div>
-            `;
-
-        result.innerHTML =
-            html;
-
-        msg.textContent =
-            "Attendance loaded.";
-
-    } catch (error) {
-
-        msg.textContent =
-            error.message;
     }
+
+    catch (error) {
+
+        body.innerHTML = `
+
+            <tr>
+
+                <td colspan="4">
+                    Failed to load timetable.
+                </td>
+
+            </tr>
+
+        `;
+
+    }
+
 }
+/* =========================================================
+   EDIT DAILY SCHEDULE
+========================================================= */
 
-
-/* =====================================================
-   STUDENTS
-===================================================== */
-
-async function editStudent(
+async function editSchedule(
     id,
-    oldName,
-    oldEmail,
-    oldDepartment
+    oldSubject,
+    oldTime,
+    oldDuration
 ) {
 
-    const name =
+    const subject =
         prompt(
-            "Student name:",
-            oldName
+            "Subject ID:",
+            oldSubject
         );
 
-    if (name === null)
-        return;
 
-    const email =
+    if (
+        subject === null
+    ) {
+        return;
+    }
+
+
+    const time =
         prompt(
-            "Email:",
-            oldEmail || ""
+            "Start time (HH:MM):",
+            oldTime
         );
 
-    if (email === null)
-        return;
 
-    const department =
+    if (
+        time === null
+    ) {
+        return;
+    }
+
+
+    const duration =
         prompt(
-            "Department:",
-            oldDepartment || ""
+            "Duration in minutes:",
+            oldDuration
         );
 
-    if (department === null)
-        return;
 
-    const password =
-        prompt(
-            "New password (leave blank to keep current):"
-        );
-
-    if (password === null)
+    if (
+        duration === null
+    ) {
         return;
+    }
+
 
     try {
 
         const response =
             await fetch(
-                `/api/students/${id}`,
+                `/api/class-schedules/${id}`,
                 {
-                    method: "PUT",
+                    method:
+                        "PUT",
+
                     headers: {
                         "Content-Type":
                             "application/json"
                     },
+
                     body:
                         JSON.stringify({
-                            name:
-                                name.trim(),
-                            email:
-                                email.trim(),
-                            department:
-                                department.trim(),
-                            password:
-                                password.trim()
+
+                            subject_id:
+                                Number(
+                                    subject
+                                ),
+
+                            start_time:
+                                time,
+
+                            duration_minutes:
+                                Number(
+                                    duration
+                                )
+
                         })
                 }
             );
 
+
         const data =
             await response.json();
 
-        if (!response.ok || !data.ok) {
+
+        if (
+            !response.ok ||
+            !data.ok
+        ) {
 
             throw new Error(
-                data.error
+                data.error ||
+                "Update failed."
             );
+
         }
 
-        alert(data.message);
 
-        location.reload();
+        alert(
+            data.message
+        );
 
-    } catch (error) {
 
-        alert(error.message);
+        await loadSchedules();
+
+        await loadClasses();
+
     }
+
+    catch (error) {
+
+        alert(
+            error.message
+        );
+
+    }
+
 }
 
 
-async function deleteStudent(
+/* =========================================================
+   DELETE DAILY SCHEDULE
+========================================================= */
+
+async function deleteSchedule(
     id,
-    name
+    code
 ) {
 
     if (
         !confirm(
-            `DELETE STUDENT?\n\n${name}\n\n` +
-            "This will delete the login, face data and attendance."
+            "Delete the daily schedule for " +
+            code +
+            "?\n\n" +
+            "Historical attendance will be kept."
         )
-    )
+    ) {
+
         return;
+
+    }
+
 
     try {
 
         const response =
             await fetch(
-                `/api/students/${id}`,
+                `/api/class-schedules/${id}`,
                 {
-                    method: "DELETE"
+                    method:
+                        "DELETE",
+
+                    credentials:
+                        "same-origin"
                 }
             );
+
 
         const data =
             await response.json();
 
-        if (!response.ok || !data.ok) {
+
+        if (
+            !response.ok ||
+            !data.ok
+        ) {
 
             throw new Error(
-                data.error
+                data.error ||
+                "Delete failed."
             );
+
         }
 
-        alert(data.message);
 
-        location.reload();
+        alert(
+            data.message
+        );
 
-    } catch (error) {
 
-        alert(error.message);
+        await loadSchedules();
+
+        await loadClasses();
+
     }
+
+    catch (error) {
+
+        alert(
+            error.message
+        );
+
+    }
+
 }
 
 
-/* =====================================================
+/* =========================================================
    HOLIDAYS
-===================================================== */
+========================================================= */
 
 async function loadHolidays() {
 
     const body =
-        document.getElementById(
-            "holidayBody"
-        );
+        document
+            .getElementById(
+                "holidayBody"
+            );
+
+
+    if (!body) {
+        return;
+    }
+
 
     try {
 
         const response =
             await fetch(
-                "/api/holidays"
+                "/api/holidays",
+                {
+                    credentials:
+                        "same-origin"
+                }
             );
 
-        const data =
+
+        const holidays =
             await response.json();
 
-        body.innerHTML = "";
 
-        if (!data.length) {
+        body.innerHTML =
+            "";
 
-            body.innerHTML =
-                `
+
+        if (
+            !Array.isArray(
+                holidays
+            ) ||
+            holidays.length === 0
+        ) {
+
+            body.innerHTML = `
+
                 <tr>
+
                     <td colspan="3">
-                        No holidays added.
+
+                        No configured holidays.
+                        Sundays are automatic.
+
                     </td>
+
                 </tr>
-                `;
+
+            `;
 
             return;
+
         }
 
-        data.forEach(
+
+        holidays.forEach(
             function(h) {
 
                 const row =
-                    document.createElement(
-                        "tr"
-                    );
+                    document
+                        .createElement(
+                            "tr"
+                        );
 
-                row.innerHTML =
-                    `
+
+                row.innerHTML = `
+
                     <td>
                         ${escapeHtml(
                             h.holiday_date
                         )}
                     </td>
 
+
                     <td>
                         ${escapeHtml(
                             h.name
                         )}
                     </td>
+
 
                     <td>
 
@@ -2086,36 +1944,53 @@ async function loadHolidays() {
                         </button>
 
                     </td>
-                    `;
 
-                body.appendChild(row);
+                `;
+
+
+                body.appendChild(
+                    row
+                );
+
             }
         );
 
-    } catch (error) {
+    }
 
-        body.innerHTML =
-            `
+    catch (error) {
+
+        body.innerHTML = `
+
             <tr>
+
                 <td colspan="3">
                     Failed to load holidays.
                 </td>
+
             </tr>
-            `;
+
+        `;
+
     }
+
 }
 
 
-async function addHoliday() {
+/* =========================================================
+   CREATE HOLIDAY
+========================================================= */
 
-    const date =
+async function createHoliday() {
+
+    const holidayDate =
         document
             .getElementById(
                 "holidayDate"
             )
             .value;
 
-    const name =
+
+    const holidayName =
         document
             .getElementById(
                 "holidayName"
@@ -2123,19 +1998,26 @@ async function addHoliday() {
             .value
             .trim();
 
+
     const msg =
         document
             .getElementById(
                 "holidayMsg"
             );
 
-    if (!date || !name) {
+
+    if (
+        !holidayDate ||
+        !holidayName
+    ) {
 
         msg.textContent =
-            "Enter holiday date and name.";
+            "Select a date and enter a holiday name.";
 
         return;
+
     }
+
 
     try {
 
@@ -2143,38 +2025,48 @@ async function addHoliday() {
             await fetch(
                 "/api/holidays",
                 {
-                    method: "POST",
+                    method:
+                        "POST",
+
                     headers: {
                         "Content-Type":
                             "application/json"
                     },
+
                     body:
                         JSON.stringify({
+
                             holiday_date:
-                                date,
-                            name
+                                holidayDate,
+
+                            name:
+                                holidayName
+
                         })
                 }
             );
 
+
         const data =
             await response.json();
 
-        if (!response.ok || !data.ok) {
+
+        if (
+            !response.ok ||
+            !data.ok
+        ) {
 
             throw new Error(
-                data.error
+                data.error ||
+                "Failed."
             );
+
         }
+
 
         msg.textContent =
             data.message;
 
-        document
-            .getElementById(
-                "holidayDate"
-            )
-            .value = "";
 
         document
             .getElementById(
@@ -2182,15 +2074,26 @@ async function addHoliday() {
             )
             .value = "";
 
+
         await loadHolidays();
 
-    } catch (error) {
+        await loadClasses();
+
+    }
+
+    catch (error) {
 
         msg.textContent =
             error.message;
+
     }
+
 }
 
+
+/* =========================================================
+   DELETE HOLIDAY
+========================================================= */
 
 async function deleteHoliday(
     id
@@ -2200,8 +2103,12 @@ async function deleteHoliday(
         !confirm(
             "Remove this holiday?"
         )
-    )
+    ) {
+
         return;
+
+    }
+
 
     try {
 
@@ -2209,68 +2116,907 @@ async function deleteHoliday(
             await fetch(
                 `/api/holidays/${id}`,
                 {
-                    method: "DELETE"
+                    method:
+                        "DELETE",
+
+                    credentials:
+                        "same-origin"
                 }
             );
+
 
         const data =
             await response.json();
 
-        if (!response.ok || !data.ok) {
+
+        if (
+            !response.ok ||
+            !data.ok
+        ) {
 
             throw new Error(
-                data.error
+                data.error ||
+                "Delete failed."
             );
+
         }
+
 
         await loadHolidays();
 
-    } catch (error) {
+        await loadClasses();
 
-        alert(error.message);
     }
+
+    catch (error) {
+
+        alert(
+            error.message
+        );
+
+    }
+
 }
 
 
-/* =====================================================
-   ESCAPE
-===================================================== */
+/* =========================================================
+   DELETE TODAY'S CLASS SESSION
+========================================================= */
 
-function escapeHtml(value) {
+async function deleteClass(
+    id
+) {
+
+    const ok =
+        confirm(
+            "Delete this class session?\n\n" +
+            "Its attendance records will also be deleted."
+        );
+
+
+    if (!ok) {
+        return;
+    }
+
+
+    try {
+
+        const response =
+            await fetch(
+                `/classes/${id}`,
+                {
+                    method:
+                        "DELETE",
+
+                    credentials:
+                        "same-origin",
+
+                    headers: {
+                        "Accept":
+                            "application/json"
+                    }
+                }
+            );
+
+
+        const text =
+            await response.text();
+
+
+        let data;
+
+
+        try {
+
+            data =
+                JSON.parse(
+                    text
+                );
+
+        }
+
+        catch (error) {
+
+            console.error(
+                "Delete class response:",
+                text
+            );
+
+
+            throw new Error(
+                "Server returned an invalid response."
+            );
+
+        }
+
+
+        if (
+            !response.ok ||
+            !data.ok
+        ) {
+
+            throw new Error(
+                data.error ||
+                "Delete failed."
+            );
+
+        }
+
+
+        alert(
+            data.message
+        );
+
+
+        await loadClasses();
+
+    }
+
+    catch (error) {
+
+        alert(
+            error.message
+        );
+
+    }
+
+}
+
+
+/* =========================================================
+   VIEW ATTENDANCE
+========================================================= */
+
+function viewAttendance(
+    id
+) {
+
+    const select =
+        document
+            .getElementById(
+                "attendanceClass"
+            );
+
+
+    select.value =
+        String(id);
+
+
+    loadClassAttendance();
+
+
+    document
+        .getElementById(
+            "classAttendanceResult"
+        )
+        .scrollIntoView({
+            behavior:
+                "smooth"
+        });
+
+}
+
+
+/* =========================================================
+   LOAD CLASS-WISE ATTENDANCE
+========================================================= */
+
+async function loadClassAttendance() {
+
+    const id =
+        document
+            .getElementById(
+                "attendanceClass"
+            )
+            .value;
+
+
+    const msg =
+        document
+            .getElementById(
+                "classAttendanceMsg"
+            );
+
+
+    const result =
+        document
+            .getElementById(
+                "classAttendanceResult"
+            );
+
+
+    if (!id) {
+
+        msg.textContent =
+            "Select a class.";
+
+        result.innerHTML =
+            "";
+
+        return;
+
+    }
+
+
+    msg.textContent =
+        "Loading attendance...";
+
+
+    result.innerHTML =
+        "";
+
+
+    try {
+
+        const response =
+            await fetch(
+                `/api/class-attendance/${encodeURIComponent(id)}`,
+                {
+                    method:
+                        "GET",
+
+                    credentials:
+                        "same-origin",
+
+                    headers: {
+                        "Accept":
+                            "application/json"
+                    }
+                }
+            );
+
+
+        /*
+         * Read as text first.
+         *
+         * This prevents:
+         *
+         * Unexpected token '<'
+         *
+         * when Flask returns HTML.
+         */
+
+        const text =
+            await response.text();
+
+
+        console.log(
+            "Class attendance server response:",
+            text
+        );
+
+
+        let data;
+
+
+        try {
+
+            data =
+                JSON.parse(
+                    text
+                );
+
+        }
+
+        catch (parseError) {
+
+            console.error(
+                "Invalid JSON:",
+                text
+            );
+
+
+            if (
+                text.includes(
+                    "<!doctype"
+                ) ||
+                text.includes(
+                    "<html"
+                )
+            ) {
+
+                throw new Error(
+                    "Server returned an HTML page instead of attendance data. Please check the admin login/session."
+                );
+
+            }
+
+
+            throw new Error(
+                "Server returned invalid attendance data."
+            );
+
+        }
+
+
+        if (
+            !response.ok ||
+            !data.ok
+        ) {
+
+            throw new Error(
+                data.error ||
+                `Failed to load attendance (HTTP ${response.status}).`
+            );
+
+        }
+
+
+        const students =
+            Array.isArray(
+                data.students
+            )
+                ? data.students
+                : [];
+
+
+        const present =
+            students.filter(
+                function(s) {
+
+                    return (
+                        s.status ===
+                        "Present"
+                    );
+
+                }
+            ).length;
+
+
+        const absent =
+            students.length -
+            present;
+
+
+        const percentage =
+            students.length
+                ? (
+                    present /
+                    students.length *
+                    100
+                ).toFixed(1)
+                : "0.0";
+
+
+        let html = `
+
+            <div class="cards">
+
+                <div class="card">
+
+                    <span>
+                        Present
+                    </span>
+
+                    <strong>
+                        ${present}
+                    </strong>
+
+                </div>
+
+
+                <div class="card">
+
+                    <span>
+                        Absent
+                    </span>
+
+                    <strong>
+                        ${absent}
+                    </strong>
+
+                </div>
+
+
+                <div class="card">
+
+                    <span>
+                        Attendance
+                    </span>
+
+                    <strong>
+                        ${percentage}%
+                    </strong>
+
+                </div>
+
+            </div>
+
+
+            <div class="table-wrap">
+
+                <table>
+
+                    <thead>
+
+                        <tr>
+
+                            <th>
+                                Roll
+                            </th>
+
+                            <th>
+                                Name
+                            </th>
+
+                            <th>
+                                Department
+                            </th>
+
+                            <th>
+                                Status
+                            </th>
+
+                        </tr>
+
+                    </thead>
+
+
+                    <tbody>
+
+        `;
+
+
+        if (
+            students.length === 0
+        ) {
+
+            html += `
+
+                <tr>
+
+                    <td colspan="4">
+
+                        No students found.
+
+                    </td>
+
+                </tr>
+
+            `;
+
+        }
+
+
+        students.forEach(
+            function(s) {
+
+                const statusHtml =
+                    s.status === "Present"
+
+                        ? `
+                            <span
+                                class="status-badge present"
+                            >
+                                ✓ Present
+                            </span>
+                        `
+
+                        : `
+                            <span
+                                class="status-badge absent"
+                            >
+                                ✕ Absent
+                            </span>
+                        `;
+
+
+                html += `
+
+                    <tr>
+
+                        <td>
+                            ${escapeHtml(
+                                s.roll_no
+                            )}
+                        </td>
+
+
+                        <td>
+                            ${escapeHtml(
+                                s.name
+                            )}
+                        </td>
+
+
+                        <td>
+                            ${escapeHtml(
+                                s.department ||
+                                "-"
+                            )}
+                        </td>
+
+
+                        <td>
+                            ${statusHtml}
+                        </td>
+
+                    </tr>
+
+                `;
+
+            }
+        );
+
+
+        html += `
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        `;
+
+
+        result.innerHTML =
+            html;
+
+
+        msg.textContent =
+            "Attendance loaded successfully.";
+
+    }
+
+    catch (error) {
+
+        console.error(
+            "Class attendance error:",
+            error
+        );
+
+
+        result.innerHTML = `
+
+            <div class="error">
+
+                ${escapeHtml(
+                    error.message ||
+                    "Unable to load attendance."
+                )}
+
+            </div>
+
+        `;
+
+
+        msg.textContent =
+            "";
+
+    }
+
+}
+/* =========================================================
+   EDIT STUDENT
+========================================================= */
+
+async function editStudent(
+    id,
+    oldName,
+    oldEmail,
+    oldDepartment
+) {
+
+    const name =
+        prompt(
+            "Student name:",
+            oldName || ""
+        );
+
+
+    if (
+        name === null
+    ) {
+        return;
+    }
+
+
+    const email =
+        prompt(
+            "Email:",
+            oldEmail || ""
+        );
+
+
+    if (
+        email === null
+    ) {
+        return;
+    }
+
+
+    const department =
+        prompt(
+            "Department:",
+            oldDepartment || ""
+        );
+
+
+    if (
+        department === null
+    ) {
+        return;
+    }
+
+
+    const password =
+        prompt(
+            "New password (leave blank to keep current password):",
+            ""
+        );
+
+
+    if (
+        password === null
+    ) {
+        return;
+    }
+
+
+    try {
+
+        const response =
+            await fetch(
+                `/api/students/${id}`,
+                {
+                    method:
+                        "PUT",
+
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
+
+                    body:
+                        JSON.stringify({
+
+                            name:
+                                name.trim(),
+
+                            email:
+                                email.trim(),
+
+                            department:
+                                department.trim(),
+
+                            password:
+                                password.trim()
+
+                        })
+                }
+            );
+
+
+        const data =
+            await response.json();
+
+
+        if (
+            !response.ok ||
+            !data.ok
+        ) {
+
+            throw new Error(
+                data.error ||
+                "Student update failed."
+            );
+
+        }
+
+
+        alert(
+            data.message
+        );
+
+
+        location.reload();
+
+    }
+
+    catch (error) {
+
+        alert(
+            error.message
+        );
+
+    }
+
+}
+
+
+/* =========================================================
+   DELETE STUDENT
+========================================================= */
+
+async function deleteStudent(
+    id,
+    name
+) {
+
+    const ok =
+        confirm(
+            "DELETE STUDENT?\n\n" +
+            name +
+            "\n\n" +
+            "This will delete the student's " +
+            "login and attendance records.\n\n" +
+            "This cannot be undone."
+        );
+
+
+    if (!ok) {
+        return;
+    }
+
+
+    try {
+
+        const response =
+            await fetch(
+                `/api/students/${id}`,
+                {
+                    method:
+                        "DELETE",
+
+                    credentials:
+                        "same-origin",
+
+                    headers: {
+                        "Accept":
+                            "application/json"
+                    }
+                }
+            );
+
+
+        const text =
+            await response.text();
+
+
+        let data;
+
+
+        try {
+
+            data =
+                JSON.parse(
+                    text
+                );
+
+        }
+
+        catch (error) {
+
+            throw new Error(
+                "Server returned an invalid response."
+            );
+
+        }
+
+
+        if (
+            !response.ok ||
+            !data.ok
+        ) {
+
+            throw new Error(
+                data.error ||
+                "Student deletion failed."
+            );
+
+        }
+
+
+        alert(
+            data.message
+        );
+
+
+        location.reload();
+
+    }
+
+    catch (error) {
+
+        alert(
+            error.message
+        );
+
+    }
+
+}
+
+
+/* =========================================================
+   HTML ESCAPING
+========================================================= */
+
+function escapeHtml(
+    value
+) {
+
+    if (
+        value === null ||
+        value === undefined
+    ) {
+
+        return "";
+
+    }
+
 
     return String(
-        value ?? ""
+        value
     )
-    .replaceAll(
-        "&",
-        "&amp;"
-    )
-    .replaceAll(
-        "<",
-        "&lt;"
-    )
-    .replaceAll(
-        ">",
-        "&gt;"
-    )
-    .replaceAll(
-        '"',
-        "&quot;"
-    )
-    .replaceAll(
-        "'",
-        "&#039;"
-    );
+        .replace(
+            /&/g,
+            "&amp;"
+        )
+        .replace(
+            /</g,
+            "&lt;"
+        )
+        .replace(
+            />/g,
+            "&gt;"
+        )
+        .replace(
+            /"/g,
+            "&quot;"
+        )
+        .replace(
+            /'/g,
+            "&#039;"
+        );
+
 }
 
 
-/* =====================================================
-   INITIAL LOAD
-===================================================== */
+/* =========================================================
+   PAGE INITIALIZATION
+========================================================= */
 
 document.addEventListener(
     "DOMContentLoaded",
     async function() {
+
+        /*
+         * Set holiday date to TODAY
+         * using India timezone.
+         */
+
+        const holidayDate =
+            document
+                .getElementById(
+                    "holidayDate"
+                );
+
+
+        if (holidayDate) {
+
+            const formatter =
+                new Intl.DateTimeFormat(
+                    "en-CA",
+                    {
+                        timeZone:
+                            "Asia/Kolkata"
+                    }
+                );
+
+
+            holidayDate.value =
+                formatter.format(
+                    new Date()
+                );
+
+        }
+
+
+        /*
+         * Load today's sessions,
+         * timetable and holidays.
+         */
 
         await loadClasses();
 
@@ -2281,6 +3027,6 @@ document.addEventListener(
     }
 );
 
-</script>
 
+</script>
 {% endblock %}
