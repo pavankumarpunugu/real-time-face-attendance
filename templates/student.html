@@ -5,6 +5,7 @@
 <div class="student-hero">
 
     <div>
+
         <div class="eyebrow">
             STUDENT DASHBOARD
         </div>
@@ -14,12 +15,15 @@
         </h1>
 
         <p class="muted">
+
             {{ student.roll_no }}
 
             {% if student.department %}
                 · {{ student.department }}
             {% endif %}
+
         </p>
+
     </div>
 
     <a
@@ -76,7 +80,7 @@
     <div class="card stat-card">
 
         <span>
-            Total Classes
+            Completed Classes
         </span>
 
         <strong>
@@ -197,27 +201,60 @@
 
                     </td>
 
+
                     <td>
                         {{ h.class_date }}
                     </td>
+
 
                     <td>
                         {{ h.start_time }}
                     </td>
 
+
                     <td>
 
-                        {% if h.status == 'Present' %}
+                        {% if h.status == "Present" %}
 
-                        <span class="status-badge present">
-                            ✓ Present
-                        </span>
+                            <span
+                                class="status-badge present"
+                            >
+                                ✓ Present
+                            </span>
+
+                        {% elif h.status == "Upcoming" %}
+
+                            <span
+                                class="status-badge"
+                                style="background:#eef4ff;color:#2563eb;"
+                            >
+                                ◷ Upcoming
+                            </span>
+
+                        {% elif h.status == "In Progress" %}
+
+                            <span
+                                class="status-badge"
+                                style="background:#fff7ed;color:#c2410c;"
+                            >
+                                ● In Progress
+                            </span>
+
+                        {% elif h.status == "Absent" %}
+
+                            <span
+                                class="status-badge absent"
+                            >
+                                ✕ Absent
+                            </span>
 
                         {% else %}
 
-                        <span class="status-badge absent">
-                            ✕ Absent
-                        </span>
+                            <span
+                                class="status-badge"
+                            >
+                                {{ h.status }}
+                            </span>
 
                         {% endif %}
 
