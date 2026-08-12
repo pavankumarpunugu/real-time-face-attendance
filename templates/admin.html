@@ -3,9 +3,7 @@
 {% block content %}
 
 <div class="page-head">
-
     <div>
-
         <div class="eyebrow">
             ADMIN DASHBOARD
         </div>
@@ -15,72 +13,42 @@
         </h1>
 
         <p class="muted">
-            Students, subjects, classes and attendance.
+            Manage students, subjects, timetable and classroom attendance.
         </p>
-
     </div>
-
 </div>
 
 
-<!-- STAT CARDS -->
+<!-- =====================================================
+     STATS
+===================================================== -->
 
 <div class="cards">
 
     <div class="card stat-card">
-
-        <span>
-            Students
-        </span>
-
-        <strong>
-            {{ students|length }}
-        </strong>
-
-        <small>
-            Registered students
-        </small>
-
+        <span>Students</span>
+        <strong>{{ students|length }}</strong>
+        <small>Registered students</small>
     </div>
 
-
     <div class="card stat-card">
-
-        <span>
-            Present Today
-        </span>
-
-        <strong>
-            {{ present_today }}
-        </strong>
-
-        <small>
-            Attendance marked today
-        </small>
-
+        <span>Present Today</span>
+        <strong>{{ present_today }}</strong>
+        <small>Attendance marked today</small>
     </div>
 
-
     <div class="card stat-card">
-
-        <span>
-            Subjects
-        </span>
-
-        <strong>
-            {{ subjects|length }}
-        </strong>
-
-        <small>
-            Available subjects
-        </small>
-
+        <span>Subjects</span>
+        <strong>{{ subjects|length }}</strong>
+        <small>Available subjects</small>
     </div>
 
 </div>
 
 
-<!-- CREATE SUBJECT -->
+<!-- =====================================================
+     CREATE SUBJECT
+===================================================== -->
 
 <div class="panel">
 
@@ -92,7 +60,6 @@
         Add a new subject.
     </p>
 
-
     <div class="grid2">
 
         <div>
@@ -103,11 +70,10 @@
 
             <input
                 id="scode"
-                placeholder="CS301"
+                placeholder="CS101"
             >
 
         </div>
-
 
         <div>
 
@@ -124,14 +90,12 @@
 
     </div>
 
-
     <button
         class="primary"
         onclick="createSubject()"
     >
         Create Subject
     </button>
-
 
     <div
         id="subjectMsg"
@@ -141,14 +105,15 @@
 </div>
 
 
-<!-- SUBJECTS -->
+<!-- =====================================================
+     SUBJECTS
+===================================================== -->
 
 <div class="panel">
 
     <h2>
         Subject Management
     </h2>
-
 
     <div class="table-wrap">
 
@@ -157,23 +122,12 @@
             <thead>
 
                 <tr>
-
-                    <th>
-                        Code
-                    </th>
-
-                    <th>
-                        Subject
-                    </th>
-
-                    <th>
-                        Actions
-                    </th>
-
+                    <th>Code</th>
+                    <th>Subject</th>
+                    <th>Actions</th>
                 </tr>
 
             </thead>
-
 
             <tbody>
 
@@ -182,18 +136,14 @@
                 <tr>
 
                     <td>
-
                         <strong>
                             {{ s.code }}
                         </strong>
-
                     </td>
-
 
                     <td>
                         {{ s.name }}
                     </td>
-
 
                     <td>
 
@@ -207,7 +157,6 @@
                         >
                             Edit
                         </button>
-
 
                         <button
                             class="danger"
@@ -224,15 +173,12 @@
 
                 </tr>
 
-
                 {% else %}
 
                 <tr>
-
                     <td colspan="3">
                         No subjects yet.
                     </td>
-
                 </tr>
 
                 {% endfor %}
@@ -246,20 +192,19 @@
 </div>
 
 
-<!-- DAILY CLASS SCHEDULE -->
+<!-- =====================================================
+     DAILY TIMETABLE
+===================================================== -->
 
 <div class="panel">
 
     <h2>
-        Daily Class Schedule
+        Manage Daily Timetable
     </h2>
 
     <p class="muted">
-        Create fixed daily class timings once.
-        The system automatically creates today's sessions.
-        Sundays and holidays are excluded.
+        These fixed timings automatically generate today's classes.
     </p>
-
 
     <div class="grid2">
 
@@ -269,7 +214,7 @@
                 Subject
             </label>
 
-            <select id="subject">
+            <select id="scheduleSubject">
 
                 <option value="">
                     Select subject
@@ -287,7 +232,6 @@
 
         </div>
 
-
         <div>
 
             <label>
@@ -295,7 +239,7 @@
             </label>
 
             <input
-                id="ctime"
+                id="scheduleTime"
                 type="time"
             >
 
@@ -304,406 +248,32 @@
     </div>
 
 
-    <label>
-        Duration
-    </label>
-
-
-    <select id="cduration">
-
-        <option value="60">
-            1 hour
-        </option>
-
-        <option value="30">
-            30 minutes
-        </option>
-
-        <option value="45">
-            45 minutes
-        </option>
-
-        <option value="90">
-            1 hour 30 minutes
-        </option>
-
-        <option value="120">
-            2 hours
-        </option>
-
-    </select>
-
-
-    <button
-        class="primary"
-        onclick="createClass()"
-    >
-        Add Daily Class
-    </button>
-
-
-    <div
-        id="classMsg"
-        class="status"
-    ></div>
-
-</div>
-
-
-<!-- SCHEDULE MANAGEMENT -->
-
-<div class="panel">
-
-    <h2>
-        Manage Daily Timetable
-    </h2>
-
-    <p class="muted">
-        Edit or delete fixed class timings.
-        Changes apply to future automatically
-        generated sessions.
-    </p>
-
-
-    <div class="table-wrap">
-
-        <table>
-
-            <thead>
-
-                <tr>
-
-                    <th>
-                        Subject
-                    </th>
-
-                    <th>
-                        Time
-                    </th>
-
-                    <th>
-                        Duration
-                    </th>
-
-                    <th>
-                        Actions
-                    </th>
-
-                </tr>
-
-            </thead>
-
-
-            <tbody id="scheduleBody">
-
-                <tr>
-
-                    <td colspan="4">
-                        Loading timetable...
-                    </td>
-
-                </tr>
-
-            </tbody>
-
-        </table>
-
-    </div>
-
-</div>
-<!-- CLASS SESSIONS -->
-
-<div class="panel">
-
-    <h2>
-        Today's Class Sessions
-    </h2>
-
-    <p class="muted">
-        Today's sessions are generated automatically
-        from the daily timetable.
-    </p>
-
-
-    <div class="table-wrap">
-
-        <table>
-
-            <thead>
-
-                <tr>
-
-                    <th>
-                        Subject
-                    </th>
-
-                    <th>
-                        Date
-                    </th>
-
-                    <th>
-                        Time
-                    </th>
-
-                    <th>
-                        Actions
-                    </th>
-
-                </tr>
-
-            </thead>
-
-
-            <tbody id="classSessionsBody">
-
-                <tr>
-
-                    <td colspan="4">
-                        Loading classes...
-                    </td>
-
-                </tr>
-
-            </tbody>
-
-        </table>
-
-    </div>
-
-</div>
-
-
-<!-- CLASSROOM QR ATTENDANCE -->
-
-<div class="panel">
-
-    <h2>
-        Classroom QR Attendance
-    </h2>
-
-    <p class="muted">
-        Start a temporary QR code for the selected class. Students must scan this QR before face verification.
-        The QR expires automatically after 2 minutes or when the class ends.
-    </p>
-
-    <div class="grid2">
-
-        <div>
-
-            <label>
-                Today's Class
-            </label>
-
-            <select id="qrClassSelect">
-                <option value="">
-                    Loading classes...
-                </option>
-            </select>
-
-        </div>
-
-        <div>
-
-            <label>
-                QR Status
-            </label>
-
-            <div
-                id="qrAdminStatus"
-                class="result-box"
-            >
-                No QR session running.
-            </div>
-
-        </div>
-
-    </div>
-
-    <div
-        style="
-            display:flex;
-            gap:10px;
-            flex-wrap:wrap;
-            margin-top:16px;
-        "
-    >
-
-        <button
-            id="startQrButton"
-            class="primary"
-            type="button"
-            onclick="startQrSession()"
+    <div style="max-width:300px;">
+
+        <label>
+            Duration (minutes)
+        </label>
+
+        <input
+            id="scheduleDuration"
+            type="number"
+            value="60"
+            min="1"
+            max="480"
         >
-            Start Classroom QR
-        </button>
-
-        <button
-            id="endQrButton"
-            class="danger"
-            type="button"
-            onclick="endQrSession()"
-            disabled
-        >
-            End QR
-        </button>
-
-    </div>
-
-    <div
-        id="qrDisplay"
-        style="
-            display:none;
-            margin-top:24px;
-            text-align:center;
-        "
-    >
-
-        <div
-            style="
-                display:inline-block;
-                padding:18px;
-                background:#fff;
-                border-radius:16px;
-                box-shadow:0 8px 30px rgba(0,0,0,.12);
-            "
-        >
-
-            <div
-                id="qrCode"
-                style="
-                    width:280px;
-                    min-height:280px;
-                    display:flex;
-                    align-items:center;
-                    justify-content:center;
-                "
-            ></div>
-
-        </div>
-
-        <h3
-            id="qrSubject"
-            style="margin-top:16px;"
-        ></h3>
-
-        <p
-            id="qrCountdown"
-            class="muted"
-        >
-            QR expires soon.
-        </p>
-
-        <p class="muted">
-            Students: scan this QR from the Attendance page.
-        </p>
-
-    </div>
-
-    <div
-        id="qrMsg"
-        class="status"
-    ></div>
-
-</div>
-
-
-<!-- CLASS ATTENDANCE -->
-
-<div class="panel">
-
-    <h2>
-        Class-wise Attendance
-    </h2>
-
-
-    <select id="attendanceClass">
-
-        <option value="">
-            Loading classes...
-        </option>
-
-    </select>
-
-
-    <button
-        class="primary"
-        onclick="loadClassAttendance()"
-    >
-        View Attendance
-    </button>
-
-
-    <div
-        id="classAttendanceMsg"
-        class="status"
-    ></div>
-
-
-    <div
-        id="classAttendanceResult"
-        style="margin-top:20px;"
-    ></div>
-
-</div>
-
-
-<!-- HOLIDAYS -->
-
-<div class="panel">
-
-    <h2>
-        Holidays
-    </h2>
-
-    <p class="muted">
-        Sundays are automatically holidays.
-        Add college holidays here so attendance
-        is disabled automatically.
-    </p>
-
-
-    <div class="grid2">
-
-        <div>
-
-            <label>
-                Holiday Date
-            </label>
-
-            <input
-                id="holidayDate"
-                type="date"
-            >
-
-        </div>
-
-
-        <div>
-
-            <label>
-                Holiday Name
-            </label>
-
-            <input
-                id="holidayName"
-                placeholder="Independence Day"
-            >
-
-        </div>
 
     </div>
 
 
     <button
         class="primary"
-        onclick="createHoliday()"
+        onclick="createSchedule()"
     >
-        Add Holiday
+        Add Timetable Class
     </button>
 
-
     <div
-        id="holidayMsg"
+        id="scheduleMsg"
         class="status"
     ></div>
 
@@ -718,32 +288,20 @@
             <thead>
 
                 <tr>
-
-                    <th>
-                        Date
-                    </th>
-
-                    <th>
-                        Holiday
-                    </th>
-
-                    <th>
-                        Action
-                    </th>
-
+                    <th>Subject</th>
+                    <th>Time</th>
+                    <th>Duration</th>
+                    <th>Actions</th>
                 </tr>
 
             </thead>
 
-
-            <tbody id="holidayBody">
+            <tbody id="scheduleBody">
 
                 <tr>
-
-                    <td colspan="3">
-                        Loading holidays...
+                    <td colspan="4">
+                        Loading timetable...
                     </td>
-
                 </tr>
 
             </tbody>
@@ -755,7 +313,175 @@
 </div>
 
 
-<!-- STUDENTS -->
+<!-- =====================================================
+     TODAY'S CLASSES + QR
+===================================================== -->
+
+<div class="panel">
+
+    <h2>
+        Today's Classroom QR
+    </h2>
+
+    <p class="muted">
+        Select a class and start a temporary QR code.
+        Students must scan this QR before face verification.
+        The QR expires after 2 minutes or when the class ends.
+    </p>
+
+
+    <label>
+        Today's Class
+    </label>
+
+    <select id="qrClass">
+
+        <option value="">
+            Loading classes...
+        </option>
+
+    </select>
+
+
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:16px;">
+
+        <button
+            id="startQrButton"
+            class="primary"
+            onclick="startQR()"
+            disabled
+        >
+            Start Classroom QR
+        </button>
+
+        <button
+            id="endQrButton"
+            class="danger"
+            onclick="endQR()"
+            disabled
+        >
+            End QR
+        </button>
+
+    </div>
+
+
+    <div
+        id="qrMessage"
+        class="status"
+        style="margin-top:12px;"
+    >
+        Select today's class first.
+    </div>
+
+
+    <!-- QR DISPLAY -->
+
+    <div
+        id="qrPanel"
+        style="
+            display:none;
+            margin-top:25px;
+            padding:25px;
+            border:1px solid #e1e5ec;
+            border-radius:16px;
+            text-align:center;
+            background:#fafcff;
+        "
+    >
+
+        <h3 id="qrSubject">
+            Classroom QR
+        </h3>
+
+        <p
+            class="muted"
+            id="qrClassInfo"
+        ></p>
+
+        <div
+            id="qrcode"
+            style="
+                width:260px;
+                min-height:260px;
+                margin:20px auto;
+                display:flex;
+                justify-content:center;
+                align-items:center;
+                background:white;
+                padding:12px;
+                border-radius:12px;
+            "
+        ></div>
+
+        <h3>
+            QR expires in
+        </h3>
+
+        <div
+            id="qrCountdown"
+            style="
+                font-size:32px;
+                font-weight:800;
+            "
+        >
+            02:00
+        </div>
+
+        <p class="muted">
+            Students must scan this QR from the classroom.
+        </p>
+
+    </div>
+
+</div>
+
+
+<!-- =====================================================
+     CLASS ATTENDANCE
+===================================================== -->
+
+<div class="panel">
+
+    <h2>
+        Class-wise Attendance
+    </h2>
+
+    <label>
+        Class
+    </label>
+
+    <select id="attendanceClass">
+
+        <option value="">
+            Loading classes...
+        </option>
+
+    </select>
+
+    <button
+        class="primary"
+        onclick="loadClassAttendance()"
+    >
+        View Attendance
+    </button>
+
+    <div
+        id="classAttendanceMsg"
+        class="status"
+    ></div>
+
+    <div
+        id="classAttendanceResult"
+        style="margin-top:20px;"
+    ></div>
+
+</div>
+
+
+<!-- =====================================================
+     STUDENTS
+===================================================== -->
 
 <div class="panel">
 
@@ -767,7 +493,6 @@
         Manage registered students.
     </p>
 
-
     <div class="table-wrap">
 
         <table>
@@ -775,31 +500,14 @@
             <thead>
 
                 <tr>
-
-                    <th>
-                        Roll
-                    </th>
-
-                    <th>
-                        Name
-                    </th>
-
-                    <th>
-                        Department
-                    </th>
-
-                    <th>
-                        Email
-                    </th>
-
-                    <th>
-                        Actions
-                    </th>
-
+                    <th>Roll</th>
+                    <th>Name</th>
+                    <th>Department</th>
+                    <th>Email</th>
+                    <th>Actions</th>
                 </tr>
 
             </thead>
-
 
             <tbody>
 
@@ -808,28 +516,22 @@
                 <tr>
 
                     <td>
-
                         <strong>
                             {{ s.roll_no }}
                         </strong>
-
                     </td>
-
 
                     <td>
                         {{ s.name }}
                     </td>
 
-
                     <td>
                         {{ s.department or '-' }}
                     </td>
 
-
                     <td>
                         {{ s.email or '-' }}
                     </td>
-
 
                     <td>
 
@@ -845,7 +547,6 @@
                             Edit
                         </button>
 
-
                         <button
                             class="danger"
                             onclick='deleteStudent(
@@ -859,7 +560,6 @@
                     </td>
 
                 </tr>
-
 
                 {% else %}
 
@@ -882,31 +582,112 @@
 </div>
 
 
+<!-- =====================================================
+     HOLIDAYS
+===================================================== -->
+
+<div class="panel">
+
+    <h2>
+        Holidays
+    </h2>
+
+    <p class="muted">
+        Sundays are automatically holidays.
+        Add college holidays here.
+    </p>
+
+    <div class="grid2">
+
+        <div>
+
+            <label>
+                Holiday Date
+            </label>
+
+            <input
+                id="holidayDate"
+                type="date"
+            >
+
+        </div>
+
+        <div>
+
+            <label>
+                Holiday Name
+            </label>
+
+            <input
+                id="holidayName"
+                placeholder="Independence Day"
+            >
+
+        </div>
+
+    </div>
+
+    <button
+        class="primary"
+        onclick="addHoliday()"
+    >
+        Add Holiday
+    </button>
+
+    <div
+        id="holidayMsg"
+        class="status"
+    ></div>
+
+
+    <div
+        class="table-wrap"
+        style="margin-top:20px;"
+    >
+
+        <table>
+
+            <thead>
+
+                <tr>
+                    <th>Date</th>
+                    <th>Holiday</th>
+                    <th>Action</th>
+                </tr>
+
+            </thead>
+
+            <tbody id="holidayBody">
+
+                <tr>
+                    <td colspan="3">
+                        Loading holidays...
+                    </td>
+                </tr>
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</div>
+
+
 {% endblock %}
 
 
 {% block scripts %}
 
+<!-- QR GENERATOR -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
 
 <script>
 
-let activeQrToken =
-    "";
-
-let activeQrClassId =
-    null;
-
-let qrCountdownTimer =
-    null;
-
-let qrExpiryTimestamp =
-    0;
-
-
-/* =========================================================
-   CREATE SUBJECT
-========================================================= */
+/* =====================================================
+   SUBJECT
+===================================================== */
 
 async function createSubject() {
 
@@ -916,33 +697,24 @@ async function createSubject() {
             .value
             .trim();
 
-
     const name =
         document
             .getElementById("sname")
             .value
             .trim();
 
-
     const msg =
-        document
-            .getElementById(
-                "subjectMsg"
-            );
+        document.getElementById(
+            "subjectMsg"
+        );
 
-
-    if (
-        !code ||
-        !name
-    ) {
+    if (!code || !name) {
 
         msg.textContent =
             "Enter subject code and name.";
 
         return;
-
     }
-
 
     try {
 
@@ -950,62 +722,39 @@ async function createSubject() {
             await fetch(
                 "/subjects",
                 {
-                    method:
-                        "POST",
-
+                    method: "POST",
                     headers: {
                         "Content-Type":
                             "application/json"
                     },
-
                     body:
                         JSON.stringify({
-
-                            code:
-                                code,
-
-                            name:
-                                name
-
+                            code,
+                            name
                         })
                 }
             );
 
-
         const data =
             await response.json();
 
-
-        if (
-            !response.ok ||
-            !data.ok
-        ) {
+        if (!response.ok || !data.ok) {
 
             throw new Error(
                 data.error ||
                 "Failed."
             );
-
         }
-
 
         location.reload();
 
-    }
-
-    catch (error) {
+    } catch (error) {
 
         msg.textContent =
             error.message;
-
     }
-
 }
 
-
-/* =========================================================
-   EDIT SUBJECT
-========================================================= */
 
 async function editSubject(
     id,
@@ -1019,13 +768,8 @@ async function editSubject(
             oldCode
         );
 
-
-    if (
-        code === null
-    ) {
+    if (code === null)
         return;
-    }
-
 
     const name =
         prompt(
@@ -1033,13 +777,8 @@ async function editSubject(
             oldName
         );
 
-
-    if (
-        name === null
-    ) {
+    if (name === null)
         return;
-    }
-
 
     try {
 
@@ -1047,68 +786,40 @@ async function editSubject(
             await fetch(
                 `/subjects/${id}`,
                 {
-                    method:
-                        "PUT",
-
+                    method: "PUT",
                     headers: {
                         "Content-Type":
                             "application/json"
                     },
-
                     body:
                         JSON.stringify({
-
                             code:
                                 code.trim(),
-
                             name:
                                 name.trim()
-
                         })
                 }
             );
 
-
         const data =
             await response.json();
 
-
-        if (
-            !response.ok ||
-            !data.ok
-        ) {
+        if (!response.ok || !data.ok) {
 
             throw new Error(
                 data.error ||
                 "Update failed."
             );
-
         }
-
-
-        alert(
-            data.message
-        );
-
 
         location.reload();
 
+    } catch (error) {
+
+        alert(error.message);
     }
-
-    catch (error) {
-
-        alert(
-            error.message
-        );
-
-    }
-
 }
 
-
-/* =========================================================
-   DELETE SUBJECT
-========================================================= */
 
 async function deleteSubject(
     id,
@@ -1116,24 +827,13 @@ async function deleteSubject(
     name
 ) {
 
-    const ok =
-        confirm(
-            "DELETE SUBJECT?\n\n" +
-            code +
-            " — " +
-            name +
-            "\n\n" +
-            "This will delete the subject, " +
-            "its timetable and its attendance " +
-            "history.\n\n" +
-            "This cannot be undone."
-        );
-
-
-    if (!ok) {
+    if (
+        !confirm(
+            `DELETE SUBJECT?\n\n${code} — ${name}\n\n` +
+            "This deletes the subject, timetable, classes and attendance."
+        )
+    )
         return;
-    }
-
 
     try {
 
@@ -1141,102 +841,71 @@ async function deleteSubject(
             await fetch(
                 `/subjects/${id}`,
                 {
-                    method:
-                        "DELETE",
-
-                    credentials:
-                        "same-origin"
+                    method: "DELETE"
                 }
             );
-
 
         const data =
             await response.json();
 
-
-        if (
-            !response.ok ||
-            !data.ok
-        ) {
+        if (!response.ok || !data.ok) {
 
             throw new Error(
                 data.error ||
                 "Delete failed."
             );
-
         }
 
-
-        alert(
-            data.message
-        );
-
+        alert(data.message);
 
         location.reload();
 
+    } catch (error) {
+
+        alert(error.message);
     }
-
-    catch (error) {
-
-        alert(
-            error.message
-        );
-
-    }
-
 }
 
 
-/* =========================================================
-   CREATE DAILY CLASS
-========================================================= */
+/* =====================================================
+   DAILY TIMETABLE
+===================================================== */
 
-async function createClass() {
+async function createSchedule() {
 
     const subject =
         document
             .getElementById(
-                "subject"
+                "scheduleSubject"
             )
             .value;
 
-
-    const startTime =
+    const time =
         document
             .getElementById(
-                "ctime"
+                "scheduleTime"
             )
             .value;
-
 
     const duration =
         document
             .getElementById(
-                "cduration"
+                "scheduleDuration"
             )
             .value;
 
-
     const msg =
-        document
-            .getElementById(
-                "classMsg"
-            );
+        document.getElementById(
+            "scheduleMsg"
+        );
 
-
-    if (
-        !subject ||
-        !startTime ||
-        !duration
-    ) {
+    if (!subject || !time) {
 
         msg.textContent =
-            "Select subject, time and duration.";
+            "Select subject and time.";
 
         return;
-
     }
-
 
     try {
 
@@ -1244,167 +913,277 @@ async function createClass() {
             await fetch(
                 "/classes",
                 {
-                    method:
-                        "POST",
-
+                    method: "POST",
                     headers: {
                         "Content-Type":
                             "application/json"
                     },
-
                     body:
                         JSON.stringify({
-
                             subject_id:
                                 subject,
-
                             start_time:
-                                startTime,
-
+                                time,
                             duration_minutes:
-                                Number(
-                                    duration
-                                )
-
+                                duration
                         })
                 }
             );
 
-
         const data =
             await response.json();
 
-
-        if (
-            !response.ok ||
-            !data.ok
-        ) {
+        if (!response.ok || !data.ok) {
 
             throw new Error(
                 data.error ||
                 "Failed."
             );
-
         }
 
-
         msg.textContent =
-            "Daily class schedule created successfully.";
-
-
-        document
-            .getElementById(
-                "ctime"
-            )
-            .value = "";
-
+            data.message;
 
         await loadSchedules();
-
         await loadClasses();
 
-    }
-
-    catch (error) {
+    } catch (error) {
 
         msg.textContent =
             error.message;
-
     }
-
 }
 
 
-/* =========================================================
-   LOAD TODAY'S CLASSES
-========================================================= */
+async function loadSchedules() {
+
+    const body =
+        document.getElementById(
+            "scheduleBody"
+        );
+
+    try {
+
+        const response =
+            await fetch(
+                "/api/class-schedules"
+            );
+
+        const data =
+            await response.json();
+
+        body.innerHTML = "";
+
+        if (!data.length) {
+
+            body.innerHTML =
+                `
+                <tr>
+                    <td colspan="4">
+                        No timetable entries.
+                    </td>
+                </tr>
+                `;
+
+            return;
+        }
+
+        data.forEach(
+            function(item) {
+
+                const row =
+                    document.createElement(
+                        "tr"
+                    );
+
+                row.innerHTML =
+                    `
+                    <td>
+                        <strong>
+                            ${escapeHtml(item.code)}
+                        </strong>
+                        <br>
+                        <span class="muted">
+                            ${escapeHtml(item.name)}
+                        </span>
+                    </td>
+
+                    <td>
+                        ${escapeHtml(item.start_time)}
+                    </td>
+
+                    <td>
+                        ${item.duration_minutes} min
+                    </td>
+
+                    <td>
+
+                        <button
+                            class="secondary"
+                            onclick="editSchedule(
+                                ${item.id},
+                                ${item.subject_id},
+                                '${item.start_time}',
+                                ${item.duration_minutes}
+                            )"
+                        >
+                            Edit
+                        </button>
+
+                        <button
+                            class="danger"
+                            onclick="deleteSchedule(
+                                ${item.id}
+                            )"
+                        >
+                            Delete
+                        </button>
+
+                    </td>
+                    `;
+
+                body.appendChild(row);
+            }
+        );
+
+    } catch (error) {
+
+        body.innerHTML =
+            `
+            <tr>
+                <td colspan="4">
+                    Failed to load timetable.
+                </td>
+            </tr>
+            `;
+    }
+}
+
+
+async function editSchedule(
+    id,
+    subjectId,
+    oldTime,
+    oldDuration
+) {
+
+    const time =
+        prompt(
+            "Start time (HH:MM):",
+            oldTime
+        );
+
+    if (time === null)
+        return;
+
+    const duration =
+        prompt(
+            "Duration in minutes:",
+            oldDuration
+        );
+
+    if (duration === null)
+        return;
+
+    try {
+
+        const response =
+            await fetch(
+                `/api/class-schedules/${id}`,
+                {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
+                    body:
+                        JSON.stringify({
+                            subject_id:
+                                subjectId,
+                            start_time:
+                                time,
+                            duration_minutes:
+                                duration
+                        })
+                }
+            );
+
+        const data =
+            await response.json();
+
+        if (!response.ok || !data.ok) {
+
+            throw new Error(
+                data.error
+            );
+        }
+
+        await loadSchedules();
+        await loadClasses();
+
+    } catch (error) {
+
+        alert(error.message);
+    }
+}
+
+
+async function deleteSchedule(id) {
+
+    if (
+        !confirm(
+            "Delete this timetable entry?"
+        )
+    )
+        return;
+
+    try {
+
+        const response =
+            await fetch(
+                `/api/class-schedules/${id}`,
+                {
+                    method: "DELETE"
+                }
+            );
+
+        const data =
+            await response.json();
+
+        if (!response.ok || !data.ok) {
+
+            throw new Error(
+                data.error
+            );
+        }
+
+        await loadSchedules();
+        await loadClasses();
+
+    } catch (error) {
+
+        alert(error.message);
+    }
+}
+
+
+/* =====================================================
+   TODAY'S CLASSES
+===================================================== */
 
 async function loadClasses() {
 
     const body =
-        document
-            .getElementById(
-                "classSessionsBody"
-            );
+        document.getElementById(
+            "qrClass"
+        );
 
-
-    const select =
-        document
-            .getElementById(
-                "attendanceClass"
-            );
-
+    const attendance =
+        document.getElementById(
+            "attendanceClass"
+        );
 
     try {
-
-        const statusResponse =
-            await fetch(
-                "/api/today-status",
-                {
-                    credentials:
-                        "same-origin"
-                }
-            );
-
-
-        const status =
-            await statusResponse.json();
-
-
-        if (
-            status.is_holiday
-        ) {
-
-            body.innerHTML = `
-
-                <tr>
-
-                    <td colspan="4">
-
-                        <strong>
-                            ${
-                                status.holiday_type ===
-                                "Sunday"
-
-                                ? "Sunday — Holiday"
-
-                                : (
-                                    status.holiday_name +
-                                    " — Holiday"
-                                )
-                            }
-                        </strong>
-
-                    </td>
-
-                </tr>
-
-            `;
-
-
-            select.innerHTML = `
-
-                <option value="">
-                    ${
-                        status.holiday_type ===
-                        "Sunday"
-
-                        ? "Sunday — Holiday"
-
-                        : (
-                            status.holiday_name +
-                            " — Holiday"
-                        )
-                    }
-                </option>
-
-            `;
-
-
-            return;
-
-        }
-
 
         const response =
             await fetch(
@@ -1415,701 +1194,885 @@ async function loadClasses() {
                 }
             );
 
-
-        if (
-            !response.ok
-        ) {
-
-            throw new Error(
-                "Unable to load today's classes."
-            );
-
-        }
-
-
-        const classes =
+        const data =
             await response.json();
 
+        if (!response.ok) {
 
-        body.innerHTML =
-            "";
-
-        select.innerHTML =
-            "";
-
-
-        if (
-            !Array.isArray(
-                classes
-            ) ||
-            classes.length === 0
-        ) {
-
-            body.innerHTML = `
-
-                <tr>
-
-                    <td colspan="4">
-                        No classes scheduled today.
-                    </td>
-
-                </tr>
-
-            `;
-
-
-            select.innerHTML = `
-
-                <option value="">
-                    No classes today
-                </option>
-
-            `;
-
-
-            return;
-
+            throw new Error(
+                data.error ||
+                "Failed to load classes."
+            );
         }
 
-
-        select.innerHTML = `
-
+        body.innerHTML =
+            `
             <option value="">
                 Select today's class
             </option>
-
-        `;
-
-        if (qrSelect) {
-
-            qrSelect.innerHTML = `
-
-                <option value="">
-                    Select today's class
-                </option>
-
             `;
 
-        }
+        attendance.innerHTML =
+            `
+            <option value="">
+                Select class
+            </option>
+            `;
 
-
-        classes.forEach(
+        data.forEach(
             function(c) {
 
-                const row =
-                    document
-                        .createElement(
-                            "tr"
-                        );
+                const label =
+                    `${c.code} — ${c.name} — ` +
+                    `${c.start_time} ` +
+                    `(${c.duration_minutes} min)`;
 
-
-                row.innerHTML = `
-
-                    <td>
-
-                        <strong>
-                            ${escapeHtml(
-                                c.code
-                            )}
-                        </strong>
-
-                        <br>
-
-                        <span class="muted">
-                            ${escapeHtml(
-                                c.name
-                            )}
-                        </span>
-
-                    </td>
-
-
-                    <td>
-                        ${escapeHtml(
-                            c.class_date
-                        )}
-                    </td>
-
-
-                    <td>
-                        ${escapeHtml(
-                            c.start_time
-                        )}
-
-                        <br>
-
-                        <span class="muted">
-                            ${escapeHtml(
-                                String(
-                                    c.duration_minutes
-                                )
-                            )} min
-                        </span>
-
-                    </td>
-
-
-                    <td>
-
-                        <button
-                            class="secondary"
-                            onclick="viewAttendance(
-                                ${c.id}
-                            )"
-                        >
-                            View Attendance
-                        </button>
-
-
-                        <button
-                            class="danger"
-                            onclick="deleteClass(
-                                ${c.id}
-                            )"
-                        >
-                            Delete
-                        </button>
-
-                    </td>
-
-                `;
-
-
-                body.appendChild(
-                    row
-                );
-
-
-                const option =
-                    document
-                        .createElement(
-                            "option"
-                        );
-
-
-                option.value =
-                    c.id;
-
-
-                option.textContent =
-                    `${c.code} — ${c.name} — ${c.start_time}`;
-
-
-                select.appendChild(
-                    option
-                );
-
-                if (qrSelect) {
-
-                    const qrOption =
-                        document.createElement(
-                            "option"
-                        );
-
-                    qrOption.value =
-                        c.id;
-
-                    qrOption.textContent =
-                        `${c.code} — ${c.name} — ${c.start_time}`;
-
-                    qrSelect.appendChild(
-                        qrOption
+                const option1 =
+                    document.createElement(
+                        "option"
                     );
 
-                }
+                option1.value =
+                    c.id;
 
-            }
-        );
-
-    }
-
-    catch (error) {
-
-        body.innerHTML = `
-
-            <tr>
-
-                <td colspan="4">
-
-                    ${escapeHtml(
-                        error.message
-                    )}
-
-                </td>
-
-            </tr>
-
-        `;
-
-    }
-
-}
-
-
-/* =========================================================
-   LOAD DAILY SCHEDULES
-========================================================= */
-
-async function loadSchedules() {
-
-    const body =
-        document
-            .getElementById(
-                "scheduleBody"
-            );
-
-
-    if (!body) {
-        return;
-    }
-
-
-    try {
-
-        const response =
-            await fetch(
-                "/api/class-schedules",
-                {
-                    credentials:
-                        "same-origin"
-                }
-            );
-
-
-        const schedules =
-            await response.json();
-
-
-        body.innerHTML =
-            "";
-
-
-        if (
-            !Array.isArray(
-                schedules
-            ) ||
-            schedules.length === 0
-        ) {
-
-            body.innerHTML = `
-
-                <tr>
-
-                    <td colspan="4">
-                        No daily schedules yet.
-                    </td>
-
-                </tr>
-
-            `;
-
-            return;
-
-        }
-
-
-        schedules.forEach(
-            function(s) {
-
-                const row =
-                    document
-                        .createElement(
-                            "tr"
-                        );
-
-
-                row.innerHTML = `
-
-                    <td>
-
-                        <strong>
-                            ${escapeHtml(
-                                s.code
-                            )}
-                        </strong>
-
-                        <br>
-
-                        <span class="muted">
-                            ${escapeHtml(
-                                s.name
-                            )}
-                        </span>
-
-                    </td>
-
-
-                    <td>
-                        ${escapeHtml(
-                            s.start_time
-                        )}
-                    </td>
-
-
-                    <td>
-                        ${escapeHtml(
-                            String(
-                                s.duration_minutes
-                            )
-                        )}
-                        min
-                    </td>
-
-
-                    <td>
-
-                        <button
-                            class="secondary"
-                            onclick="editSchedule(
-                                ${s.id},
-                                ${s.subject_id},
-                                '${String(
-                                    s.start_time
-                                ).substring(0,5)}',
-                                ${s.duration_minutes}
-                            )"
-                        >
-                            Edit
-                        </button>
-
-
-                        <button
-                            class="danger"
-                            onclick="deleteSchedule(
-                                ${s.id},
-                                '${escapeHtml(
-                                    s.code
-                                )}'
-                            )"
-                        >
-                            Delete
-                        </button>
-
-                    </td>
-
-                `;
-
+                option1.textContent =
+                    label;
 
                 body.appendChild(
-                    row
+                    option1
                 );
 
+
+                const option2 =
+                    document.createElement(
+                        "option"
+                    );
+
+                option2.value =
+                    c.id;
+
+                option2.textContent =
+                    label;
+
+                attendance.appendChild(
+                    option2
+                );
             }
         );
 
+        if (!data.length) {
+
+            body.innerHTML =
+                `
+                <option value="">
+                    No classes available today
+                </option>
+                `;
+
+            attendance.innerHTML =
+                `
+                <option value="">
+                    No classes available today
+                </option>
+                `;
+        }
+
+    } catch (error) {
+
+        body.innerHTML =
+            `
+            <option value="">
+                Failed to load classes
+            </option>
+            `;
+
+        attendance.innerHTML =
+            `
+            <option value="">
+                Failed to load classes
+            </option>
+            `;
+
+        console.error(error);
     }
-
-    catch (error) {
-
-        body.innerHTML = `
-
-            <tr>
-
-                <td colspan="4">
-                    Failed to load timetable.
-                </td>
-
-            </tr>
-
-        `;
-
-    }
-
 }
-/* =========================================================
-   EDIT DAILY SCHEDULE
-========================================================= */
-
-async function editSchedule(
-    id,
-    oldSubject,
-    oldTime,
-    oldDuration
-) {
-
-    const subject =
-        prompt(
-            "Subject ID:",
-            oldSubject
-        );
 
 
-    if (
-        subject === null
-    ) {
+document
+    .getElementById("qrClass")
+    .addEventListener(
+        "change",
+        async function() {
+
+            const id =
+                this.value;
+
+            document
+                .getElementById(
+                    "startQrButton"
+                )
+                .disabled =
+                    !id;
+
+            document
+                .getElementById(
+                    "endQrButton"
+                )
+                .disabled =
+                    true;
+
+            hideQR();
+
+            if (id) {
+
+                await checkExistingQR(
+                    id
+                );
+            }
+        }
+    );
+
+
+/* =====================================================
+   QR
+===================================================== */
+
+let qrTimer = null;
+let qrExpiry = null;
+
+
+async function startQR() {
+
+    const classId =
+        document
+            .getElementById(
+                "qrClass"
+            )
+            .value;
+
+    const message =
+        document
+            .getElementById(
+                "qrMessage"
+            );
+
+    if (!classId) {
+
+        message.textContent =
+            "Select today's class first.";
+
         return;
     }
 
-
-    const time =
-        prompt(
-            "Start time (HH:MM):",
-            oldTime
-        );
-
-
-    if (
-        time === null
-    ) {
-        return;
-    }
-
-
-    const duration =
-        prompt(
-            "Duration in minutes:",
-            oldDuration
-        );
-
-
-    if (
-        duration === null
-    ) {
-        return;
-    }
-
+    message.textContent =
+        "Starting classroom QR...";
 
     try {
 
         const response =
             await fetch(
-                `/api/class-schedules/${id}`,
+                "/api/qr/start",
                 {
-                    method:
-                        "PUT",
-
+                    method: "POST",
                     headers: {
                         "Content-Type":
                             "application/json"
                     },
-
                     body:
                         JSON.stringify({
-
-                            subject_id:
+                            class_id:
                                 Number(
-                                    subject
-                                ),
-
-                            start_time:
-                                time,
-
-                            duration_minutes:
-                                Number(
-                                    duration
+                                    classId
                                 )
-
                         })
                 }
             );
 
+        const data =
+            await response.json();
+
+        if (!response.ok || !data.ok) {
+
+            throw new Error(
+                data.error ||
+                "Unable to start QR."
+            );
+        }
+
+        showQR(data);
+
+        message.textContent =
+            "Classroom QR is active.";
+
+    } catch (error) {
+
+        message.textContent =
+            error.message;
+
+        hideQR();
+    }
+}
+
+
+function showQR(data) {
+
+    const panel =
+        document.getElementById(
+            "qrPanel"
+        );
+
+    const qrBox =
+        document.getElementById(
+            "qrcode"
+        );
+
+    qrBox.innerHTML = "";
+
+    new QRCode(
+        qrBox,
+        {
+            text:
+                data.scan_url,
+            width:
+                230,
+            height:
+                230,
+            correctLevel:
+                QRCode.CorrectLevel.H
+        }
+    );
+
+    document
+        .getElementById(
+            "qrSubject"
+        )
+        .textContent =
+            `${data.subject_code} — ${data.subject}`;
+
+    document
+        .getElementById(
+            "qrClassInfo"
+        )
+        .textContent =
+            `Class time: ${data.start_time}`;
+
+    panel.style.display =
+        "block";
+
+    document
+        .getElementById(
+            "endQrButton"
+        )
+        .disabled =
+            false;
+
+    qrExpiry =
+        new Date(
+            data.expires_at
+        );
+
+    startCountdown();
+}
+
+
+function hideQR() {
+
+    document
+        .getElementById(
+            "qrPanel"
+        )
+        .style.display =
+            "none";
+
+    if (qrTimer) {
+
+        clearInterval(
+            qrTimer
+        );
+
+        qrTimer = null;
+    }
+}
+
+
+function startCountdown() {
+
+    if (qrTimer) {
+
+        clearInterval(
+            qrTimer
+        );
+    }
+
+    function update() {
+
+        if (!qrExpiry)
+            return;
+
+        const remaining =
+            Math.max(
+                0,
+                qrExpiry.getTime()
+                - Date.now()
+            );
+
+        const seconds =
+            Math.floor(
+                remaining / 1000
+            );
+
+        const minutes =
+            Math.floor(
+                seconds / 60
+            );
+
+        const secs =
+            seconds % 60;
+
+        document
+            .getElementById(
+                "qrCountdown"
+            )
+            .textContent =
+                `${String(minutes).padStart(2,"0")}:` +
+                `${String(secs).padStart(2,"0")}`;
+
+        if (remaining <= 0) {
+
+            clearInterval(
+                qrTimer
+            );
+
+            qrTimer = null;
+
+            document
+                .getElementById(
+                    "qrMessage"
+                )
+                .textContent =
+                    "QR expired.";
+
+            document
+                .getElementById(
+                    "endQrButton"
+                )
+                .disabled =
+                    true;
+
+            hideQR();
+        }
+    }
+
+    update();
+
+    qrTimer =
+        setInterval(
+            update,
+            1000
+        );
+}
+
+
+async function checkExistingQR(
+    classId
+) {
+
+    try {
+
+        const response =
+            await fetch(
+                `/api/qr/status?class_id=${classId}`
+            );
 
         const data =
             await response.json();
 
-
         if (
-            !response.ok ||
-            !data.ok
+            response.ok
+            && data.ok
+            && data.active
         ) {
 
-            throw new Error(
-                data.error ||
-                "Update failed."
-            );
+            showQR(data);
+
+            document
+                .getElementById(
+                    "qrMessage"
+                )
+                .textContent =
+                    "QR is already active.";
 
         }
 
+    } catch (error) {
 
-        alert(
-            data.message
-        );
-
-
-        await loadSchedules();
-
-        await loadClasses();
-
+        console.error(error);
     }
-
-    catch (error) {
-
-        alert(
-            error.message
-        );
-
-    }
-
 }
 
 
-/* =========================================================
-   DELETE DAILY SCHEDULE
-========================================================= */
+async function endQR() {
 
-async function deleteSchedule(
+    const classId =
+        document
+            .getElementById(
+                "qrClass"
+            )
+            .value;
+
+    if (!classId)
+        return;
+
+    try {
+
+        const response =
+            await fetch(
+                "/api/qr/end",
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
+                    body:
+                        JSON.stringify({
+                            class_id:
+                                Number(
+                                    classId
+                                )
+                        })
+                }
+            );
+
+        const data =
+            await response.json();
+
+        if (!response.ok || !data.ok) {
+
+            throw new Error(
+                data.error ||
+                "Failed to end QR."
+            );
+        }
+
+        hideQR();
+
+        document
+            .getElementById(
+                "endQrButton"
+            )
+            .disabled =
+                true;
+
+        document
+            .getElementById(
+                "qrMessage"
+            )
+            .textContent =
+                "QR ended.";
+
+    } catch (error) {
+
+        alert(error.message);
+    }
+}
+
+
+/* =====================================================
+   CLASS ATTENDANCE
+===================================================== */
+
+async function loadClassAttendance() {
+
+    const id =
+        document
+            .getElementById(
+                "attendanceClass"
+            )
+            .value;
+
+    const msg =
+        document
+            .getElementById(
+                "classAttendanceMsg"
+            );
+
+    const result =
+        document
+            .getElementById(
+                "classAttendanceResult"
+            );
+
+    if (!id) {
+
+        msg.textContent =
+            "Select a class.";
+
+        return;
+    }
+
+    msg.textContent =
+        "Loading...";
+
+    try {
+
+        const response =
+            await fetch(
+                `/api/class-attendance/${id}`
+            );
+
+        const data =
+            await response.json();
+
+        if (!response.ok || !data.ok) {
+
+            throw new Error(
+                data.error ||
+                "Failed."
+            );
+        }
+
+        const students =
+            data.students;
+
+        const present =
+            students.filter(
+                s =>
+                    s.status ===
+                    "Present"
+            ).length;
+
+        const absent =
+            students.length -
+            present;
+
+        const percentage =
+            students.length
+                ? (
+                    present /
+                    students.length *
+                    100
+                ).toFixed(1)
+                : "0.0";
+
+        let html =
+            `
+            <div class="cards">
+
+                <div class="card">
+                    <span>Present</span>
+                    <strong>
+                        ${present}
+                    </strong>
+                </div>
+
+                <div class="card">
+                    <span>Absent</span>
+                    <strong>
+                        ${absent}
+                    </strong>
+                </div>
+
+                <div class="card">
+                    <span>Attendance</span>
+                    <strong>
+                        ${percentage}%
+                    </strong>
+                </div>
+
+            </div>
+
+            <div class="table-wrap">
+
+                <table>
+
+                    <thead>
+
+                        <tr>
+                            <th>Roll</th>
+                            <th>Name</th>
+                            <th>Department</th>
+                            <th>Status</th>
+                        </tr>
+
+                    </thead>
+
+                    <tbody>
+            `;
+
+        students.forEach(
+            function(s) {
+
+                html +=
+                    `
+                    <tr>
+
+                        <td>
+                            ${escapeHtml(
+                                s.roll_no
+                            )}
+                        </td>
+
+                        <td>
+                            ${escapeHtml(
+                                s.name
+                            )}
+                        </td>
+
+                        <td>
+                            ${escapeHtml(
+                                s.department ||
+                                "-"
+                            )}
+                        </td>
+
+                        <td>
+
+                            ${
+                                s.status ===
+                                "Present"
+
+                                ? `
+                                <span
+                                    class="status-badge present"
+                                >
+                                    ✓ Present
+                                </span>
+                                `
+
+                                : `
+                                <span
+                                    class="status-badge absent"
+                                >
+                                    ✕ Absent
+                                </span>
+                                `
+                            }
+
+                        </td>
+
+                    </tr>
+                    `;
+            }
+        );
+
+        html +=
+            `
+                    </tbody>
+
+                </table>
+
+            </div>
+            `;
+
+        result.innerHTML =
+            html;
+
+        msg.textContent =
+            "Attendance loaded.";
+
+    } catch (error) {
+
+        msg.textContent =
+            error.message;
+    }
+}
+
+
+/* =====================================================
+   STUDENTS
+===================================================== */
+
+async function editStudent(
     id,
-    code
+    oldName,
+    oldEmail,
+    oldDepartment
+) {
+
+    const name =
+        prompt(
+            "Student name:",
+            oldName
+        );
+
+    if (name === null)
+        return;
+
+    const email =
+        prompt(
+            "Email:",
+            oldEmail || ""
+        );
+
+    if (email === null)
+        return;
+
+    const department =
+        prompt(
+            "Department:",
+            oldDepartment || ""
+        );
+
+    if (department === null)
+        return;
+
+    const password =
+        prompt(
+            "New password (leave blank to keep current):"
+        );
+
+    if (password === null)
+        return;
+
+    try {
+
+        const response =
+            await fetch(
+                `/api/students/${id}`,
+                {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
+                    body:
+                        JSON.stringify({
+                            name:
+                                name.trim(),
+                            email:
+                                email.trim(),
+                            department:
+                                department.trim(),
+                            password:
+                                password.trim()
+                        })
+                }
+            );
+
+        const data =
+            await response.json();
+
+        if (!response.ok || !data.ok) {
+
+            throw new Error(
+                data.error
+            );
+        }
+
+        alert(data.message);
+
+        location.reload();
+
+    } catch (error) {
+
+        alert(error.message);
+    }
+}
+
+
+async function deleteStudent(
+    id,
+    name
 ) {
 
     if (
         !confirm(
-            "Delete the daily schedule for " +
-            code +
-            "?\n\n" +
-            "Historical attendance will be kept."
+            `DELETE STUDENT?\n\n${name}\n\n` +
+            "This will delete the login, face data and attendance."
         )
-    ) {
-
+    )
         return;
-
-    }
-
 
     try {
 
         const response =
             await fetch(
-                `/api/class-schedules/${id}`,
+                `/api/students/${id}`,
                 {
-                    method:
-                        "DELETE",
-
-                    credentials:
-                        "same-origin"
+                    method: "DELETE"
                 }
             );
-
 
         const data =
             await response.json();
 
-
-        if (
-            !response.ok ||
-            !data.ok
-        ) {
+        if (!response.ok || !data.ok) {
 
             throw new Error(
-                data.error ||
-                "Delete failed."
+                data.error
             );
-
         }
 
+        alert(data.message);
 
-        alert(
-            data.message
-        );
+        location.reload();
 
+    } catch (error) {
 
-        await loadSchedules();
-
-        await loadClasses();
-
+        alert(error.message);
     }
-
-    catch (error) {
-
-        alert(
-            error.message
-        );
-
-    }
-
 }
 
 
-/* =========================================================
+/* =====================================================
    HOLIDAYS
-========================================================= */
+===================================================== */
 
 async function loadHolidays() {
 
     const body =
-        document
-            .getElementById(
-                "holidayBody"
-            );
-
-
-    if (!body) {
-        return;
-    }
-
+        document.getElementById(
+            "holidayBody"
+        );
 
     try {
 
         const response =
             await fetch(
-                "/api/holidays",
-                {
-                    credentials:
-                        "same-origin"
-                }
+                "/api/holidays"
             );
 
-
-        const holidays =
+        const data =
             await response.json();
 
+        body.innerHTML = "";
 
-        body.innerHTML =
-            "";
+        if (!data.length) {
 
-
-        if (
-            !Array.isArray(
-                holidays
-            ) ||
-            holidays.length === 0
-        ) {
-
-            body.innerHTML = `
-
+            body.innerHTML =
+                `
                 <tr>
-
                     <td colspan="3">
-
-                        No configured holidays.
-                        Sundays are automatic.
-
+                        No holidays added.
                     </td>
-
                 </tr>
-
-            `;
+                `;
 
             return;
-
         }
 
-
-        holidays.forEach(
+        data.forEach(
             function(h) {
 
                 const row =
-                    document
-                        .createElement(
-                            "tr"
-                        );
+                    document.createElement(
+                        "tr"
+                    );
 
-
-                row.innerHTML = `
-
+                row.innerHTML =
+                    `
                     <td>
                         ${escapeHtml(
                             h.holiday_date
                         )}
                     </td>
 
-
                     <td>
                         ${escapeHtml(
                             h.name
                         )}
                     </td>
-
 
                     <td>
 
@@ -2123,53 +2086,36 @@ async function loadHolidays() {
                         </button>
 
                     </td>
+                    `;
 
-                `;
-
-
-                body.appendChild(
-                    row
-                );
-
+                body.appendChild(row);
             }
         );
 
-    }
+    } catch (error) {
 
-    catch (error) {
-
-        body.innerHTML = `
-
+        body.innerHTML =
+            `
             <tr>
-
                 <td colspan="3">
                     Failed to load holidays.
                 </td>
-
             </tr>
-
-        `;
-
+            `;
     }
-
 }
 
 
-/* =========================================================
-   CREATE HOLIDAY
-========================================================= */
+async function addHoliday() {
 
-async function createHoliday() {
-
-    const holidayDate =
+    const date =
         document
             .getElementById(
                 "holidayDate"
             )
             .value;
 
-
-    const holidayName =
+    const name =
         document
             .getElementById(
                 "holidayName"
@@ -2177,26 +2123,19 @@ async function createHoliday() {
             .value
             .trim();
 
-
     const msg =
         document
             .getElementById(
                 "holidayMsg"
             );
 
-
-    if (
-        !holidayDate ||
-        !holidayName
-    ) {
+    if (!date || !name) {
 
         msg.textContent =
-            "Select a date and enter a holiday name.";
+            "Enter holiday date and name.";
 
         return;
-
     }
-
 
     try {
 
@@ -2204,48 +2143,38 @@ async function createHoliday() {
             await fetch(
                 "/api/holidays",
                 {
-                    method:
-                        "POST",
-
+                    method: "POST",
                     headers: {
                         "Content-Type":
                             "application/json"
                     },
-
                     body:
                         JSON.stringify({
-
                             holiday_date:
-                                holidayDate,
-
-                            name:
-                                holidayName
-
+                                date,
+                            name
                         })
                 }
             );
 
-
         const data =
             await response.json();
 
-
-        if (
-            !response.ok ||
-            !data.ok
-        ) {
+        if (!response.ok || !data.ok) {
 
             throw new Error(
-                data.error ||
-                "Failed."
+                data.error
             );
-
         }
-
 
         msg.textContent =
             data.message;
 
+        document
+            .getElementById(
+                "holidayDate"
+            )
+            .value = "";
 
         document
             .getElementById(
@@ -2253,26 +2182,15 @@ async function createHoliday() {
             )
             .value = "";
 
-
         await loadHolidays();
 
-        await loadClasses();
-
-    }
-
-    catch (error) {
+    } catch (error) {
 
         msg.textContent =
             error.message;
-
     }
-
 }
 
-
-/* =========================================================
-   DELETE HOLIDAY
-========================================================= */
 
 async function deleteHoliday(
     id
@@ -2282,12 +2200,8 @@ async function deleteHoliday(
         !confirm(
             "Remove this holiday?"
         )
-    ) {
-
+    )
         return;
-
-    }
-
 
     try {
 
@@ -2295,1405 +2209,68 @@ async function deleteHoliday(
             await fetch(
                 `/api/holidays/${id}`,
                 {
-                    method:
-                        "DELETE",
-
-                    credentials:
-                        "same-origin"
+                    method: "DELETE"
                 }
             );
-
 
         const data =
             await response.json();
 
-
-        if (
-            !response.ok ||
-            !data.ok
-        ) {
+        if (!response.ok || !data.ok) {
 
             throw new Error(
-                data.error ||
-                "Delete failed."
+                data.error
             );
-
         }
-
 
         await loadHolidays();
 
-        await loadClasses();
+    } catch (error) {
 
+        alert(error.message);
     }
-
-    catch (error) {
-
-        alert(
-            error.message
-        );
-
-    }
-
 }
 
 
-/* =========================================================
-   DELETE TODAY'S CLASS SESSION
-========================================================= */
-
-async function deleteClass(
-    id
-) {
-
-    const ok =
-        confirm(
-            "Delete this class session?\n\n" +
-            "Its attendance records will also be deleted."
-        );
-
-
-    if (!ok) {
-        return;
-    }
-
-
-    try {
-
-        const response =
-            await fetch(
-                `/classes/${id}`,
-                {
-                    method:
-                        "DELETE",
-
-                    credentials:
-                        "same-origin",
-
-                    headers: {
-                        "Accept":
-                            "application/json"
-                    }
-                }
-            );
-
-
-        const text =
-            await response.text();
-
-
-        let data;
-
-
-        try {
-
-            data =
-                JSON.parse(
-                    text
-                );
-
-        }
-
-        catch (error) {
-
-            console.error(
-                "Delete class response:",
-                text
-            );
-
-
-            throw new Error(
-                "Server returned an invalid response."
-            );
-
-        }
-
-
-        if (
-            !response.ok ||
-            !data.ok
-        ) {
-
-            throw new Error(
-                data.error ||
-                "Delete failed."
-            );
-
-        }
-
-
-        alert(
-            data.message
-        );
-
-
-        await loadClasses();
-
-    }
-
-    catch (error) {
-
-        alert(
-            error.message
-        );
-
-    }
-
-}
-
-
-
-/* =========================================================
-   CLASSROOM QR SESSION
-========================================================= */
-
-function setQrAdminStatus(
-    message
-) {
-
-    const element =
-        document.getElementById(
-            "qrAdminStatus"
-        );
-
-    if (element) {
-        element.textContent =
-            message;
-    }
-
-}
-
-
-function setQrMessage(
-    message
-) {
-
-    const element =
-        document.getElementById(
-            "qrMsg"
-        );
-
-    if (element) {
-        element.textContent =
-            message;
-    }
-
-}
-
-
-/* =========================================================
-   START QR SESSION
-========================================================= */
-
-async function startQrSession() {
-
-    const select =
-        document.getElementById(
-            "qrClassSelect"
-        );
-
-    const classId =
-        Number(
-            select.value
-        );
-
-    if (!classId) {
-
-        setQrMessage(
-            "Select today's class first."
-        );
-
-        return;
-    }
-
-    const button =
-        document.getElementById(
-            "startQrButton"
-        );
-
-    button.disabled =
-        true;
-
-    button.textContent =
-        "Starting QR...";
-
-    try {
-
-        const response =
-            await fetch(
-                "/api/attendance-sessions/start",
-                {
-                    method:
-                        "POST",
-
-                    credentials:
-                        "same-origin",
-
-                    headers: {
-                        "Content-Type":
-                            "application/json"
-                    },
-
-                    body:
-                        JSON.stringify({
-                            class_id:
-                                classId
-                        })
-                }
-            );
-
-        const text =
-            await response.text();
-
-        let data;
-
-        try {
-            data =
-                JSON.parse(text);
-        }
-        catch {
-            throw new Error(
-                `Server returned HTTP ${response.status}.`
-            );
-        }
-
-        if (
-            !response.ok ||
-            !data.ok
-        ) {
-
-            throw new Error(
-                data.error ||
-                "Unable to start QR session."
-            );
-
-        }
-
-        activeQrToken =
-            data.session_token;
-
-        activeQrClassId =
-            Number(
-                data.class_id
-            );
-
-        qrExpiryTimestamp =
-            Date.now() +
-            (
-                Number(
-                    data.expires_in_seconds
-                ) * 1000
-            );
-
-        const qrContainer =
-            document.getElementById(
-                "qrCode"
-            );
-
-        qrContainer.innerHTML =
-            "";
-
-        if (!window.QRCode) {
-
-            throw new Error(
-                "QR code library failed to load."
-            );
-
-        }
-
-        new QRCode(
-            qrContainer,
-            {
-                text:
-                    data.qr_url,
-
-                width:
-                    280,
-
-                height:
-                    280,
-
-                correctLevel:
-                    QRCode.CorrectLevel.H
-            }
-        );
-
-        document.getElementById(
-            "qrDisplay"
-        ).style.display =
-            "block";
-
-        document.getElementById(
-            "qrSubject"
-        ).textContent =
-            `${data.code} — ${data.subject}`;
-
-        document.getElementById(
-            "endQrButton"
-        ).disabled =
-            false;
-
-        button.disabled =
-            true;
-
-        button.textContent =
-            "QR Running";
-
-        setQrAdminStatus(
-            `QR active for ${data.code} — ${data.subject}.`
-        );
-
-        setQrMessage(
-            "Students can now scan the QR code."
-        );
-
-        startQrCountdown();
-
-    }
-
-    catch (error) {
-
-        console.error(
-            "Start QR error:",
-            error
-        );
-
-        button.disabled =
-            false;
-
-        button.textContent =
-            "Start Classroom QR";
-
-        setQrMessage(
-            "Unable to start QR: " +
-            error.message
-        );
-
-    }
-
-}
-
-
-/* =========================================================
-   QR COUNTDOWN
-========================================================= */
-
-function startQrCountdown() {
-
-    clearInterval(
-        qrCountdownTimer
-    );
-
-    const countdown =
-        document.getElementById(
-            "qrCountdown"
-        );
-
-    function update() {
-
-        const remaining =
-            Math.max(
-                0,
-                Math.ceil(
-                    (
-                        qrExpiryTimestamp -
-                        Date.now()
-                    ) / 1000
-                )
-            );
-
-        const minutes =
-            Math.floor(
-                remaining / 60
-            );
-
-        const seconds =
-            remaining % 60;
-
-        countdown.textContent =
-            `QR expires in ${minutes}:${String(seconds).padStart(2, "0")}`;
-
-        if (
-            remaining <= 0
-        ) {
-
-            clearInterval(
-                qrCountdownTimer
-            );
-
-            countdown.textContent =
-                "QR expired. Start a new QR session.";
-
-            activeQrToken =
-                "";
-
-            document.getElementById(
-                "endQrButton"
-            ).disabled =
-                true;
-
-            document.getElementById(
-                "startQrButton"
-            ).disabled =
-                false;
-
-            document.getElementById(
-                "startQrButton"
-            ).textContent =
-                "Start Classroom QR";
-
-            setQrAdminStatus(
-                "QR expired."
-            );
-
-        }
-
-    }
-
-    update();
-
-    qrCountdownTimer =
-        setInterval(
-            update,
-            1000
-        );
-
-}
-
-
-/* =========================================================
-   END QR SESSION
-========================================================= */
-
-async function endQrSession() {
-
-    const endButton =
-        document.getElementById(
-            "endQrButton"
-        );
-
-    const startButton =
-        document.getElementById(
-            "startQrButton"
-        );
-
-    if (
-        !activeQrToken &&
-        !activeQrClassId
-    ) {
-
-        return;
-    }
-
-    endButton.disabled =
-        true;
-
-    endButton.textContent =
-        "Ending...";
-
-    try {
-
-        const response =
-            await fetch(
-                "/api/attendance-sessions/end",
-                {
-                    method:
-                        "POST",
-
-                    credentials:
-                        "same-origin",
-
-                    headers: {
-                        "Content-Type":
-                            "application/json"
-                    },
-
-                    body:
-                        JSON.stringify({
-                            session_token:
-                                activeQrToken,
-
-                            class_id:
-                                activeQrClassId
-                        })
-                }
-            );
-
-        const data =
-            await response.json();
-
-        if (
-            !response.ok ||
-            !data.ok
-        ) {
-
-            throw new Error(
-                data.error ||
-                "Unable to end QR session."
-            );
-
-        }
-
-        clearInterval(
-            qrCountdownTimer
-        );
-
-        activeQrToken =
-            "";
-
-        activeQrClassId =
-            null;
-
-        qrExpiryTimestamp =
-            0;
-
-        document.getElementById(
-            "qrDisplay"
-        ).style.display =
-            "none";
-
-        document.getElementById(
-            "qrCode"
-        ).innerHTML =
-            "";
-
-        startButton.disabled =
-            false;
-
-        startButton.textContent =
-            "Start Classroom QR";
-
-        endButton.disabled =
-            true;
-
-        endButton.textContent =
-            "End QR";
-
-        setQrAdminStatus(
-            "No QR session running."
-        );
-
-        setQrMessage(
-            "QR attendance session ended."
-        );
-
-    }
-
-    catch (error) {
-
-        endButton.disabled =
-            false;
-
-        endButton.textContent =
-            "End QR";
-
-        setQrMessage(
-            "Unable to end QR: " +
-            error.message
-        );
-
-    }
-
-}
-
-
-/* =========================================================
-   QR CLASS CHANGE
-========================================================= */
-
-document.addEventListener(
-    "DOMContentLoaded",
-    function() {
-
-        const qrSelect =
-            document.getElementById(
-                "qrClassSelect"
-            );
-
-        if (!qrSelect) {
-            return;
-        }
-
-        qrSelect.addEventListener(
-            "change",
-            function() {
-
-                if (
-                    activeQrToken
-                ) {
-
-                    alert(
-                        "End the current QR session before selecting another class."
-                    );
-
-                    this.value =
-                        String(
-                            activeQrClassId
-                        );
-
-                }
-
-            }
-        );
-
-    }
-);
-
-
-/* =========================================================
-   VIEW ATTENDANCE
-========================================================= */
-
-function viewAttendance(
-    id
-) {
-
-    const select =
-        document
-            .getElementById(
-                "attendanceClass"
-            );
-
-
-    select.value =
-        String(id);
-
-
-    loadClassAttendance();
-
-
-    document
-        .getElementById(
-            "classAttendanceResult"
-        )
-        .scrollIntoView({
-            behavior:
-                "smooth"
-        });
-
-}
-
-
-/* =========================================================
-   LOAD CLASS-WISE ATTENDANCE
-========================================================= */
-
-async function loadClassAttendance() {
-
-    const id =
-        document
-            .getElementById(
-                "attendanceClass"
-            )
-            .value;
-
-
-    const msg =
-        document
-            .getElementById(
-                "classAttendanceMsg"
-            );
-
-
-    const result =
-        document
-            .getElementById(
-                "classAttendanceResult"
-            );
-
-
-    if (!id) {
-
-        msg.textContent =
-            "Select a class.";
-
-        result.innerHTML =
-            "";
-
-        return;
-
-    }
-
-
-    msg.textContent =
-        "Loading attendance...";
-
-
-    result.innerHTML =
-        "";
-
-
-    try {
-
-        const response =
-            await fetch(
-                `/api/class-attendance/${encodeURIComponent(id)}`,
-                {
-                    method:
-                        "GET",
-
-                    credentials:
-                        "same-origin",
-
-                    headers: {
-                        "Accept":
-                            "application/json"
-                    }
-                }
-            );
-
-
-        /*
-         * Read as text first.
-         *
-         * This prevents:
-         *
-         * Unexpected token '<'
-         *
-         * when Flask returns HTML.
-         */
-
-        const text =
-            await response.text();
-
-
-        console.log(
-            "Class attendance server response:",
-            text
-        );
-
-
-        let data;
-
-
-        try {
-
-            data =
-                JSON.parse(
-                    text
-                );
-
-        }
-
-        catch (parseError) {
-
-            console.error(
-                "Invalid JSON:",
-                text
-            );
-
-
-            if (
-                text.includes(
-                    "<!doctype"
-                ) ||
-                text.includes(
-                    "<html"
-                )
-            ) {
-
-                throw new Error(
-                    "Server returned an HTML page instead of attendance data. Please check the admin login/session."
-                );
-
-            }
-
-
-            throw new Error(
-                "Server returned invalid attendance data."
-            );
-
-        }
-
-
-        if (
-            !response.ok ||
-            !data.ok
-        ) {
-
-            throw new Error(
-                data.error ||
-                `Failed to load attendance (HTTP ${response.status}).`
-            );
-
-        }
-
-
-        const students =
-            Array.isArray(
-                data.students
-            )
-                ? data.students
-                : [];
-
-
-        const present =
-            students.filter(
-                function(s) {
-
-                    return (
-                        s.status ===
-                        "Present"
-                    );
-
-                }
-            ).length;
-
-
-        const absent =
-            students.length -
-            present;
-
-
-        const percentage =
-            students.length
-                ? (
-                    present /
-                    students.length *
-                    100
-                ).toFixed(1)
-                : "0.0";
-
-
-        let html = `
-
-            <div class="cards">
-
-                <div class="card">
-
-                    <span>
-                        Present
-                    </span>
-
-                    <strong>
-                        ${present}
-                    </strong>
-
-                </div>
-
-
-                <div class="card">
-
-                    <span>
-                        Absent
-                    </span>
-
-                    <strong>
-                        ${absent}
-                    </strong>
-
-                </div>
-
-
-                <div class="card">
-
-                    <span>
-                        Attendance
-                    </span>
-
-                    <strong>
-                        ${percentage}%
-                    </strong>
-
-                </div>
-
-            </div>
-
-
-            <div class="table-wrap">
-
-                <table>
-
-                    <thead>
-
-                        <tr>
-
-                            <th>
-                                Roll
-                            </th>
-
-                            <th>
-                                Name
-                            </th>
-
-                            <th>
-                                Department
-                            </th>
-
-                            <th>
-                                Status
-                            </th>
-
-                        </tr>
-
-                    </thead>
-
-
-                    <tbody>
-
-        `;
-
-
-        if (
-            students.length === 0
-        ) {
-
-            html += `
-
-                <tr>
-
-                    <td colspan="4">
-
-                        No students found.
-
-                    </td>
-
-                </tr>
-
-            `;
-
-        }
-
-
-        students.forEach(
-            function(s) {
-
-                const statusHtml =
-                    s.status === "Present"
-
-                        ? `
-                            <span
-                                class="status-badge present"
-                            >
-                                ✓ Present
-                            </span>
-                        `
-
-                        : `
-                            <span
-                                class="status-badge absent"
-                            >
-                                ✕ Absent
-                            </span>
-                        `;
-
-
-                html += `
-
-                    <tr>
-
-                        <td>
-                            ${escapeHtml(
-                                s.roll_no
-                            )}
-                        </td>
-
-
-                        <td>
-                            ${escapeHtml(
-                                s.name
-                            )}
-                        </td>
-
-
-                        <td>
-                            ${escapeHtml(
-                                s.department ||
-                                "-"
-                            )}
-                        </td>
-
-
-                        <td>
-                            ${statusHtml}
-                        </td>
-
-                    </tr>
-
-                `;
-
-            }
-        );
-
-
-        html += `
-
-                    </tbody>
-
-                </table>
-
-            </div>
-
-        `;
-
-
-        result.innerHTML =
-            html;
-
-
-        msg.textContent =
-            "Attendance loaded successfully.";
-
-    }
-
-    catch (error) {
-
-        console.error(
-            "Class attendance error:",
-            error
-        );
-
-
-        result.innerHTML = `
-
-            <div class="error">
-
-                ${escapeHtml(
-                    error.message ||
-                    "Unable to load attendance."
-                )}
-
-            </div>
-
-        `;
-
-
-        msg.textContent =
-            "";
-
-    }
-
-}
-/* =========================================================
-   EDIT STUDENT
-========================================================= */
-
-async function editStudent(
-    id,
-    oldName,
-    oldEmail,
-    oldDepartment
-) {
-
-    const name =
-        prompt(
-            "Student name:",
-            oldName || ""
-        );
-
-
-    if (
-        name === null
-    ) {
-        return;
-    }
-
-
-    const email =
-        prompt(
-            "Email:",
-            oldEmail || ""
-        );
-
-
-    if (
-        email === null
-    ) {
-        return;
-    }
-
-
-    const department =
-        prompt(
-            "Department:",
-            oldDepartment || ""
-        );
-
-
-    if (
-        department === null
-    ) {
-        return;
-    }
-
-
-    const password =
-        prompt(
-            "New password (leave blank to keep current password):",
-            ""
-        );
-
-
-    if (
-        password === null
-    ) {
-        return;
-    }
-
-
-    try {
-
-        const response =
-            await fetch(
-                `/api/students/${id}`,
-                {
-                    method:
-                        "PUT",
-
-                    headers: {
-                        "Content-Type":
-                            "application/json"
-                    },
-
-                    body:
-                        JSON.stringify({
-
-                            name:
-                                name.trim(),
-
-                            email:
-                                email.trim(),
-
-                            department:
-                                department.trim(),
-
-                            password:
-                                password.trim()
-
-                        })
-                }
-            );
-
-
-        const data =
-            await response.json();
-
-
-        if (
-            !response.ok ||
-            !data.ok
-        ) {
-
-            throw new Error(
-                data.error ||
-                "Student update failed."
-            );
-
-        }
-
-
-        alert(
-            data.message
-        );
-
-
-        location.reload();
-
-    }
-
-    catch (error) {
-
-        alert(
-            error.message
-        );
-
-    }
-
-}
-
-
-/* =========================================================
-   DELETE STUDENT
-========================================================= */
-
-async function deleteStudent(
-    id,
-    name
-) {
-
-    const ok =
-        confirm(
-            "DELETE STUDENT?\n\n" +
-            name +
-            "\n\n" +
-            "This will delete the student's " +
-            "login and attendance records.\n\n" +
-            "This cannot be undone."
-        );
-
-
-    if (!ok) {
-        return;
-    }
-
-
-    try {
-
-        const response =
-            await fetch(
-                `/api/students/${id}`,
-                {
-                    method:
-                        "DELETE",
-
-                    credentials:
-                        "same-origin",
-
-                    headers: {
-                        "Accept":
-                            "application/json"
-                    }
-                }
-            );
-
-
-        const text =
-            await response.text();
-
-
-        let data;
-
-
-        try {
-
-            data =
-                JSON.parse(
-                    text
-                );
-
-        }
-
-        catch (error) {
-
-            throw new Error(
-                "Server returned an invalid response."
-            );
-
-        }
-
-
-        if (
-            !response.ok ||
-            !data.ok
-        ) {
-
-            throw new Error(
-                data.error ||
-                "Student deletion failed."
-            );
-
-        }
-
-
-        alert(
-            data.message
-        );
-
-
-        location.reload();
-
-    }
-
-    catch (error) {
-
-        alert(
-            error.message
-        );
-
-    }
-
-}
-
-
-/* =========================================================
-   HTML ESCAPING
-========================================================= */
-
-function escapeHtml(
-    value
-) {
-
-    if (
-        value === null ||
-        value === undefined
-    ) {
-
-        return "";
-
-    }
-
+/* =====================================================
+   ESCAPE
+===================================================== */
+
+function escapeHtml(value) {
 
     return String(
-        value
+        value ?? ""
     )
-        .replace(
-            /&/g,
-            "&amp;"
-        )
-        .replace(
-            /</g,
-            "&lt;"
-        )
-        .replace(
-            />/g,
-            "&gt;"
-        )
-        .replace(
-            /"/g,
-            "&quot;"
-        )
-        .replace(
-            /'/g,
-            "&#039;"
-        );
-
+    .replaceAll(
+        "&",
+        "&amp;"
+    )
+    .replaceAll(
+        "<",
+        "&lt;"
+    )
+    .replaceAll(
+        ">",
+        "&gt;"
+    )
+    .replaceAll(
+        '"',
+        "&quot;"
+    )
+    .replaceAll(
+        "'",
+        "&#039;"
+    );
 }
 
 
-/* =========================================================
-   PAGE INITIALIZATION
-========================================================= */
+/* =====================================================
+   INITIAL LOAD
+===================================================== */
 
 document.addEventListener(
     "DOMContentLoaded",
     async function() {
-
-        /*
-         * Set holiday date to TODAY
-         * using India timezone.
-         */
-
-        const holidayDate =
-            document
-                .getElementById(
-                    "holidayDate"
-                );
-
-
-        if (holidayDate) {
-
-            const formatter =
-                new Intl.DateTimeFormat(
-                    "en-CA",
-                    {
-                        timeZone:
-                            "Asia/Kolkata"
-                    }
-                );
-
-
-            holidayDate.value =
-                formatter.format(
-                    new Date()
-                );
-
-        }
-
-
-        /*
-         * Load today's sessions,
-         * timetable and holidays.
-         */
 
         await loadClasses();
 
@@ -3704,6 +2281,6 @@ document.addEventListener(
     }
 );
 
-
 </script>
+
 {% endblock %}
