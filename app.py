@@ -1687,48 +1687,177 @@ def mark_attendance():
 # CLASSES API
 # =========================================================
 
+# =========================================================
+# CLASSES API
+# =========================================================
+
 @app.route(
     "/api/classes"
 )
 @login_required
 def api_classes():
 
-    rows = q(
-        """
-        SELECT
-            c.id,
-            c.subject_id,
-            CAST(c.class_date AS TEXT)
-                AS class_date,
-            CAST(c.start_time AS TEXT)
-                AS start_time,
-            s.code,
-            s.name
-        FROM classes c
-        JOIN subjects s
-            ON s.id=c.subject_id
-        ORDER BY
-            c.class_date DESC,
-            c.start_time DESC
-        """,
-        fetch=True
-    )
+    try:
 
-    return jsonify(
-        [
+        # -------------------------------------------------
+        # INDIA DATE
+        # -------------------------------------------------
+
+        india = ZoneInfo(
+            "Asia/Kolkata"
+        )
+
+        today = datetime.now(
+            india
+        ).date()
+
+
+        # -------------------------------------------------
+        # FIND ALL FIXED CLASS TIMINGS
+        #
+        # Each unique subject + start time
+        # becomes a daily recurring class.
+        # -------------------------------------------------
+
+        schedules = q(
+            """
+            SELECT DISTINCT
+                subject_id,
+                start_time
+            FROM classes
+            ORDER BY
+                start_time ASC
+            """,
+            fetch=True
+        )
+
+
+        # -------------------------------------------------
+        # CREATE TODAY'S SESSION AUTOMATICALLY
+        # -------------------------------------------------
+
+        for schedule in schedules:
+
+            try:
+
+                q(
+                    """
+                    INSERT INTO classes(
+                        subject_id,
+                        class_date,
+                        start_time
+                    )
+                    SELECT
+                        :subject_id,
+                        :class_date,
+                        :start_time
+                    WHERE NOT EXISTS (
+                        SELECT 1
+                        FROM classes
+                        WHERE
+                            subject_id=:subject_id
+                            AND class_date=:class_date
+                            AND start_time=:start_time
+                    )
+                    """,
+                    {
+                        "subject_id":
+                            schedule["subject_id"],
+
+                        "class_date":
+                            today,
+
+                        "start_time":
+                            schedule["start_time"]
+                    }
+                )
+
+            except IntegrityError:
+
+                # Another request may have created
+                # the same session at the same time.
+                pass
+
+
+        # -------------------------------------------------
+        # RETURN TODAY'S CLASSES
+        # -------------------------------------------------
+
+        rows = q(
+            """
+            SELECT
+                c.id,
+                c.subject_id,
+
+                CAST(
+                    c.class_date AS TEXT
+                ) AS class_date,
+
+                CAST(
+                    c.start_time AS TEXT
+                ) AS start_time,
+
+                s.code,
+                s.name
+
+            FROM classes c
+
+            JOIN subjects s
+                ON s.id=c.subject_id
+
+            WHERE c.class_date=:today
+
+            ORDER BY
+                c.start_time ASC
+            """,
             {
-                "id": r["id"],
-                "subject_id": r["subject_id"],
-                "class_date": r["class_date"],
-                "start_time": r["start_time"],
-                "code": r["code"],
-                "name": r["name"]
-            }
-            for r in rows
-        ]
-    )
+                "today": today
+            },
+            fetch=True
+        )
 
 
+        return jsonify(
+            [
+                {
+                    "id":
+                        r["id"],
+
+                    "subject_id":
+                        r["subject_id"],
+
+                    "class_date":
+                        str(
+                            r["class_date"]
+                        ),
+
+                    "start_time":
+                        str(
+                            r["start_time"]
+                        ),
+
+                    "code":
+                        r["code"],
+
+                    "name":
+                        r["name"]
+                }
+
+                for r in rows
+            ]
+        )
+
+
+    except Exception as e:
+
+        app.logger.exception(
+            "Classes API error"
+        )
+
+        return jsonify(
+            ok=False,
+            error=str(e)
+        ), 500
 # =========================================================
 # CLASS ATTENDANCE API
 # =========================================================
