@@ -1,10 +1,14 @@
 import os
 import json
 import secrets
+import io
+import base64
 
 from datetime import datetime, date, timedelta
 from zoneinfo import ZoneInfo
 from functools import wraps
+
+import qrcode
 
 from flask import (
     Flask,
@@ -2844,9 +2848,23 @@ def generate_qr():
         }
     )
 
+    qr_img = qrcode.make(token)
+
+    buffer = io.BytesIO()
+
+    qr_img.save(buffer, format="PNG")
+
+    qr_data_uri = (
+        "data:image/png;base64,"
+        + base64.b64encode(
+            buffer.getvalue()
+        ).decode("ascii")
+    )
+
     return jsonify(
         ok=True,
         token=token,
+        qr_image=qr_data_uri,
         subject_code=class_info["code"],
         subject_name=class_info["subject_name"],
         expires_in=QR_EXPIRY_SECONDS
