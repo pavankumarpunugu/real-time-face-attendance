@@ -829,47 +829,6 @@
    QR CODE GENERATION
 ========================================================= */
 
-let qrLibPromise = null;
-
-function loadQrLib() {
-
-    if (window.QRCode) {
-        return Promise.resolve(window.QRCode);
-    }
-
-    if (qrLibPromise) {
-        return qrLibPromise;
-    }
-
-    qrLibPromise = new Promise(function(resolve, reject) {
-
-        const script = document.createElement("script");
-
-        script.src =
-            "https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js";
-
-        script.async = true;
-
-        script.onload = function() {
-            if (window.QRCode) {
-                resolve(window.QRCode);
-            } else {
-                reject(new Error("QR code library did not load."));
-            }
-        };
-
-        script.onerror = function() {
-            reject(new Error("Unable to load QR code library. Check your internet connection."));
-        };
-
-        document.head.appendChild(script);
-
-    });
-
-    return qrLibPromise;
-
-}
-
 const qrTimers = {};
 
 async function generateSubjectQr(subjectId) {
@@ -907,14 +866,9 @@ async function generateSubjectQr(subjectId) {
             throw new Error(data.error || "Unable to generate QR code.");
         }
 
-        const qrLib = await loadQrLib();
-
-        wrap.innerHTML = "";
-
-        const canvas = document.createElement("canvas");
-        wrap.appendChild(canvas);
-
-        await qrLib.toCanvas(canvas, data.token, { width: 200 });
+        wrap.innerHTML =
+            '<img src="' + data.qr_image +
+            '" alt="QR code" style="max-width:100%;height:auto;">';
 
         let remaining = data.expires_in;
 
