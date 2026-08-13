@@ -36,6 +36,76 @@
 </div>
 
 
+<div class="panel" id="scan-qr">
+
+    <div class="section-title">
+
+        <div>
+
+            <h2>
+                Scan QR to Mark Attendance
+            </h2>
+
+            <p class="muted">
+                Point your camera at the QR code your
+                teacher shows in class.
+            </p>
+
+        </div>
+
+    </div>
+
+
+    <div class="grid2">
+
+        <div class="camera qr-scan-camera">
+
+            <div class="camera-wrapper">
+
+                <video
+                    id="qrVideo"
+                    autoplay
+                    muted
+                    playsinline
+                ></video>
+
+                <div class="camera-overlay">
+
+                    <div class="qr-frame"></div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <div>
+
+            <button
+                id="qrScanStart"
+                class="primary full"
+                type="button"
+                onclick="startQrScan()"
+            >
+                Start Camera
+            </button>
+
+            <div
+                id="qrScanResult"
+                class="result-box"
+            >
+                Click Start Camera, then point it
+                at the QR code.
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
 <div class="cards attendance-cards">
 
     <div class="card stat-card">
@@ -293,5 +363,254 @@
     </div>
 
 </div>
+
+{% endblock %}
+
+
+{% block scripts %}
+
+<script>
+
+/* =========================================================
+   LOAD jsQR (dynamic, only when scanning starts)
+========================================================= */
+
+let jsQrPromise = null;
+
+function loadJsQr() {
+
+    if (window.jsQR) {
+        return Promise.resolve(window.jsQR);
+    }
+
+    if (jsQrPromise) {
+        return jsQrPromise;
+    }
+
+    jsQrPromise = new Promise(function(resolve, reject) {
+
+        const script = document.createElement("script");
+
+        script.src =
+            "https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js";
+
+        script.async = true;
+
+        script.onload = function() {
+            if (window.jsQR) {
+                resolve(window.jsQR);
+            } else {
+                reject(new Error("QR scanner library did not load."));
+            }
+        };
+
+        script.onerror = function() {
+            reject(new Error("Unable to load QR scanner library. Check your internet connection."));
+        };
+
+        document.head.appendChild(script);
+
+    });
+
+    return jsQrPromise;
+
+}
+
+
+/* =========================================================
+   ELEMENTS / STATE
+========================================================= */
+
+const qrVideo = document.getElementById("qrVideo");
+const qrScanStart = document.getElementById("qrScanStart");
+const qrScanResult = document.getElementById("qrScanResult");
+
+let qrStream = null;
+let qrScanning = false;
+let qrFrameHandle = null;
+
+const qrCanvas = document.createElement("canvas");
+const qrCanvasCtx = qrCanvas.getContext("2d");
+
+
+function setQrStatus(message) {
+    qrScanResult.textContent = message;
+}
+
+
+/* =========================================================
+   START / STOP CAMERA
+========================================================= */
+
+async function startQrScan() {
+
+    if (qrScanning) {
+        return;
+    }
+
+    try {
+
+        setQrStatus("Loading QR scanner...");
+
+        await loadJsQr();
+
+        setQrStatus("Requesting camera access...");
+
+        qrStream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: "environment" }
+        });
+
+        qrVideo.srcObject = qrStream;
+
+        await qrVideo.play();
+
+        qrScanning = true;
+
+        qrScanStart.disabled = true;
+        qrScanStart.textContent = "Scanning...";
+
+        setQrStatus("Point your camera at the QR code.");
+
+        qrFrameHandle = requestAnimationFrame(scanQrFrame);
+
+    }
+
+    catch (error) {
+
+        console.error("QR scan start error:", error);
+
+        setQrStatus("Camera error: " + error.message);
+
+        stopQrScan();
+
+    }
+
+}
+
+
+function stopQrScan() {
+
+    qrScanning = false;
+
+    if (qrFrameHandle) {
+        cancelAnimationFrame(qrFrameHandle);
+        qrFrameHandle = null;
+    }
+
+    if (qrStream) {
+        qrStream.getTracks().forEach(function(track) {
+            track.stop();
+        });
+        qrStream = null;
+    }
+
+    qrVideo.srcObject = null;
+
+    qrScanStart.disabled = false;
+    qrScanStart.textContent = "Start Camera";
+
+}
+
+
+/* =========================================================
+   SCAN LOOP
+========================================================= */
+
+function scanQrFrame() {
+
+    if (!qrScanning) {
+        return;
+    }
+
+    if (
+        qrVideo.readyState === qrVideo.HAVE_ENOUGH_DATA &&
+        qrVideo.videoWidth > 0
+    ) {
+
+        qrCanvas.width = qrVideo.videoWidth;
+        qrCanvas.height = qrVideo.videoHeight;
+
+        qrCanvasCtx.drawImage(
+            qrVideo, 0, 0, qrCanvas.width, qrCanvas.height
+        );
+
+        const imageData = qrCanvasCtx.getImageData(
+            0, 0, qrCanvas.width, qrCanvas.height
+        );
+
+        const code = window.jsQR(
+            imageData.data, imageData.width, imageData.height
+        );
+
+        if (code && code.data) {
+
+            handleQrDetected(code.data);
+
+            return;
+
+        }
+
+    }
+
+    qrFrameHandle = requestAnimationFrame(scanQrFrame);
+
+}
+
+
+/* =========================================================
+   HANDLE DETECTED QR
+========================================================= */
+
+async function handleQrDetected(token) {
+
+    qrScanning = false;
+
+    if (qrFrameHandle) {
+        cancelAnimationFrame(qrFrameHandle);
+        qrFrameHandle = null;
+    }
+
+    setQrStatus("QR code detected. Recording attendance...");
+
+    try {
+
+        const response = await fetch("/api/qr/mark-attendance", {
+            method: "POST",
+            credentials: "same-origin",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ token: token })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || !data.ok) {
+            throw new Error(data.error || "Attendance failed.");
+        }
+
+        if (data.already) {
+            setQrStatus("Attendance already marked for " + data.subject + ".");
+        } else {
+            setQrStatus("Attendance recorded for " + data.subject + ".");
+        }
+
+        stopQrScan();
+
+    }
+
+    catch (error) {
+
+        console.error("QR mark attendance error:", error);
+
+        setQrStatus("Error: " + error.message);
+
+        stopQrScan();
+
+    }
+
+}
+
+</script>
 
 {% endblock %}
