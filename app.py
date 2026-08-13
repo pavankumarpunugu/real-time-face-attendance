@@ -1,11 +1,11 @@
 import os
 import json
 import secrets
-
+ 
 from datetime import datetime, date, timedelta
 from zoneinfo import ZoneInfo
 from functools import wraps
-
+ 
 from flask import (
     Flask,
     render_template,
@@ -15,40 +15,40 @@ from flask import (
     redirect,
     url_for
 )
-
+ 
 from werkzeug.security import (
     generate_password_hash,
     check_password_hash
 )
-
+ 
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import IntegrityError
-
-
+ 
+ 
 app = Flask(__name__)
-
+ 
 app.secret_key = os.environ.get(
     "SECRET_KEY",
     secrets.token_hex(32)
 )
-
-
+ 
+ 
 # =========================================================
 # DATABASE
 # =========================================================
-
+ 
 database_url = os.environ.get(
     "DATABASE_URL",
     "sqlite:///attendance.db"
 )
-
+ 
 if database_url.startswith("postgres://"):
     database_url = database_url.replace(
         "postgres://",
         "postgresql://",
         1
     )
-
+ 
 if (
     database_url.startswith("postgresql://")
     and "+psycopg" not in database_url
@@ -58,13 +58,13 @@ if (
         "postgresql+psycopg://",
         1
     )
-
+ 
 engine = create_engine(
     database_url,
     pool_pre_ping=True
 )
-
-
+ 
+ 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
@@ -73,7 +73,7 @@ CREATE TABLE IF NOT EXISTS users (
     role VARCHAR(20) NOT NULL DEFAULT 'student',
     student_id INTEGER
 );
-
+ 
 CREATE TABLE IF NOT EXISTS students (
     id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     roll_no VARCHAR(100) UNIQUE NOT NULL,
@@ -83,13 +83,13 @@ CREATE TABLE IF NOT EXISTS students (
     face_embeddings TEXT NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-
+ 
 CREATE TABLE IF NOT EXISTS subjects (
     id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     code VARCHAR(50) UNIQUE NOT NULL,
     name VARCHAR(200) NOT NULL
 );
-
+ 
 CREATE TABLE IF NOT EXISTS classes (
     id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     subject_id INTEGER NOT NULL,
@@ -98,7 +98,7 @@ CREATE TABLE IF NOT EXISTS classes (
     duration_minutes INTEGER NOT NULL DEFAULT 60,
     UNIQUE(subject_id, class_date, start_time)
 );
-
+ 
 CREATE TABLE IF NOT EXISTS class_schedules (
     id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     subject_id INTEGER NOT NULL,
@@ -106,13 +106,13 @@ CREATE TABLE IF NOT EXISTS class_schedules (
     duration_minutes INTEGER NOT NULL DEFAULT 60,
     UNIQUE(subject_id, start_time)
 );
-
+ 
 CREATE TABLE IF NOT EXISTS holidays (
     id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     holiday_date DATE UNIQUE NOT NULL,
     name VARCHAR(200) NOT NULL
 );
-
+ 
 CREATE TABLE IF NOT EXISTS attendance (
     id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     student_id INTEGER NOT NULL,
@@ -121,9 +121,18 @@ CREATE TABLE IF NOT EXISTS attendance (
     status VARCHAR(20) NOT NULL DEFAULT 'Present',
     UNIQUE(student_id, class_id)
 );
+ 
+CREATE TABLE IF NOT EXISTS qr_tokens (
+    id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    class_id INTEGER NOT NULL,
+    subject_id INTEGER NOT NULL,
+    token VARCHAR(64) UNIQUE NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    expires_at TIMESTAMP NOT NULL
+);
 """
-
-
+ 
+ 
 SQLITE_SCHEMA = """
 CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -132,7 +141,7 @@ CREATE TABLE IF NOT EXISTS users (
     role TEXT NOT NULL DEFAULT 'student',
     student_id INTEGER
 );
-
+ 
 CREATE TABLE IF NOT EXISTS students (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     roll_no TEXT UNIQUE NOT NULL,
@@ -142,13 +151,13 @@ CREATE TABLE IF NOT EXISTS students (
     face_embeddings TEXT NOT NULL,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-
+ 
 CREATE TABLE IF NOT EXISTS subjects (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     code TEXT UNIQUE NOT NULL,
     name TEXT NOT NULL
 );
-
+ 
 CREATE TABLE IF NOT EXISTS classes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     subject_id INTEGER NOT NULL,
@@ -157,7 +166,7 @@ CREATE TABLE IF NOT EXISTS classes (
     duration_minutes INTEGER NOT NULL DEFAULT 60,
     UNIQUE(subject_id, class_date, start_time)
 );
-
+ 
 CREATE TABLE IF NOT EXISTS class_schedules (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     subject_id INTEGER NOT NULL,
@@ -165,13 +174,13 @@ CREATE TABLE IF NOT EXISTS class_schedules (
     duration_minutes INTEGER NOT NULL DEFAULT 60,
     UNIQUE(subject_id, start_time)
 );
-
+ 
 CREATE TABLE IF NOT EXISTS holidays (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     holiday_date TEXT UNIQUE NOT NULL,
     name TEXT NOT NULL
 );
-
+ 
 CREATE TABLE IF NOT EXISTS attendance (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     student_id INTEGER NOT NULL,
@@ -180,60 +189,69 @@ CREATE TABLE IF NOT EXISTS attendance (
     status TEXT NOT NULL DEFAULT 'Present',
     UNIQUE(student_id, class_id)
 );
+ 
+CREATE TABLE IF NOT EXISTS qr_tokens (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    class_id INTEGER NOT NULL,
+    subject_id INTEGER NOT NULL,
+    token TEXT UNIQUE NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    expires_at TEXT NOT NULL
+);
 """
-
-
+ 
+ 
 def is_sqlite():
     return database_url.startswith("sqlite")
-
-
+ 
+ 
 def init_db():
-
+ 
     with engine.begin() as conn:
-
+ 
         schema = (
             SQLITE_SCHEMA
             if is_sqlite()
             else SCHEMA
         )
-
+ 
         for stmt in schema.split(";"):
-
+ 
             if stmt.strip():
-
+ 
                 conn.execute(
                     text(stmt)
                 )
-
+ 
         if is_sqlite():
-
+ 
             columns = conn.execute(
                 text("PRAGMA table_info(classes)")
             ).fetchall()
-
+ 
             names = {
                 row[1]
                 for row in columns
             }
-
+ 
             if "duration_minutes" not in names:
-
+ 
                 conn.execute(
                     text(
                         "ALTER TABLE classes ADD COLUMN "
                         "duration_minutes INTEGER NOT NULL DEFAULT 60"
                     )
                 )
-
+ 
         else:
-
+ 
             conn.execute(
                 text(
                     "ALTER TABLE classes ADD COLUMN IF NOT EXISTS "
                     "duration_minutes INTEGER NOT NULL DEFAULT 60"
                 )
             )
-
+ 
         count = conn.execute(
             text(
                 """
@@ -243,9 +261,9 @@ def init_db():
                 """
             )
         ).scalar()
-
+ 
         if count == 0:
-
+ 
             conn.execute(
                 text(
                     """
@@ -274,35 +292,35 @@ def init_db():
                     )
                 }
             )
-
-
+ 
+ 
 IST = ZoneInfo("Asia/Kolkata")
-
-
+ 
+ 
 def india_now():
     return datetime.now(IST)
-
-
+ 
+ 
 def today_india():
     return india_now().date()
-
-
+ 
+ 
 def today_string():
     return today_india().isoformat()
-
-
+ 
+ 
 def get_today_status():
-
+ 
     today = today_india()
-
+ 
     if today.weekday() == 6:
-
+ 
         return {
             "is_holiday": True,
             "holiday_type": "Sunday",
             "holiday_name": "Sunday"
         }
-
+ 
     holiday = q(
         """
         SELECT id, holiday_date, name
@@ -313,27 +331,27 @@ def get_today_status():
         True,
         True
     )
-
+ 
     if holiday:
-
+ 
         return {
             "is_holiday": True,
             "holiday_type": "Holiday",
             "holiday_name": holiday["name"]
         }
-
+ 
     return {
         "is_holiday": False,
         "holiday_type": None,
         "holiday_name": None
     }
-
-
+ 
+ 
 def ensure_today_sessions():
-
+ 
     if get_today_status()["is_holiday"]:
         return
-
+ 
     schedules = q(
         """
         SELECT subject_id, start_time, duration_minutes
@@ -342,11 +360,11 @@ def ensure_today_sessions():
         """,
         fetch=True
     )
-
+ 
     for schedule in schedules:
-
+ 
         try:
-
+ 
             q(
                 """
                 INSERT INTO classes(
@@ -373,64 +391,64 @@ def ensure_today_sessions():
                     )
                 }
             )
-
+ 
         except IntegrityError:
             pass
-
-
+ 
+ 
 def parse_class_start(class_info):
-
+ 
     return datetime.strptime(
         f'{str(class_info["class_date"])[:10]} '
         f'{str(class_info["start_time"])[:5]}',
         "%Y-%m-%d %H:%M"
     )
-
-
+ 
+ 
 def q(
     sql,
     params=None,
     fetch=False,
     one=False
 ):
-
+ 
     with engine.begin() as conn:
-
+ 
         result = conn.execute(
             text(sql),
             params or {}
         )
-
+ 
         if fetch:
-
+ 
             rows = result.mappings().all()
-
+ 
             if one:
-
+ 
                 return (
                     rows[0]
                     if rows
                     else None
                 )
-
+ 
             return rows
-
+ 
         return result
-
-
+ 
+ 
 # =========================================================
 # AUTH
 # =========================================================
-
+ 
 def current_user():
-
+ 
     uid = session.get(
         "user_id"
     )
-
+ 
     if not uid:
         return None
-
+ 
     return q(
         """
         SELECT *
@@ -441,99 +459,99 @@ def current_user():
         True,
         True
     )
-
-
+ 
+ 
 @app.context_processor
 def inject_current_user():
-
+ 
     return {
         "current_user": current_user
     }
-
-
+ 
+ 
 def login_required(fn):
-
+ 
     @wraps(fn)
     def wrapper(*args, **kwargs):
-
+ 
         if not current_user():
-
+ 
             return redirect(
                 url_for("login")
             )
-
+ 
         return fn(*args, **kwargs)
-
+ 
     return wrapper
-
-
+ 
+ 
 def admin_required(fn):
-
+ 
     @wraps(fn)
     def wrapper(*args, **kwargs):
-
+ 
         u = current_user()
-
+ 
         if (
             not u
             or u["role"] != "admin"
         ):
-
+ 
             return redirect(
                 url_for("login")
             )
-
+ 
         return fn(*args, **kwargs)
-
+ 
     return wrapper
-
-
+ 
+ 
 # =========================================================
 # HOME / LOGIN
 # =========================================================
-
+ 
 @app.route("/")
 def home():
-
+ 
     u = current_user()
-
+ 
     if not u:
-
+ 
         return redirect(
             url_for("login")
         )
-
+ 
     if u["role"] == "admin":
-
+ 
         return redirect(
             url_for("admin_dashboard")
         )
-
+ 
     return redirect(
         url_for("student_dashboard")
     )
-
-
+ 
+ 
 @app.route(
     "/login",
     methods=["GET", "POST"]
 )
 def login():
-
+ 
     error = None
-
+ 
     if request.method == "POST":
-
+ 
         username = request.form.get(
             "username",
             ""
         ).strip()
-
+ 
         password = request.form.get(
             "password",
             ""
         )
-
+ 
         u = q(
             """
             SELECT *
@@ -544,7 +562,7 @@ def login():
             True,
             True
         )
-
+ 
         if (
             u
             and check_password_hash(
@@ -552,41 +570,41 @@ def login():
                 password
             )
         ):
-
+ 
             session.clear()
-
+ 
             session["user_id"] = u["id"]
-
+ 
             return redirect(
                 url_for("home")
             )
-
+ 
         error = (
             "Invalid username or password."
         )
-
+ 
     return render_template(
         "login.html",
         error=error
     )
-
-
+ 
+ 
 @app.route("/logout")
 def logout():
-
+ 
     session.clear()
-
+ 
     return redirect(
         url_for("login")
         )
 # =========================================================
 # ADMIN DASHBOARD
 # =========================================================
-
+ 
 @app.route("/admin")
 @admin_required
 def admin_dashboard():
-
+ 
     students = q(
         """
         SELECT *
@@ -595,7 +613,7 @@ def admin_dashboard():
         """,
         fetch=True
     )
-
+ 
     subjects = q(
         """
         SELECT *
@@ -604,9 +622,9 @@ def admin_dashboard():
         """,
         fetch=True
     )
-
+ 
     today = str(date.today())
-
+ 
     present_today = q(
         """
         SELECT COUNT(*) AS c
@@ -620,34 +638,34 @@ def admin_dashboard():
         True,
         True
     )["c"]
-
+ 
     return render_template(
         "admin.html",
         students=students,
         subjects=subjects,
         present_today=present_today
     )
-
-
+ 
+ 
 # =========================================================
 # STUDENT DASHBOARD
 # =========================================================
-
+ 
 @app.route("/student")
 @login_required
 def student_dashboard():
-
+ 
     u = current_user()
-
+ 
     if (
         u["role"] != "student"
         or not u["student_id"]
     ):
-
+ 
         return redirect(
             url_for("admin_dashboard")
         )
-
+ 
     student = q(
         """
         SELECT *
@@ -660,15 +678,15 @@ def student_dashboard():
         True,
         True
     )
-
+ 
     if not student:
-
+ 
         session.clear()
-
+ 
         return redirect(
             url_for("login")
         )
-
+ 
     rows = q(
         """
         SELECT
@@ -694,82 +712,82 @@ def student_dashboard():
         },
         fetch=True
     )
-
+ 
     now = india_now().replace(
         tzinfo=None
     )
-
+ 
     history = []
-
+ 
     total = 0
     present = 0
-
+ 
     for r in rows:
-
+ 
         h = dict(r)
-
+ 
         try:
-
+ 
             start = datetime.strptime(
                 f'{str(h["class_date"])[:10]} '
                 f'{str(h["start_time"])[:5]}',
                 "%Y-%m-%d %H:%M"
             )
-
+ 
             duration = int(
                 h["duration_minutes"]
                 or 60
             )
-
+ 
             end = (
                 start
                 + timedelta(
                     minutes=duration
                 )
             )
-
+ 
         except (
             TypeError,
             ValueError
         ):
-
+ 
             h["status"] = (
                 h["status"]
                 or "Unknown"
             )
-
+ 
             history.append(h)
-
+ 
             continue
-
+ 
         if h["status"] == "Present":
-
+ 
             display_status = "Present"
-
+ 
             if now >= end:
-
+ 
                 total += 1
-
+ 
                 present += 1
-
+ 
         elif now < start:
-
+ 
             display_status = "Upcoming"
-
+ 
         elif now < end:
-
+ 
             display_status = "In Progress"
-
+ 
         else:
-
+ 
             display_status = "Absent"
-
+ 
             total += 1
-
+ 
         h["status"] = display_status
-
+ 
         history.append(h)
-
+ 
     pct = (
         round(
             (present / total) * 100,
@@ -778,7 +796,7 @@ def student_dashboard():
         if total
         else 0
     )
-
+ 
     return render_template(
         "student.html",
         student=student,
@@ -787,25 +805,25 @@ def student_dashboard():
         pct=pct,
         history=history
     )
-
-
+ 
+ 
 # =========================================================
 # PAGES
 # =========================================================
-
+ 
 @app.route("/register")
 @admin_required
 def register_page():
-
+ 
     return render_template(
         "register.html"
     )
-
-
+ 
+ 
 @app.route("/attendance")
 @login_required
 def attendance_page():
-
+ 
     subjects = q(
         """
         SELECT *
@@ -814,25 +832,25 @@ def attendance_page():
         """,
         fetch=True
     )
-
+ 
     return render_template(
         "attendance.html",
         subjects=subjects
     )
-
-
+ 
+ 
 # =========================================================
 # REPORTS
 # =========================================================
-
+ 
 @app.route("/reports")
 @admin_required
 def reports():
-
+ 
     now = india_now().replace(
         tzinfo=None
     )
-
+ 
     rows = q(
         """
         SELECT
@@ -858,17 +876,17 @@ def reports():
         """,
         fetch=True
     )
-
+ 
     students = {}
-
+ 
     for r in rows:
-
+ 
         d = dict(r)
-
+ 
         sid = d["id"]
-
+ 
         if sid not in students:
-
+ 
             students[sid] = {
                 "id": sid,
                 "roll_no": d["roll_no"],
@@ -877,63 +895,63 @@ def reports():
                 "total_classes": 0,
                 "present": 0
             }
-
+ 
         if not d["class_id"]:
             continue
-
+ 
         try:
-
+ 
             start = datetime.strptime(
                 f'{str(d["class_date"])[:10]} '
                 f'{str(d["start_time"])[:5]}',
                 "%Y-%m-%d %H:%M"
             )
-
+ 
             duration = int(
                 d["duration_minutes"]
                 or 60
             )
-
+ 
             end = (
                 start
                 + timedelta(
                     minutes=duration
                 )
             )
-
+ 
         except (
             TypeError,
             ValueError
         ):
-
+ 
             continue
-
+ 
         if now < start:
             continue
-
+ 
         if now < end:
             continue
-
+ 
         students[sid]["total_classes"] += 1
-
+ 
         if d["status"] == "Present":
-
+ 
             students[sid]["present"] += 1
-
+ 
     result = []
-
+ 
     for student in students.values():
-
+ 
         total_classes = int(
             student["total_classes"]
             or 0
         )
-
+ 
         present = int(
             student["present"]
             or 0
         )
-
+ 
         percentage = (
             round(
                 (
@@ -945,68 +963,68 @@ def reports():
             if total_classes
             else 0
         )
-
+ 
         result.append({
-
+ 
             "id":
                 student["id"],
-
+ 
             "roll_no":
                 student["roll_no"],
-
+ 
             "name":
                 student["name"],
-
+ 
             "department":
                 student["department"],
-
+ 
             "total_classes":
                 total_classes,
-
+ 
             "present":
                 present,
-
+ 
             "percentage":
                 percentage
-
+ 
         })
-
+ 
     result.sort(
         key=lambda x:
             x["name"].lower()
     )
-
+ 
     return render_template(
         "reports.html",
         rows=result
     )
-
-
+ 
+ 
 # =========================================================
 # SUBJECT CREATE
 # =========================================================
-
+ 
 @app.route(
     "/subjects",
     methods=["POST"]
 )
 @admin_required
 def create_subject():
-
+ 
     data = request.get_json(
         force=True
     ) or {}
-
+ 
     code = str(
         data.get("code", "")
     ).strip()
-
+ 
     name = str(
         data.get("name", "")
     ).strip()
-
+ 
     if not code or not name:
-
+ 
         return jsonify(
             ok=False,
             error=(
@@ -1014,9 +1032,9 @@ def create_subject():
                 "are required."
             )
         ), 400
-
+ 
     try:
-
+ 
         q(
             """
             INSERT INTO subjects(
@@ -1033,14 +1051,14 @@ def create_subject():
                 "name": name
             }
         )
-
+ 
         return jsonify(
             ok=True,
             message="Subject created successfully."
         )
-
+ 
     except IntegrityError:
-
+ 
         return jsonify(
             ok=False,
             error=(
@@ -1048,44 +1066,44 @@ def create_subject():
                 "already exists."
             )
         ), 409
-
+ 
     except Exception as e:
-
+ 
         app.logger.exception(
             "Subject creation error"
         )
-
+ 
         return jsonify(
             ok=False,
             error=str(e)
         ), 500
-
-
+ 
+ 
 # =========================================================
 # SUBJECT EDIT
 # =========================================================
-
+ 
 @app.route(
     "/subjects/<int:subject_id>",
     methods=["PUT"]
 )
 @admin_required
 def edit_subject(subject_id):
-
+ 
     data = request.get_json(
         force=True
     )
-
+ 
     code = str(
         data.get("code", "")
     ).strip()
-
+ 
     name = str(
         data.get("name", "")
     ).strip()
-
+ 
     if not code or not name:
-
+ 
         return jsonify(
             ok=False,
             error=(
@@ -1093,9 +1111,9 @@ def edit_subject(subject_id):
                 "are required."
             )
         ), 400
-
+ 
     try:
-
+ 
         result = q(
             """
             UPDATE subjects
@@ -1110,38 +1128,38 @@ def edit_subject(subject_id):
                 "id": subject_id
             }
         )
-
+ 
         if result.rowcount == 0:
-
+ 
             return jsonify(
                 ok=False,
                 error="Subject not found."
             ), 404
-
+ 
     except IntegrityError:
-
+ 
         return jsonify(
             ok=False,
             error="Subject code already exists."
         ), 409
-
+ 
     return jsonify(
         ok=True,
         message="Subject updated successfully."
     )
-
-
+ 
+ 
 # =========================================================
 # SUBJECT DELETE
 # =========================================================
-
+ 
 @app.route(
     "/subjects/<int:subject_id>",
     methods=["DELETE"]
 )
 @admin_required
 def delete_subject(subject_id):
-
+ 
     subject = q(
         """
         SELECT *
@@ -1152,16 +1170,16 @@ def delete_subject(subject_id):
         True,
         True
     )
-
+ 
     if not subject:
-
+ 
         return jsonify(
             ok=False,
             error="Subject not found."
         ), 404
-
+ 
     try:
-
+ 
         q(
             """
             DELETE FROM attendance
@@ -1175,7 +1193,7 @@ def delete_subject(subject_id):
                 "sid": subject_id
             }
         )
-
+ 
         q(
             """
             DELETE FROM classes
@@ -1185,7 +1203,7 @@ def delete_subject(subject_id):
                 "sid": subject_id
             }
         )
-
+ 
         q(
             """
             DELETE FROM subjects
@@ -1195,7 +1213,7 @@ def delete_subject(subject_id):
                 "id": subject_id
             }
         )
-
+ 
         return jsonify(
             ok=True,
             message=(
@@ -1203,9 +1221,9 @@ def delete_subject(subject_id):
                 "attendance records deleted."
             )
         )
-
+ 
     except Exception as e:
-
+ 
         return jsonify(
             ok=False,
             error=str(e)
@@ -1213,53 +1231,53 @@ def delete_subject(subject_id):
 # =========================================================
 # DAILY TIMETABLE
 # =========================================================
-
+ 
 @app.route(
     "/classes",
     methods=["POST"]
 )
 @admin_required
 def create_class():
-
+ 
     data = request.get_json(
         force=True
     ) or {}
-
+ 
     try:
-
+ 
         subject_id = int(
             data.get(
                 "subject_id",
                 0
             )
         )
-
+ 
         duration = int(
             data.get(
                 "duration_minutes",
                 60
             )
         )
-
+ 
     except (
         TypeError,
         ValueError
     ):
-
+ 
         return jsonify(
             ok=False,
             error="Invalid subject or duration."
         ), 400
-
+ 
     start_time = str(
         data.get(
             "start_time",
             ""
         )
     ).strip()[:5]
-
+ 
     if not subject_id or not start_time:
-
+ 
         return jsonify(
             ok=False,
             error=(
@@ -1267,9 +1285,9 @@ def create_class():
                 "are required."
             )
         ), 400
-
+ 
     if duration <= 0 or duration > 480:
-
+ 
         return jsonify(
             ok=False,
             error=(
@@ -1277,21 +1295,21 @@ def create_class():
                 "1 and 480 minutes."
             )
         ), 400
-
+ 
     try:
-
+ 
         datetime.strptime(
             start_time,
             "%H:%M"
         )
-
+ 
     except ValueError:
-
+ 
         return jsonify(
             ok=False,
             error="Start time must be HH:MM."
         ), 400
-
+ 
     if not q(
         """
         SELECT id
@@ -1304,7 +1322,7 @@ def create_class():
         True,
         True
     ):
-
+ 
         return jsonify(
             ok=False,
             error=(
@@ -1312,9 +1330,9 @@ def create_class():
                 "does not exist."
             )
         ), 400
-
+ 
     try:
-
+ 
         q(
             """
             INSERT INTO class_schedules(
@@ -1334,7 +1352,7 @@ def create_class():
                 "duration": duration
             }
         )
-
+ 
         return jsonify(
             ok=True,
             message=(
@@ -1342,9 +1360,9 @@ def create_class():
                 "created successfully."
             )
         )
-
+ 
     except IntegrityError:
-
+ 
         return jsonify(
             ok=False,
             error=(
@@ -1353,14 +1371,14 @@ def create_class():
                 "and time."
             )
         ), 409
-
-
+ 
+ 
 @app.route(
     "/api/class-schedules"
 )
 @admin_required
 def class_schedules():
-
+ 
     rows = q(
         """
         SELECT
@@ -1378,31 +1396,31 @@ def class_schedules():
         """,
         fetch=True
     )
-
+ 
     return jsonify(
         [
             {
                 "id":
                     r["id"],
-
+ 
                 "subject_id":
                     r["subject_id"],
-
+ 
                 "start_time":
                     str(r["start_time"]),
-
+ 
                 "duration_minutes":
                     int(
                         r["duration_minutes"]
                     ),
-
+ 
                 "code":
                     r["code"],
-
+ 
                 "name":
                     r["name"]
             }
-
+ 
             for r in rows
         ]
         )
@@ -1414,32 +1432,32 @@ def class_schedules():
 def edit_class_schedule(
     schedule_id
 ):
-
+ 
     data = request.get_json(
         force=True
     ) or {}
-
+ 
     try:
-
+ 
         subject_id = int(
             data.get(
                 "subject_id",
                 0
             )
         )
-
+ 
         duration = int(
             data.get(
                 "duration_minutes",
                 60
             )
         )
-
+ 
     except (
         TypeError,
         ValueError
     ):
-
+ 
         return jsonify(
             ok=False,
             error=(
@@ -1447,16 +1465,16 @@ def edit_class_schedule(
                 "duration."
             )
         ), 400
-
+ 
     start_time = str(
         data.get(
             "start_time",
             ""
         )
     ).strip()[:5]
-
+ 
     if not subject_id or not start_time:
-
+ 
         return jsonify(
             ok=False,
             error=(
@@ -1464,9 +1482,9 @@ def edit_class_schedule(
                 "are required."
             )
         ), 400
-
+ 
     if duration <= 0 or duration > 480:
-
+ 
         return jsonify(
             ok=False,
             error=(
@@ -1474,21 +1492,21 @@ def edit_class_schedule(
                 "1 and 480 minutes."
             )
         ), 400
-
+ 
     try:
-
+ 
         datetime.strptime(
             start_time,
             "%H:%M"
         )
-
+ 
     except ValueError:
-
+ 
         return jsonify(
             ok=False,
             error="Start time must be HH:MM."
         ), 400
-
+ 
     if not q(
         """
         SELECT id
@@ -1501,14 +1519,14 @@ def edit_class_schedule(
         True,
         True
     ):
-
+ 
         return jsonify(
             ok=False,
             error="Subject not found."
         ), 404
-
+ 
     try:
-
+ 
         result = q(
             """
             UPDATE class_schedules
@@ -1525,9 +1543,9 @@ def edit_class_schedule(
                 "id": schedule_id
             }
         )
-
+ 
         if result.rowcount == 0:
-
+ 
             return jsonify(
                 ok=False,
                 error=(
@@ -1535,7 +1553,7 @@ def edit_class_schedule(
                     "not found."
                 )
             ), 404
-
+ 
         return jsonify(
             ok=True,
             message=(
@@ -1543,9 +1561,9 @@ def edit_class_schedule(
                 "updated successfully."
             )
         )
-
+ 
     except IntegrityError:
-
+ 
         return jsonify(
             ok=False,
             error=(
@@ -1553,8 +1571,8 @@ def edit_class_schedule(
                 "uses this subject and time."
             )
         ), 409
-
-
+ 
+ 
 @app.route(
     "/api/class-schedules/<int:schedule_id>",
     methods=["DELETE"]
@@ -1563,7 +1581,7 @@ def edit_class_schedule(
 def delete_class_schedule(
     schedule_id
 ):
-
+ 
     result = q(
         """
         DELETE FROM class_schedules
@@ -1573,9 +1591,9 @@ def delete_class_schedule(
             "id": schedule_id
         }
     )
-
+ 
     if result.rowcount == 0:
-
+ 
         return jsonify(
             ok=False,
             error=(
@@ -1583,7 +1601,7 @@ def delete_class_schedule(
                 "not found."
             )
         ), 404
-
+ 
     return jsonify(
         ok=True,
         message=(
@@ -1591,25 +1609,25 @@ def delete_class_schedule(
             "deleted successfully."
         )
     )
-
-
+ 
+ 
 @app.route(
     "/api/today-status"
 )
 @login_required
 def today_status():
-
+ 
     return jsonify(
         get_today_status()
     )
-
-
+ 
+ 
 @app.route(
     "/api/holidays"
 )
 @admin_required
 def api_holidays():
-
+ 
     rows = q(
         """
         SELECT
@@ -1622,20 +1640,20 @@ def api_holidays():
         """,
         fetch=True
     )
-
+ 
     return jsonify(
         [
             {
                 "id":
                     r["id"],
-
+ 
                 "holiday_date":
                     str(r["holiday_date"]),
-
+ 
                 "name":
                     r["name"]
             }
-
+ 
             for r in rows
         ]
     )
@@ -1645,27 +1663,27 @@ def api_holidays():
 )
 @admin_required
 def create_holiday():
-
+ 
     data = request.get_json(
         force=True
     ) or {}
-
+ 
     holiday_date = str(
         data.get(
             "holiday_date",
             ""
         )
     ).strip()
-
+ 
     name = str(
         data.get(
             "name",
             ""
         )
     ).strip()
-
+ 
     if not holiday_date or not name:
-
+ 
         return jsonify(
             ok=False,
             error=(
@@ -1673,16 +1691,16 @@ def create_holiday():
                 "are required."
             )
         ), 400
-
+ 
     try:
-
+ 
         datetime.strptime(
             holiday_date,
             "%Y-%m-%d"
         )
-
+ 
     except ValueError:
-
+ 
         return jsonify(
             ok=False,
             error=(
@@ -1690,9 +1708,9 @@ def create_holiday():
                 "YYYY-MM-DD."
             )
         ), 400
-
+ 
     try:
-
+ 
         q(
             """
             INSERT INTO holidays(
@@ -1709,14 +1727,14 @@ def create_holiday():
                 "n": name
             }
         )
-
+ 
         return jsonify(
             ok=True,
             message="Holiday added successfully."
         )
-
+ 
     except IntegrityError:
-
+ 
         return jsonify(
             ok=False,
             error=(
@@ -1724,8 +1742,8 @@ def create_holiday():
                 "for this date."
             )
         ), 409
-
-
+ 
+ 
 @app.route(
     "/api/holidays/<int:holiday_id>",
     methods=["DELETE"]
@@ -1734,7 +1752,7 @@ def create_holiday():
 def delete_holiday(
     holiday_id
 ):
-
+ 
     result = q(
         """
         DELETE FROM holidays
@@ -1744,31 +1762,31 @@ def delete_holiday(
             "id": holiday_id
         }
     )
-
+ 
     if result.rowcount == 0:
-
+ 
         return jsonify(
             ok=False,
             error="Holiday not found."
         ), 404
-
+ 
     return jsonify(
         ok=True,
         message="Holiday removed successfully."
     )
-
-
+ 
+ 
 # =========================================================
 # DELETE CLASS SESSION
 # =========================================================
-
+ 
 @app.route(
     "/classes/<int:class_id>",
     methods=["DELETE"]
 )
 @admin_required
 def delete_class(class_id):
-
+ 
     class_info = q(
         """
         SELECT
@@ -1786,9 +1804,9 @@ def delete_class(class_id):
         True,
         True
     )
-
+ 
     if not class_info:
-
+ 
         return jsonify(
             ok=False,
             error=(
@@ -1796,9 +1814,9 @@ def delete_class(class_id):
                 "not found."
             )
         ), 404
-
+ 
     try:
-
+ 
         q(
             """
             DELETE FROM attendance
@@ -1808,7 +1826,7 @@ def delete_class(class_id):
                 "cid": class_id
             }
         )
-
+ 
         q(
             """
             DELETE FROM classes
@@ -1818,7 +1836,7 @@ def delete_class(class_id):
                 "id": class_id
             }
         )
-
+ 
         return jsonify(
             ok=True,
             message=(
@@ -1827,9 +1845,9 @@ def delete_class(class_id):
                 "deleted."
             )
         )
-
+ 
     except Exception as e:
-
+ 
         return jsonify(
             ok=False,
             error=str(e)
@@ -1837,36 +1855,36 @@ def delete_class(class_id):
 # =========================================================
 # CREATE STUDENT
 # =========================================================
-
+ 
 @app.route(
     "/api/students",
     methods=["POST"]
 )
 @admin_required
 def create_student():
-
+ 
     data = request.get_json(
         force=True
     )
-
+ 
     roll_no = str(
         data.get(
             "roll_no",
             ""
         )
     ).strip()
-
+ 
     name = str(
         data.get(
             "name",
             ""
         )
     ).strip()
-
+ 
     embeddings = data.get(
         "embeddings"
     )
-
+ 
     if (
         not roll_no
         or not name
@@ -1876,7 +1894,7 @@ def create_student():
         )
         or len(embeddings) < 1
     ):
-
+ 
         return jsonify(
             ok=False,
             error=(
@@ -1885,9 +1903,9 @@ def create_student():
                 "are required."
             )
         ), 400
-
+ 
     try:
-
+ 
         q(
             """
             INSERT INTO students(
@@ -1925,7 +1943,7 @@ def create_student():
                 )
             }
         )
-
+ 
         sid = q(
             """
             SELECT id
@@ -1938,23 +1956,23 @@ def create_student():
             True,
             True
         )["id"]
-
+ 
     except IntegrityError:
-
+ 
         return jsonify(
             ok=False,
             error=(
                 "Roll number already exists."
             )
         ), 409
-
+ 
     password = (
         data.get("password")
         or "student123"
     )
-
+ 
     try:
-
+ 
         q(
             """
             INSERT INTO users(
@@ -1978,57 +1996,57 @@ def create_student():
                 "sid": sid
             }
         )
-
+ 
     except IntegrityError:
-
+ 
         pass
-
+ 
     return jsonify(
         ok=True,
         student_id=sid,
         login_username=roll_no,
         temporary_password=password
     )
-
-
+ 
+ 
 # =========================================================
 # EDIT STUDENT
 # =========================================================
-
+ 
 @app.route(
     "/api/students/<int:student_id>",
     methods=["PUT"]
 )
 @admin_required
 def edit_student(student_id):
-
+ 
     data = request.get_json(
         force=True
     )
-
+ 
     name = str(
         data.get(
             "name",
             ""
         )
     ).strip()
-
+ 
     email = str(
         data.get(
             "email",
             ""
         )
     ).strip()
-
+ 
     department = str(
         data.get(
             "department",
             ""
         )
     ).strip()
-
+ 
     if not name:
-
+ 
         return jsonify(
             ok=False,
             error=(
@@ -2036,7 +2054,7 @@ def edit_student(student_id):
                 "is required."
             )
         ), 400
-
+ 
     student = q(
         """
         SELECT *
@@ -2049,14 +2067,14 @@ def edit_student(student_id):
         True,
         True
     )
-
+ 
     if not student:
-
+ 
         return jsonify(
             ok=False,
             error="Student not found."
         ), 404
-
+ 
     q(
         """
         UPDATE students
@@ -2073,14 +2091,14 @@ def edit_student(student_id):
             "id": student_id
         }
     )
-
+ 
     password = data.get(
         "password",
         ""
     ).strip()
-
+ 
     if password:
-
+ 
         q(
             """
             UPDATE users
@@ -2094,7 +2112,7 @@ def edit_student(student_id):
                 "sid": student_id
             }
         )
-
+ 
     return jsonify(
         ok=True,
         message="Student updated successfully."
@@ -2102,14 +2120,14 @@ def edit_student(student_id):
 # =========================================================
 # DELETE STUDENT
 # =========================================================
-
+ 
 @app.route(
     "/api/students/<int:student_id>",
     methods=["DELETE"]
 )
 @admin_required
 def delete_student(student_id):
-
+ 
     student = q(
         """
         SELECT *
@@ -2122,16 +2140,16 @@ def delete_student(student_id):
         True,
         True
     )
-
+ 
     if not student:
-
+ 
         return jsonify(
             ok=False,
             error="Student not found."
         ), 404
-
+ 
     try:
-
+ 
         q(
             """
             DELETE FROM attendance
@@ -2141,7 +2159,7 @@ def delete_student(student_id):
                 "sid": student_id
             }
         )
-
+ 
         q(
             """
             DELETE FROM users
@@ -2151,7 +2169,7 @@ def delete_student(student_id):
                 "sid": student_id
             }
         )
-
+ 
         q(
             """
             DELETE FROM students
@@ -2161,7 +2179,7 @@ def delete_student(student_id):
                 "sid": student_id
             }
         )
-
+ 
         return jsonify(
             ok=True,
             message=(
@@ -2169,25 +2187,25 @@ def delete_student(student_id):
                 "deleted successfully."
             )
         )
-
+ 
     except Exception as e:
-
+ 
         return jsonify(
             ok=False,
             error=str(e)
         ), 400
-
-
+ 
+ 
 # =========================================================
 # RECOGNITION DATA
 # =========================================================
-
+ 
 @app.route(
     "/api/recognition-data"
 )
 @login_required
 def recognition_data():
-
+ 
     rows = q(
         """
         SELECT
@@ -2199,67 +2217,67 @@ def recognition_data():
         """,
         fetch=True
     )
-
+ 
     return jsonify(
         [
             {
                 "id":
                     r["id"],
-
+ 
                 "roll_no":
                     r["roll_no"],
-
+ 
                 "name":
                     r["name"],
-
+ 
                 "embeddings":
                     json.loads(
                         r["face_embeddings"]
                     )
             }
-
+ 
             for r in rows
         ]
     )
-
-
+ 
+ 
 # =========================================================
 # MARK ATTENDANCE
 # =========================================================
-
+ 
 @app.route(
     "/api/mark-attendance",
     methods=["POST"]
 )
 @login_required
 def mark_attendance():
-
+ 
     data = request.get_json(
         force=True
     )
-
+ 
     student_id = int(
         data.get(
             "student_id",
             0
         )
     )
-
+ 
     class_id = int(
         data.get(
             "class_id",
             0
         )
     )
-
+ 
     u = current_user()
-
+ 
     if (
         u["role"] == "student"
         and u["student_id"]
         != student_id
     ):
-
+ 
         return jsonify(
             ok=False,
             error=(
@@ -2267,7 +2285,7 @@ def mark_attendance():
                 "your own attendance."
             )
         ), 403
-
+ 
     student = q(
         """
         SELECT *
@@ -2280,7 +2298,7 @@ def mark_attendance():
         True,
         True
     )
-
+ 
     class_info = q(
         """
         SELECT
@@ -2298,9 +2316,9 @@ def mark_attendance():
         True,
         True
     )
-
+ 
     if not student or not class_info:
-
+ 
         return jsonify(
             ok=False,
             error=(
@@ -2308,11 +2326,11 @@ def mark_attendance():
                 "not found."
             )
         ), 404
-
+ 
     status = get_today_status()
-
+ 
     if status["is_holiday"]:
-
+ 
         return jsonify(
             ok=False,
             error=(
@@ -2321,14 +2339,14 @@ def mark_attendance():
                 + status["holiday_name"]
             )
         ), 400
-
+ 
     if (
         str(
             class_info["class_date"]
         )[:10]
         != today_string()
     ):
-
+ 
         return jsonify(
             ok=False,
             error=(
@@ -2336,43 +2354,43 @@ def mark_attendance():
                 "available for today's class."
             )
         ), 400
-
+ 
     try:
-
+ 
         start_dt = parse_class_start(
             class_info
         )
-
+ 
         duration = int(
             class_info[
                 "duration_minutes"
             ]
             or 60
         )
-
+ 
     except (
         TypeError,
         ValueError
     ):
-
+ 
         return jsonify(
             ok=False,
             error="Invalid class schedule."
         ), 500
-
+ 
     now = india_now().replace(
         tzinfo=None
     )
-
+ 
     end_dt = (
         start_dt
         + timedelta(
             minutes=duration
         )
     )
-
+ 
     if now < start_dt:
-
+ 
         return jsonify(
             ok=False,
             error=(
@@ -2381,9 +2399,9 @@ def mark_attendance():
                 f"{start_dt.strftime('%I:%M %p')}."
             )
         ), 400
-
+ 
     if now >= end_dt:
-
+ 
         return jsonify(
             ok=False,
             error=(
@@ -2392,9 +2410,9 @@ def mark_attendance():
                 f"{end_dt.strftime('%I:%M %p')}."
             )
         ), 400
-
+ 
     try:
-
+ 
         q(
             """
             INSERT INTO attendance(
@@ -2413,7 +2431,7 @@ def mark_attendance():
                 "c": class_id
             }
         )
-
+ 
         return jsonify(
             ok=True,
             already=False,
@@ -2427,9 +2445,9 @@ def mark_attendance():
                 class_info["class_date"]
             )
         )
-
+ 
     except IntegrityError:
-
+ 
         return jsonify(
             ok=True,
             already=True,
@@ -2446,21 +2464,21 @@ def mark_attendance():
 # =========================================================
 # CLASSES API
 # =========================================================
-
+ 
 @app.route(
     "/api/classes"
 )
 @login_required
 def api_classes():
-
+ 
     status = get_today_status()
-
+ 
     if status["is_holiday"]:
-
+ 
         return jsonify([])
-
+ 
     ensure_today_sessions()
-
+ 
     rows = q(
         """
         SELECT
@@ -2484,59 +2502,59 @@ def api_classes():
         },
         fetch=True
     )
-
+ 
     return jsonify(
         [
             {
                 "id":
                     r["id"],
-
+ 
                 "subject_id":
                     r["subject_id"],
-
+ 
                 "class_date":
                     str(
                         r["class_date"]
                     ),
-
+ 
                 "start_time":
                     str(
                         r["start_time"]
                     ),
-
+ 
                 "duration_minutes":
                     int(
                         r["duration_minutes"]
                         or 60
                     ),
-
+ 
                 "code":
                     r["code"],
-
+ 
                 "name":
                     r["name"]
             }
-
+ 
             for r in rows
         ]
     )
-
-
+ 
+ 
 # =========================================================
 # CLASS ATTENDANCE API
 # =========================================================
-
+ 
 @app.route(
     "/api/class-attendance/<int:class_id>"
 )
 def class_attendance(class_id):
-
+ 
     try:
-
+ 
         u = current_user()
-
+ 
         if not u:
-
+ 
             return jsonify(
                 ok=False,
                 error=(
@@ -2544,14 +2562,14 @@ def class_attendance(class_id):
                     "not found."
                 )
             ), 401
-
+ 
         if u["role"] != "admin":
-
+ 
             return jsonify(
                 ok=False,
                 error="Admin access required."
             ), 403
-
+ 
         class_info = q(
             """
             SELECT
@@ -2572,14 +2590,14 @@ def class_attendance(class_id):
             True,
             True
         )
-
+ 
         if not class_info:
-
+ 
             return jsonify(
                 ok=False,
                 error="Class not found."
             ), 404
-
+ 
         students = q(
             """
             SELECT
@@ -2603,28 +2621,28 @@ def class_attendance(class_id):
             },
             fetch=True
         )
-
+ 
         return jsonify(
             ok=True,
-
+ 
             class_info={
                 "id":
                     class_info["id"],
-
+ 
                 "class_date":
                     str(
                         class_info[
                             "class_date"
                         ]
                     ),
-
+ 
                 "start_time":
                     str(
                         class_info[
                             "start_time"
                         ]
                     ),
-
+ 
                 "duration_minutes":
                     int(
                         class_info[
@@ -2632,31 +2650,31 @@ def class_attendance(class_id):
                         ]
                         or 60
                     ),
-
+ 
                 "code":
                     class_info["code"],
-
+ 
                 "name":
                     class_info["name"]
             },
-
+ 
             students=[
                 {
                     "id":
                         s["id"],
-
+ 
                     "roll_no":
                         s["roll_no"],
-
+ 
                     "name":
                         s["name"],
-
+ 
                     "department":
                         s["department"],
-
+ 
                     "status":
                         s["status"],
-
+ 
                     "marked_at":
                         (
                             str(
@@ -2668,17 +2686,17 @@ def class_attendance(class_id):
                             else None
                         )
                 }
-
+ 
                 for s in students
             ]
         )
-
+ 
     except Exception as e:
-
+ 
         app.logger.exception(
             "Class attendance API error"
         )
-
+ 
         return jsonify(
             ok=False,
             error=(
@@ -2689,13 +2707,13 @@ def class_attendance(class_id):
 # =========================================================
 # ALL ATTENDANCE API
 # =========================================================
-
+ 
 @app.route(
     "/api/attendance"
 )
 @admin_required
 def api_attendance():
-
+ 
     rows = q(
         """
         SELECT
@@ -2720,24 +2738,289 @@ def api_attendance():
         """,
         fetch=True
     )
-
+ 
     return jsonify(
         [
             dict(r)
             for r in rows
         ]
     )
-
-
+ 
+ 
+# =========================================================
+# QR CODE ATTENDANCE
+# =========================================================
+ 
+QR_EXPIRY_SECONDS = 300
+ 
+ 
+@app.route(
+    "/api/qr/generate",
+    methods=["POST"]
+)
+@admin_required
+def generate_qr():
+ 
+    data = request.get_json(force=True) or {}
+ 
+    subject_id = int(
+        data.get("subject_id", 0)
+    )
+ 
+    status = get_today_status()
+ 
+    if status["is_holiday"]:
+ 
+        return jsonify(
+            ok=False,
+            error=(
+                "Attendance is not available "
+                "today: "
+                + (status["holiday_name"] or "Holiday")
+            )
+        ), 400
+ 
+    ensure_today_sessions()
+ 
+    class_info = q(
+        """
+        SELECT
+            c.id,
+            sub.code,
+            sub.name AS subject_name
+        FROM classes c
+        JOIN subjects sub
+            ON sub.id = c.subject_id
+        WHERE c.subject_id = :sid
+            AND c.class_date = :d
+        """,
+        {
+            "sid": subject_id,
+            "d": today_string()
+        },
+        True,
+        True
+    )
+ 
+    if not class_info:
+ 
+        return jsonify(
+            ok=False,
+            error=(
+                "No class is scheduled for "
+                "this subject today."
+            )
+        ), 400
+ 
+    token = secrets.token_urlsafe(24)
+ 
+    now = india_now().replace(tzinfo=None)
+ 
+    expires_at = (
+        now
+        + timedelta(seconds=QR_EXPIRY_SECONDS)
+    )
+ 
+    q(
+        """
+        INSERT INTO qr_tokens(
+            class_id,
+            subject_id,
+            token,
+            expires_at
+        )
+        VALUES(
+            :c,
+            :s,
+            :t,
+            :e
+        )
+        """,
+        {
+            "c": class_info["id"],
+            "s": subject_id,
+            "t": token,
+            "e": expires_at.isoformat()
+        }
+    )
+ 
+    return jsonify(
+        ok=True,
+        token=token,
+        subject_code=class_info["code"],
+        subject_name=class_info["subject_name"],
+        expires_in=QR_EXPIRY_SECONDS
+    )
+ 
+ 
+@app.route(
+    "/api/qr/mark-attendance",
+    methods=["POST"]
+)
+@login_required
+def qr_mark_attendance():
+ 
+    u = current_user()
+ 
+    if (
+        u["role"] != "student"
+        or not u["student_id"]
+    ):
+ 
+        return jsonify(
+            ok=False,
+            error=(
+                "Only students can mark "
+                "attendance via QR code."
+            )
+        ), 403
+ 
+    data = request.get_json(force=True) or {}
+ 
+    token = (
+        data.get("token") or ""
+    ).strip()
+ 
+    if not token:
+ 
+        return jsonify(
+            ok=False,
+            error="Missing QR code."
+        ), 400
+ 
+    qr_row = q(
+        """
+        SELECT *
+        FROM qr_tokens
+        WHERE token = :t
+        """,
+        {"t": token},
+        True,
+        True
+    )
+ 
+    if not qr_row:
+ 
+        return jsonify(
+            ok=False,
+            error=(
+                "Invalid or unrecognized "
+                "QR code."
+            )
+        ), 404
+ 
+    expires_at = qr_row["expires_at"]
+ 
+    if isinstance(expires_at, str):
+ 
+        expires_at = datetime.fromisoformat(
+            expires_at
+        )
+ 
+    now = india_now().replace(tzinfo=None)
+ 
+    if now > expires_at:
+ 
+        return jsonify(
+            ok=False,
+            error=(
+                "This QR code has expired. "
+                "Ask your teacher to generate "
+                "a new one."
+            )
+        ), 400
+ 
+    student_id = u["student_id"]
+    class_id = qr_row["class_id"]
+ 
+    student = q(
+        """
+        SELECT *
+        FROM students
+        WHERE id=:id
+        """,
+        {"id": student_id},
+        True,
+        True
+    )
+ 
+    class_info = q(
+        """
+        SELECT
+            c.*,
+            sub.code,
+            sub.name AS subject_name
+        FROM classes c
+        JOIN subjects sub
+            ON sub.id=c.subject_id
+        WHERE c.id=:id
+        """,
+        {"id": class_id},
+        True,
+        True
+    )
+ 
+    if not student or not class_info:
+ 
+        return jsonify(
+            ok=False,
+            error="Student or class not found."
+        ), 404
+ 
+    try:
+ 
+        q(
+            """
+            INSERT INTO attendance(
+                student_id,
+                class_id,
+                status
+            )
+            VALUES(
+                :s,
+                :c,
+                'Present'
+            )
+            """,
+            {
+                "s": student_id,
+                "c": class_id
+            }
+        )
+ 
+        return jsonify(
+            ok=True,
+            already=False,
+            message="Attendance recorded.",
+            student=student["name"],
+            roll_no=student["roll_no"],
+            subject=class_info["subject_name"]
+        )
+ 
+    except IntegrityError:
+ 
+        return jsonify(
+            ok=True,
+            already=True,
+            message=(
+                "Attendance already "
+                "marked for this class."
+            ),
+            student=student["name"],
+            roll_no=student["roll_no"],
+            subject=class_info["subject_name"]
+        )
+ 
+ 
 # =========================================================
 # START
 # =========================================================
-
+ 
 init_db()
-
-
+ 
+ 
 if __name__ == "__main__":
-
+ 
     app.run(
         host="0.0.0.0",
         port=int(
@@ -2748,3 +3031,4 @@ if __name__ == "__main__":
         ),
         debug=False
     )
+ 
