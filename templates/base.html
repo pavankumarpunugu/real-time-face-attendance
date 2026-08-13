@@ -37,6 +37,10 @@
           Take Attendance
         </a>
 
+        <a href="{{ url_for('admin_dashboard') }}#qr-codes">
+          QR Codes
+        </a>
+
         <a href="{{ url_for('reports') }}">
           Reports
         </a>
@@ -49,6 +53,10 @@
 
         <a href="{{ url_for('attendance_page') }}">
           Take Attendance
+        </a>
+
+        <a href="{{ url_for('student_dashboard') }}#scan-qr">
+          Scan QR
         </a>
 
       {% endif %}
