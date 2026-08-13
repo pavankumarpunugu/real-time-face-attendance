@@ -246,6 +246,75 @@
 </div>
 
 
+<!-- QR CODE ATTENDANCE -->
+
+<div class="panel" id="qr-codes">
+
+    <h2>
+        Subject QR Codes
+    </h2>
+
+    <p class="muted">
+        Generate a QR code for a subject's class today.
+        Students scan it from their dashboard to mark attendance.
+        Each QR code expires 5 minutes after it is generated.
+    </p>
+
+    <div class="cards qr-grid">
+
+        {% for s in subjects %}
+
+        <div class="card qr-card">
+
+            <div class="qr-card-head">
+
+                <span>
+                    {{ s.code }}
+                </span>
+
+                <small>
+                    {{ s.name }}
+                </small>
+
+            </div>
+
+            <div
+                class="qr-canvas-wrap"
+                id="qrCanvasWrap{{ s.id }}"
+            >
+                <span class="muted">
+                    No QR code generated yet.
+                </span>
+            </div>
+
+            <div
+                class="qr-timer"
+                id="qrTimer{{ s.id }}"
+            ></div>
+
+            <button
+                class="primary full"
+                type="button"
+                onclick="generateSubjectQr({{ s.id }})"
+            >
+                Generate QR Code
+            </button>
+
+        </div>
+
+        {% else %}
+
+        <p class="muted">
+            No subjects available. Create a subject first.
+        </p>
+
+        {% endfor %}
+
+    </div>
+
+</div>
+
+
 <!-- DAILY CLASS SCHEDULE -->
 
 <div class="panel">
@@ -754,6 +823,147 @@
 {% block scripts %}
 
 <script>
+
+
+/* =========================================================
+   QR CODE GENERATION
+========================================================= */
+
+let qrLibPromise = null;
+
+function loadQrLib() {
+
+    if (window.QRCode) {
+        return Promise.resolve(window.QRCode);
+    }
+
+    if (qrLibPromise) {
+        return qrLibPromise;
+    }
+
+    qrLibPromise = new Promise(function(resolve, reject) {
+
+        const script = document.createElement("script");
+
+        script.src =
+            "https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js";
+
+        script.async = true;
+
+        script.onload = function() {
+            if (window.QRCode) {
+                resolve(window.QRCode);
+            } else {
+                reject(new Error("QR code library did not load."));
+            }
+        };
+
+        script.onerror = function() {
+            reject(new Error("Unable to load QR code library. Check your internet connection."));
+        };
+
+        document.head.appendChild(script);
+
+    });
+
+    return qrLibPromise;
+
+}
+
+const qrTimers = {};
+
+async function generateSubjectQr(subjectId) {
+
+    const wrap =
+        document.getElementById("qrCanvasWrap" + subjectId);
+
+    const timerEl =
+        document.getElementById("qrTimer" + subjectId);
+
+    wrap.innerHTML = "Generating...";
+    timerEl.textContent = "";
+
+    if (qrTimers[subjectId]) {
+        clearInterval(qrTimers[subjectId]);
+    }
+
+    try {
+
+        const response =
+            await fetch("/api/qr/generate", {
+                method: "POST",
+                credentials: "same-origin",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    subject_id: subjectId
+                })
+            });
+
+        const data = await response.json();
+
+        if (!response.ok || !data.ok) {
+            throw new Error(data.error || "Unable to generate QR code.");
+        }
+
+        const qrLib = await loadQrLib();
+
+        wrap.innerHTML = "";
+
+        const canvas = document.createElement("canvas");
+        wrap.appendChild(canvas);
+
+        await qrLib.toCanvas(canvas, data.token, { width: 200 });
+
+        let remaining = data.expires_in;
+
+        function tick() {
+
+            if (remaining <= 0) {
+
+                clearInterval(qrTimers[subjectId]);
+
+                wrap.innerHTML =
+                    '<span class="muted">QR code expired. Generate a new one.</span>';
+
+                timerEl.textContent = "";
+
+                return;
+
+            }
+
+            const m = Math.floor(remaining / 60);
+            const s = remaining % 60;
+
+            timerEl.textContent =
+                "Expires in " + m + ":" + String(s).padStart(2, "0");
+
+            remaining -= 1;
+
+        }
+
+        tick();
+
+        qrTimers[subjectId] = setInterval(tick, 1000);
+
+    }
+
+    catch (error) {
+
+        wrap.innerHTML =
+            '<span class="error">' +
+            String(error.message || "Unable to generate QR code.")
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;") +
+            "</span>";
+
+        timerEl.textContent = "";
+
+    }
+
+}
 
 
 /* =========================================================
