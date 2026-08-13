@@ -660,6 +660,110 @@ button:disabled {
 
 
 /* =========================================
+   QR ATTENDANCE
+========================================= */
+
+.qr-grid {
+    grid-template-columns:
+        repeat(3, 1fr);
+}
+
+.qr-card {
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 12px;
+}
+
+.qr-card-head span {
+    display: block;
+
+    font-weight: 700;
+
+    font-size: 17px;
+
+    color: #101828;
+}
+
+.qr-card-head small {
+    display: block;
+
+    color: #667085;
+
+    margin-top: 2px;
+}
+
+.qr-canvas-wrap {
+    min-height: 120px;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    text-align: center;
+
+    background: #f8fafc;
+
+    border-radius: 10px;
+
+    padding: 10px;
+}
+
+.qr-canvas-wrap canvas {
+    max-width: 100%;
+
+    height: auto;
+}
+
+.qr-timer {
+    font-size: 13px;
+
+    color: #667085;
+
+    text-align: center;
+
+    min-height: 18px;
+}
+
+.qr-scan-camera {
+    min-height: 320px;
+}
+
+.qr-frame {
+    width: 220px;
+
+    height: 220px;
+
+    border:
+        3px solid
+        rgba(
+            255,
+            255,
+            255,
+            0.85
+        );
+
+    border-radius: 18px;
+
+    box-shadow:
+        0 0 0 9999px
+        rgba(0, 0, 0, 0.12);
+}
+
+
+@media (max-width: 860px) {
+
+    .qr-grid {
+        grid-template-columns: 1fr;
+    }
+
+}
+
+
+/* =========================================
    SAMPLES
 ========================================= */
 
