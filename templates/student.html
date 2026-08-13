@@ -47,8 +47,8 @@
             </h2>
 
             <p class="muted">
-                Point your camera at the QR code your
-                teacher shows in class.
+                Step 1: scan the QR code your teacher shows in class.
+                Step 2: verify it's you with a quick face scan.
             </p>
 
         </div>
@@ -71,7 +71,10 @@
 
                 <div class="camera-overlay">
 
-                    <div class="qr-frame"></div>
+                    <div
+                        id="scanFrame"
+                        class="qr-frame"
+                    ></div>
 
                 </div>
 
@@ -371,8 +374,16 @@
 
 <script>
 
+const CURRENT_STUDENT_ID = {{ student.id }};
+
+const MODEL_URL =
+    "https://justadudewhohacks.github.io/face-api.js/models";
+
+const MATCH_THRESHOLD = 0.55;
+
+
 /* =========================================================
-   LOAD jsQR (dynamic, only when scanning starts)
+   LOAD jsQR (dynamic, only when QR scanning starts)
 ========================================================= */
 
 let jsQrPromise = null;
@@ -424,10 +435,16 @@ function loadJsQr() {
 const qrVideo = document.getElementById("qrVideo");
 const qrScanStart = document.getElementById("qrScanStart");
 const qrScanResult = document.getElementById("qrScanResult");
+const scanFrame = document.getElementById("scanFrame");
 
 let qrStream = null;
-let qrScanning = false;
+let phase = "idle";
 let qrFrameHandle = null;
+let scannedToken = null;
+
+let faceModelsLoaded = false;
+let ownEmbeddings = [];
+let faceRecognitionRunning = false;
 
 const qrCanvas = document.createElement("canvas");
 const qrCanvasCtx = qrCanvas.getContext("2d");
@@ -439,12 +456,38 @@ function setQrStatus(message) {
 
 
 /* =========================================================
-   START / STOP CAMERA
+   FACE DISTANCE
+========================================================= */
+
+function faceDistance(a, b) {
+
+    if (!Array.isArray(a) || !Array.isArray(b)) {
+        return Infinity;
+    }
+
+    if (a.length !== b.length) {
+        return Infinity;
+    }
+
+    let sum = 0;
+
+    for (let i = 0; i < a.length; i++) {
+        const difference = Number(a[i]) - Number(b[i]);
+        sum += difference * difference;
+    }
+
+    return Math.sqrt(sum);
+
+}
+
+
+/* =========================================================
+   START (QR PHASE)
 ========================================================= */
 
 async function startQrScan() {
 
-    if (qrScanning) {
+    if (phase !== "idle") {
         return;
     }
 
@@ -464,10 +507,12 @@ async function startQrScan() {
 
         await qrVideo.play();
 
-        qrScanning = true;
+        phase = "qr";
+
+        scanFrame.className = "qr-frame";
 
         qrScanStart.disabled = true;
-        qrScanStart.textContent = "Scanning...";
+        qrScanStart.textContent = "Scanning QR...";
 
         setQrStatus("Point your camera at the QR code.");
 
@@ -481,21 +526,14 @@ async function startQrScan() {
 
         setQrStatus("Camera error: " + error.message);
 
-        stopQrScan();
+        stopAll();
 
     }
 
 }
 
 
-function stopQrScan() {
-
-    qrScanning = false;
-
-    if (qrFrameHandle) {
-        cancelAnimationFrame(qrFrameHandle);
-        qrFrameHandle = null;
-    }
+function stopStream() {
 
     if (qrStream) {
         qrStream.getTracks().forEach(function(track) {
@@ -506,6 +544,21 @@ function stopQrScan() {
 
     qrVideo.srcObject = null;
 
+}
+
+
+function stopAll() {
+
+    phase = "idle";
+    faceRecognitionRunning = false;
+
+    if (qrFrameHandle) {
+        cancelAnimationFrame(qrFrameHandle);
+        qrFrameHandle = null;
+    }
+
+    stopStream();
+
     qrScanStart.disabled = false;
     qrScanStart.textContent = "Start Camera";
 
@@ -513,12 +566,12 @@ function stopQrScan() {
 
 
 /* =========================================================
-   SCAN LOOP
+   QR SCAN LOOP
 ========================================================= */
 
 function scanQrFrame() {
 
-    if (!qrScanning) {
+    if (phase !== "qr") {
         return;
     }
 
@@ -558,19 +611,229 @@ function scanQrFrame() {
 
 
 /* =========================================================
-   HANDLE DETECTED QR
+   QR DETECTED -> SWITCH TO FACE PHASE
 ========================================================= */
 
 async function handleQrDetected(token) {
-
-    qrScanning = false;
 
     if (qrFrameHandle) {
         cancelAnimationFrame(qrFrameHandle);
         qrFrameHandle = null;
     }
 
-    setQrStatus("QR code detected. Recording attendance...");
+    scannedToken = token;
+
+    setQrStatus("QR code detected. Preparing face verification...");
+
+    stopStream();
+
+    try {
+
+        await loadFaceModels();
+
+        await loadOwnEmbeddings();
+
+        setQrStatus("Requesting front camera for face verification...");
+
+        qrStream = await navigator.mediaDevices.getUserMedia({
+            video: {
+                facingMode: "user",
+                width: { ideal: 640 },
+                height: { ideal: 480 }
+            }
+        });
+
+        qrVideo.srcObject = qrStream;
+
+        await qrVideo.play();
+
+        phase = "face";
+
+        scanFrame.className = "face-frame";
+
+        qrScanStart.textContent = "Verifying face...";
+
+        setQrStatus("Look directly at the camera to verify your identity.");
+
+        faceRecognitionRunning = false;
+
+        scanFaceForQr();
+
+    }
+
+    catch (error) {
+
+        console.error("Face verification start error:", error);
+
+        setQrStatus("Error: " + error.message);
+
+        stopAll();
+
+    }
+
+}
+
+
+/* =========================================================
+   LOAD FACE MODELS
+========================================================= */
+
+async function loadFaceModels() {
+
+    if (faceModelsLoaded) {
+        return;
+    }
+
+    if (!window.faceapi) {
+        throw new Error("Face recognition library not available.");
+    }
+
+    setQrStatus("Loading face recognition models...");
+
+    await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+    await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+    await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+
+    faceModelsLoaded = true;
+
+}
+
+
+/* =========================================================
+   LOAD THIS STUDENT'S OWN FACE EMBEDDINGS
+========================================================= */
+
+async function loadOwnEmbeddings() {
+
+    const response = await fetch("/api/recognition-data", {
+        credentials: "same-origin"
+    });
+
+    if (!response.ok) {
+        throw new Error("Unable to load your face data.");
+    }
+
+    const data = await response.json();
+
+    const mine = data.find(function(s) {
+        return s.id === CURRENT_STUDENT_ID;
+    });
+
+    if (!mine || !Array.isArray(mine.embeddings) || mine.embeddings.length === 0) {
+        throw new Error("Your face is not registered. Contact admin.");
+    }
+
+    ownEmbeddings = mine.embeddings;
+
+}
+
+
+/* =========================================================
+   FACE SCAN LOOP (QR FLOW)
+========================================================= */
+
+async function scanFaceForQr() {
+
+    if (phase !== "face" || faceRecognitionRunning) {
+        return;
+    }
+
+    faceRecognitionRunning = true;
+
+    try {
+
+        if (qrVideo.readyState < 2 || !qrVideo.videoWidth) {
+
+            faceRecognitionRunning = false;
+
+            setTimeout(scanFaceForQr, 500);
+
+            return;
+
+        }
+
+        const detection = await faceapi
+            .detectSingleFace(
+                qrVideo,
+                new faceapi.TinyFaceDetectorOptions({
+                    inputSize: 320,
+                    scoreThreshold: 0.35
+                })
+            )
+            .withFaceLandmarks()
+            .withFaceDescriptor();
+
+        if (!detection) {
+
+            faceRecognitionRunning = false;
+
+            setQrStatus("No face detected. Move closer and look at the camera.");
+
+            setTimeout(scanFaceForQr, 500);
+
+            return;
+
+        }
+
+        const descriptor = Array.from(detection.descriptor);
+
+        let bestDistance = Infinity;
+
+        for (const embedding of ownEmbeddings) {
+
+            const d = faceDistance(descriptor, embedding);
+
+            if (d < bestDistance) {
+                bestDistance = d;
+            }
+
+        }
+
+        console.log("Face verification distance:", bestDistance);
+
+        if (bestDistance <= MATCH_THRESHOLD) {
+
+            phase = "done";
+
+            faceRecognitionRunning = false;
+
+            setQrStatus("Face verified. Recording attendance...");
+
+            await finishQrAttendance();
+
+            return;
+
+        }
+
+        faceRecognitionRunning = false;
+
+        setQrStatus("Face not recognized. Make sure it's you and try again.");
+
+        setTimeout(scanFaceForQr, 700);
+
+    }
+
+    catch (error) {
+
+        console.error("Face verification error:", error);
+
+        faceRecognitionRunning = false;
+
+        if (phase === "face") {
+            setQrStatus("Recognition error. Trying again...");
+            setTimeout(scanFaceForQr, 1000);
+        }
+
+    }
+
+}
+
+
+/* =========================================================
+   FINISH: MARK ATTENDANCE
+========================================================= */
+
+async function finishQrAttendance() {
 
     try {
 
@@ -580,7 +843,7 @@ async function handleQrDetected(token) {
             headers: {
                 "Content-Type": "application/json"
             },
-            body: JSON.stringify({ token: token })
+            body: JSON.stringify({ token: scannedToken })
         });
 
         const data = await response.json();
@@ -595,7 +858,7 @@ async function handleQrDetected(token) {
             setQrStatus("Attendance recorded for " + data.subject + ".");
         }
 
-        stopQrScan();
+        stopAll();
 
     }
 
@@ -605,7 +868,7 @@ async function handleQrDetected(token) {
 
         setQrStatus("Error: " + error.message);
 
-        stopQrScan();
+        stopAll();
 
     }
 
