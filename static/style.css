@@ -821,6 +821,74 @@ button:disabled {
 }
 
 
+.link-btn {
+    background: none;
+
+    border: none;
+
+    padding: 4px 8px;
+
+    color: #2563eb;
+
+    font-weight: 600;
+
+    font-size: 13px;
+
+    cursor: pointer;
+
+    border-radius: 6px;
+
+    white-space: nowrap;
+}
+
+.link-btn:hover {
+    background: #eef4ff;
+}
+
+.link-btn.danger {
+    color: #b42318;
+}
+
+.link-btn.danger:hover {
+    background: #fef3f2;
+}
+
+
+.pct-badge {
+    display: inline-block;
+
+    padding: 4px 10px;
+
+    border-radius: 999px;
+
+    font-weight: 700;
+
+    font-size: 13px;
+}
+
+.pct-badge.pct-good {
+    background: #ecfdf3;
+
+    color: #027a48;
+}
+
+.pct-badge.pct-warn {
+    background: #fffaeb;
+
+    color: #b54708;
+}
+
+.pct-badge.pct-bad {
+    background: #fef3f2;
+
+    color: #b42318;
+}
+
+tr.low-attendance {
+    background: #fef3f2;
+}
+
+
 /* =========================================
    TABLE
 ========================================= */
