@@ -102,6 +102,58 @@
                 at the QR code.
             </div>
 
+            <div
+                id="qrResultOverlay"
+                class="qr-result-overlay"
+            >
+
+                <svg
+                    class="qr-result-icon"
+                    viewBox="0 0 100 100"
+                >
+
+                    <circle
+                        class="qr-result-circle"
+                        cx="50"
+                        cy="50"
+                        r="45"
+                    ></circle>
+
+                    <path
+                        id="qrResultCheck"
+                        class="qr-result-check"
+                        d="M27,52 L43,68 L75,32"
+                    ></path>
+
+                    <path
+                        id="qrResultCross1"
+                        class="qr-result-cross"
+                        d="M30,30 L70,70"
+                    ></path>
+
+                    <path
+                        id="qrResultCross2"
+                        class="qr-result-cross"
+                        d="M70,30 L30,70"
+                    ></path>
+
+                </svg>
+
+                <div
+                    id="qrResultMessage"
+                    class="qr-result-message"
+                ></div>
+
+                <button
+                    class="primary full"
+                    type="button"
+                    onclick="closeQrResultOverlay()"
+                >
+                    Close
+                </button>
+
+            </div>
+
         </div>
 
     </div>
@@ -456,6 +508,38 @@ function setQrStatus(message) {
 
 
 /* =========================================================
+   RESULT ANIMATION (SUCCESS / ERROR)
+========================================================= */
+
+const qrResultOverlay = document.getElementById("qrResultOverlay");
+const qrResultMessage = document.getElementById("qrResultMessage");
+
+function showQrResult(success, message) {
+
+    qrResultOverlay.classList.remove("success", "error", "show");
+
+    // force reflow so the animation replays on repeated calls
+    void qrResultOverlay.offsetWidth;
+
+    qrResultOverlay.classList.add(success ? "success" : "error");
+    qrResultOverlay.classList.add("show");
+
+    qrResultMessage.textContent = message;
+
+    qrScanResult.style.display = "none";
+
+}
+
+function closeQrResultOverlay() {
+
+    qrResultOverlay.classList.remove("show", "success", "error");
+
+    qrScanResult.style.display = "";
+
+}
+
+
+/* =========================================================
    FACE DISTANCE
 ========================================================= */
 
@@ -491,6 +575,8 @@ async function startQrScan() {
         return;
     }
 
+    closeQrResultOverlay();
+
     try {
 
         setQrStatus("Loading QR scanner...");
@@ -524,7 +610,7 @@ async function startQrScan() {
 
         console.error("QR scan start error:", error);
 
-        setQrStatus("Camera error: " + error.message);
+        showQrResult(false, "Camera error: " + error.message);
 
         stopAll();
 
@@ -665,7 +751,7 @@ async function handleQrDetected(token) {
 
         console.error("Face verification start error:", error);
 
-        setQrStatus("Error: " + error.message);
+        showQrResult(false, "Error: " + error.message);
 
         stopAll();
 
@@ -853,9 +939,9 @@ async function finishQrAttendance() {
         }
 
         if (data.already) {
-            setQrStatus("Attendance already marked for " + data.subject + ".");
+            showQrResult(true, "Attendance already marked for " + data.subject + ".");
         } else {
-            setQrStatus("Attendance recorded for " + data.subject + ".");
+            showQrResult(true, "Attendance recorded for " + data.subject + "!");
         }
 
         stopAll();
@@ -866,7 +952,7 @@ async function finishQrAttendance() {
 
         console.error("QR mark attendance error:", error);
 
-        setQrStatus("Error: " + error.message);
+        showQrResult(false, error.message || "Attendance failed.");
 
         stopAll();
 
