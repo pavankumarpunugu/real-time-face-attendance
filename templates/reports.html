@@ -12,14 +12,102 @@
         </p>
     </div>
 
+    <button
+        class="primary"
+        type="button"
+        onclick="exportReportCsv()"
+    >
+        Export CSV
+    </button>
+
+</div>
+
+
+<div class="cards">
+
+    <div class="card stat-card">
+
+        <span>
+            Students
+        </span>
+
+        <strong>
+            {{ rows|length }}
+        </strong>
+
+        <small>
+            In this report
+        </small>
+
+    </div>
+
+
+    <div class="card stat-card">
+
+        <span>
+            Average Attendance
+        </span>
+
+        <strong>
+            {{ avg_percentage }}%
+        </strong>
+
+        <small>
+            Across all students
+        </small>
+
+    </div>
+
+
+    <div class="card stat-card">
+
+        <span>
+            Below 75%
+        </span>
+
+        <strong>
+            {{ low_attendance_count }}
+        </strong>
+
+        <small>
+            Attendance defaulters
+        </small>
+
+    </div>
+
 </div>
 
 
 <div class="panel">
 
+    <div class="section-title">
+
+        <div>
+            <h2>
+                Student-wise Attendance
+            </h2>
+
+            <p class="muted">
+                Search by name or roll number.
+                Rows below 75% are highlighted.
+            </p>
+        </div>
+
+    </div>
+
+
+    <input
+        id="reportSearch"
+        type="text"
+        placeholder="Search by name or roll no..."
+        oninput="filterReportRows()"
+        style="margin-bottom:16px;"
+    >
+
+
     <div class="table-wrap">
 
-        <table>
+        <table id="reportTable">
 
             <thead>
 
@@ -39,7 +127,10 @@
 
                 {% for r in rows %}
 
-                <tr>
+                <tr
+                    class="report-row {{ 'low-attendance' if r.percentage < 75 else '' }}"
+                    data-search="{{ (r.name ~ ' ' ~ r.roll_no)|lower }}"
+                >
 
                     <td>
                         {{ r.roll_no }}
@@ -62,9 +153,13 @@
                     </td>
 
                     <td>
-                        <b>
+
+                        <span
+                            class="pct-badge {{ 'pct-good' if r.percentage >= 85 else ('pct-warn' if r.percentage >= 75 else 'pct-bad') }}"
+                        >
                             {{ r.percentage }}%
-                        </b>
+                        </span>
+
                     </td>
 
                 </tr>
@@ -85,8 +180,122 @@
 
         </table>
 
+        <p
+            id="reportNoResults"
+            class="muted"
+            style="display:none;padding:16px 0;"
+        >
+            No students match your search.
+        </p>
+
     </div>
 
 </div>
+
+{% endblock %}
+
+
+{% block scripts %}
+
+<script>
+
+function filterReportRows() {
+
+    const query =
+        document.getElementById("reportSearch")
+            .value
+            .trim()
+            .toLowerCase();
+
+    const rows =
+        document.querySelectorAll("#reportTable tbody tr.report-row");
+
+    let visibleCount = 0;
+
+    rows.forEach(function(row) {
+
+        const haystack = row.getAttribute("data-search") || "";
+
+        const match = haystack.includes(query);
+
+        row.style.display = match ? "" : "none";
+
+        if (match) {
+            visibleCount += 1;
+        }
+
+    });
+
+    const noResults = document.getElementById("reportNoResults");
+
+    if (noResults) {
+        noResults.style.display =
+            (rows.length > 0 && visibleCount === 0) ? "block" : "none";
+    }
+
+}
+
+
+function exportReportCsv() {
+
+    const rows =
+        document.querySelectorAll("#reportTable tbody tr.report-row");
+
+    if (rows.length === 0) {
+        alert("No attendance data to export.");
+        return;
+    }
+
+    const lines = [
+        "Roll No,Name,Department,Present,Total,Percentage"
+    ];
+
+    rows.forEach(function(row) {
+
+        const cells = row.querySelectorAll("td");
+
+        const values = [
+            cells[0].textContent.trim(),
+            cells[1].textContent.trim(),
+            cells[2].textContent.trim(),
+            cells[3].textContent.trim(),
+            cells[4].textContent.trim(),
+            cells[5].textContent.trim().replace("%", "")
+        ];
+
+        const escaped = values.map(function(v) {
+
+            if (v.includes(",") || v.includes('"')) {
+                return '"' + v.replace(/"/g, '""') + '"';
+            }
+
+            return v;
+
+        });
+
+        lines.push(escaped.join(","));
+
+    });
+
+    const csv = lines.join("\n");
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.download = "attendance-report.csv";
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    URL.revokeObjectURL(url);
+
+}
+
+</script>
 
 {% endblock %}
