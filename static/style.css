@@ -136,6 +136,91 @@ nav a:hover {
     margin-bottom: 24px;
 }
 
+
+.admin-tabs {
+    display: flex;
+
+    flex-wrap: wrap;
+
+    gap: 6px;
+
+    background: #f1f5f9;
+
+    padding: 6px;
+
+    border-radius: 12px;
+
+    margin-bottom: 24px;
+
+    position: sticky;
+
+    top: 12px;
+
+    z-index: 10;
+}
+
+.admin-tab-btn {
+    border: none;
+
+    background: transparent;
+
+    padding: 10px 16px;
+
+    border-radius: 8px;
+
+    font-weight: 600;
+
+    font-size: 14px;
+
+    color: #475467;
+
+    cursor: pointer;
+
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.admin-tab-btn:hover {
+    background: #e2e8f0;
+}
+
+.admin-tab-btn.active {
+    background: #ffffff;
+
+    color: #101828;
+
+    box-shadow: 0 1px 3px rgba(16, 24, 40, 0.1);
+}
+
+.admin-tab-panel {
+    animation: adminTabFadeIn 0.15s ease;
+}
+
+@keyframes adminTabFadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@media (max-width: 700px) {
+
+    .admin-tabs {
+        overflow-x: auto;
+
+        flex-wrap: nowrap;
+
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .admin-tab-btn {
+        white-space: nowrap;
+    }
+
+}
+
+
 h1 {
     margin: 0 0 5px;
 
