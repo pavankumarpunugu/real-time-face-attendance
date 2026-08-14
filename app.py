@@ -2933,6 +2933,9 @@ def generate_qr():
         """
         SELECT
             c.id,
+            c.class_date,
+            c.start_time,
+            c.duration_minutes,
             sub.code,
             sub.name AS subject_name
         FROM classes c
@@ -2959,13 +2962,49 @@ def generate_qr():
             )
         ), 400
 
-    token = secrets.token_urlsafe(24)
-
     now = india_now().replace(tzinfo=None)
 
-    expires_at = (
-        now
-        + timedelta(seconds=QR_EXPIRY_SECONDS)
+    class_start = parse_class_start(class_info)
+
+    class_end = (
+        class_start
+        + timedelta(
+            minutes=int(
+                class_info["duration_minutes"]
+                or 60
+            )
+        )
+    )
+
+    if now < class_start:
+
+        return jsonify(
+            ok=False,
+            error=(
+                "This class hasn't started yet. "
+                "You can generate the QR code from "
+                + class_start.strftime("%I:%M %p")
+                + "."
+            )
+        ), 400
+
+    if now > class_end:
+
+        return jsonify(
+            ok=False,
+            error=(
+                "This class has already ended. "
+                "QR generation was only available until "
+                + class_end.strftime("%I:%M %p")
+                + "."
+            )
+        ), 400
+
+    token = secrets.token_urlsafe(24)
+
+    expires_at = min(
+        now + timedelta(seconds=QR_EXPIRY_SECONDS),
+        class_end
     )
 
     q(
@@ -3010,7 +3049,9 @@ def generate_qr():
         qr_image=qr_data_uri,
         subject_code=class_info["code"],
         subject_name=class_info["subject_name"],
-        expires_in=QR_EXPIRY_SECONDS
+        expires_in=int(
+            (expires_at - now).total_seconds()
+        )
     )
 
 
