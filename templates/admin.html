@@ -80,6 +80,40 @@
 </div>
 
 
+
+
+<!-- ADMIN SECTION TABS -->
+
+<div class="admin-tabs" id="adminTabs">
+
+    <button class="admin-tab-btn active" type="button" onclick="showAdminTab('subjects')">
+        Subjects
+    </button>
+
+    <button class="admin-tab-btn" type="button" onclick="showAdminTab('qr')">
+        QR Codes
+    </button>
+
+    <button class="admin-tab-btn" type="button" onclick="showAdminTab('schedule')">
+        Schedule
+    </button>
+
+    <button class="admin-tab-btn" type="button" onclick="showAdminTab('attendance')">
+        Attendance
+    </button>
+
+    <button class="admin-tab-btn" type="button" onclick="showAdminTab('holidays')">
+        Holidays
+    </button>
+
+    <button class="admin-tab-btn" type="button" onclick="showAdminTab('students')">
+        Students
+    </button>
+
+</div>
+
+
+<div class="admin-tab-panel" id="tabpanel-subjects">
 <!-- CREATE SUBJECT -->
 
 <div class="panel">
@@ -246,6 +280,9 @@
 </div>
 
 
+</div>
+
+<div class="admin-tab-panel" id="tabpanel-qr" style="display:none;">
 <!-- QR CODE ATTENDANCE -->
 
 <div class="panel" id="qr-codes">
@@ -315,6 +352,9 @@
 </div>
 
 
+</div>
+
+<div class="admin-tab-panel" id="tabpanel-schedule" style="display:none;">
 <!-- DAILY CLASS SCHEDULE -->
 
 <div class="panel">
@@ -542,6 +582,9 @@
 </div>
 
 
+</div>
+
+<div class="admin-tab-panel" id="tabpanel-attendance" style="display:none;">
 <!-- CLASS ATTENDANCE -->
 
 <div class="panel">
@@ -582,6 +625,9 @@
 </div>
 
 
+</div>
+
+<div class="admin-tab-panel" id="tabpanel-holidays" style="display:none;">
 <!-- HOLIDAYS -->
 
 <div class="panel">
@@ -690,6 +736,9 @@
 </div>
 
 
+</div>
+
+<div class="admin-tab-panel" id="tabpanel-students" style="display:none;">
 <!-- STUDENTS -->
 
 <div class="panel">
@@ -817,12 +866,70 @@
 </div>
 
 
+</div>
+
 {% endblock %}
 
 
 {% block scripts %}
 
 <script>
+
+
+/* =========================================================
+   ADMIN SECTION TABS
+========================================================= */
+
+const ADMIN_TABS = [
+    "subjects",
+    "qr",
+    "schedule",
+    "attendance",
+    "holidays",
+    "students"
+];
+
+function showAdminTab(tabName) {
+
+    ADMIN_TABS.forEach(function(name) {
+
+        const panel = document.getElementById("tabpanel-" + name);
+
+        if (panel) {
+            panel.style.display = (name === tabName) ? "" : "none";
+        }
+
+    });
+
+    document
+        .querySelectorAll("#adminTabs .admin-tab-btn")
+        .forEach(function(btn) {
+            btn.classList.remove("active");
+        });
+
+    const activeBtn = document.querySelector(
+        '#adminTabs .admin-tab-btn[onclick="showAdminTab(\'' + tabName + '\')"]'
+    );
+
+    if (activeBtn) {
+        activeBtn.classList.add("active");
+    }
+
+    if (history.replaceState) {
+        history.replaceState(null, "", "#" + tabName);
+    }
+
+}
+
+(function initAdminTab() {
+
+    const hash = (window.location.hash || "").replace("#", "");
+
+    if (ADMIN_TABS.includes(hash)) {
+        showAdminTab(hash);
+    }
+
+})();
 
 
 /* =========================================================
@@ -2433,6 +2540,8 @@ async function deleteClass(
 function viewAttendance(
     id
 ) {
+
+    showAdminTab("attendance");
 
     const select =
         document
