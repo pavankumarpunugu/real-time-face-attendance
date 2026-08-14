@@ -825,7 +825,7 @@ def register_page():
 
 
 @app.route("/attendance")
-@login_required
+@admin_required
 def attendance_page():
 
     subjects = q(
@@ -998,9 +998,32 @@ def reports():
             x["name"].lower()
     )
 
+    if result:
+
+        avg_percentage = round(
+            sum(
+                r["percentage"]
+                for r in result
+            )
+            / len(result),
+            1
+        )
+
+    else:
+
+        avg_percentage = 0
+
+    low_attendance_count = sum(
+        1
+        for r in result
+        if r["percentage"] < 75
+    )
+
     return render_template(
         "reports.html",
-        rows=result
+        rows=result,
+        avg_percentage=avg_percentage,
+        low_attendance_count=low_attendance_count
     )
 
 
@@ -2253,7 +2276,7 @@ def recognition_data():
     "/api/mark-attendance",
     methods=["POST"]
 )
-@login_required
+@admin_required
 def mark_attendance():
 
     data = request.get_json(
@@ -2748,6 +2771,126 @@ def api_attendance():
             dict(r)
             for r in rows
         ]
+    )
+
+
+# =========================================================
+# ADMIN: MANUAL ATTENDANCE OVERRIDE
+# =========================================================
+
+@app.route(
+    "/api/attendance/override",
+    methods=["POST"]
+)
+@admin_required
+def override_attendance():
+
+    data = request.get_json(force=True) or {}
+
+    student_id = int(
+        data.get("student_id", 0)
+    )
+
+    class_id = int(
+        data.get("class_id", 0)
+    )
+
+    status = (
+        data.get("status") or ""
+    ).strip()
+
+    if status not in (
+        "Present",
+        "Absent"
+    ):
+
+        return jsonify(
+            ok=False,
+            error=(
+                "Status must be "
+                "Present or Absent."
+            )
+        ), 400
+
+    student = q(
+        "SELECT id FROM students WHERE id=:id",
+        {"id": student_id},
+        True,
+        True
+    )
+
+    class_info = q(
+        "SELECT id FROM classes WHERE id=:id",
+        {"id": class_id},
+        True,
+        True
+    )
+
+    if not student or not class_info:
+
+        return jsonify(
+            ok=False,
+            error="Student or class not found."
+        ), 404
+
+    if status == "Absent":
+
+        q(
+            """
+            DELETE FROM attendance
+            WHERE student_id=:s
+                AND class_id=:c
+            """,
+            {
+                "s": student_id,
+                "c": class_id
+            }
+        )
+
+        return jsonify(
+            ok=True,
+            status="Absent"
+        )
+
+    try:
+
+        q(
+            """
+            INSERT INTO attendance(
+                student_id,
+                class_id,
+                status
+            )
+            VALUES(
+                :s,
+                :c,
+                'Present'
+            )
+            """,
+            {
+                "s": student_id,
+                "c": class_id
+            }
+        )
+
+    except IntegrityError:
+
+        q(
+            """
+            UPDATE attendance
+            SET status='Present'
+            WHERE student_id=:s
+                AND class_id=:c
+            """,
+            {
+                "s": student_id,
+                "c": class_id
+            }
+        )
+
+    return jsonify(
+        ok=True,
+        status="Present"
     )
 
 
