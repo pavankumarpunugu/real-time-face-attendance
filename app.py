@@ -768,11 +768,9 @@ def student_dashboard():
 
             display_status = "Present"
 
-            if now >= end:
+            total += 1
 
-                total += 1
-
-                present += 1
+            present += 1
 
         elif now < start:
 
@@ -933,14 +931,15 @@ def reports():
         if now < start:
             continue
 
-        if now < end:
-            continue
-
-        students[sid]["total_classes"] += 1
-
         if d["status"] == "Present":
 
+            students[sid]["total_classes"] += 1
+
             students[sid]["present"] += 1
+
+        elif now >= end:
+
+            students[sid]["total_classes"] += 1
 
     result = []
 
