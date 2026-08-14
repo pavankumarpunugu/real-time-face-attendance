@@ -878,10 +878,9 @@ async function generateSubjectQr(subjectId) {
 
                 clearInterval(qrTimers[subjectId]);
 
-                wrap.innerHTML =
-                    '<span class="muted">QR code expired. Generate a new one.</span>';
+                timerEl.textContent = "Refreshing...";
 
-                timerEl.textContent = "";
+                generateSubjectQr(subjectId);
 
                 return;
 
@@ -2711,6 +2710,10 @@ async function loadClassAttendance() {
                                 Status
                             </th>
 
+                            <th>
+                                Action
+                            </th>
+
                         </tr>
 
                     </thead>
@@ -2729,7 +2732,7 @@ async function loadClassAttendance() {
 
                 <tr>
 
-                    <td colspan="4">
+                    <td colspan="5">
 
                         No students found.
 
@@ -2765,6 +2768,30 @@ async function loadClassAttendance() {
                         `;
 
 
+                const actionHtml =
+                    s.status === "Present"
+
+                        ? `
+                            <button
+                                class="link-btn danger"
+                                type="button"
+                                onclick="overrideAttendance(${id}, ${s.id}, 'Absent')"
+                            >
+                                Mark Absent
+                            </button>
+                        `
+
+                        : `
+                            <button
+                                class="link-btn"
+                                type="button"
+                                onclick="overrideAttendance(${id}, ${s.id}, 'Present')"
+                            >
+                                Mark Present
+                            </button>
+                        `;
+
+
                 html += `
 
                     <tr>
@@ -2793,6 +2820,11 @@ async function loadClassAttendance() {
 
                         <td>
                             ${statusHtml}
+                        </td>
+
+
+                        <td>
+                            ${actionHtml}
                         </td>
 
                     </tr>
@@ -2851,6 +2883,47 @@ async function loadClassAttendance() {
     }
 
 }
+
+
+/* =========================================================
+   MANUAL ATTENDANCE OVERRIDE
+========================================================= */
+
+async function overrideAttendance(classId, studentId, status) {
+
+    try {
+
+        const response = await fetch("/api/attendance/override", {
+            method: "POST",
+            credentials: "same-origin",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                class_id: classId,
+                student_id: studentId,
+                status: status
+            })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || !data.ok) {
+            throw new Error(data.error || "Unable to update attendance.");
+        }
+
+        loadClassAttendance();
+
+    }
+
+    catch (error) {
+
+        alert(error.message || "Unable to update attendance.");
+
+    }
+
+}
+
 /* =========================================================
    EDIT STUDENT
 ========================================================= */
