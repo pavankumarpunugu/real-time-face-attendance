@@ -542,7 +542,6 @@ let qrFrameHandle = null;
 let scannedToken = null;
 
 let faceModelsLoaded = false;
-let ownEmbeddings = [];
 let faceRecognitionRunning = false;
 
 const qrCanvas = document.createElement("canvas");
@@ -929,8 +928,11 @@ async function loadFaceModels() {
 
 
 /* =========================================================
-   LOAD THIS STUDENT'S OWN FACE EMBEDDINGS
+   LOAD ALL REGISTERED STUDENTS (for a best-match comparison,
+   same approach as admin's Take Attendance page)
 ========================================================= */
+
+let allStudents = [];
 
 async function loadOwnEmbeddings() {
 
@@ -939,12 +941,14 @@ async function loadOwnEmbeddings() {
     });
 
     if (!response.ok) {
-        throw new Error("Unable to load your face data.");
+        throw new Error("Unable to load face data.");
     }
 
     const data = await response.json();
 
-    const mine = data.find(function(s) {
+    allStudents = Array.isArray(data) ? data : [];
+
+    const mine = allStudents.find(function(s) {
         return s.id === CURRENT_STUDENT_ID;
     });
 
@@ -952,7 +956,43 @@ async function loadOwnEmbeddings() {
         throw new Error("Your face is not registered. Contact admin.");
     }
 
-    ownEmbeddings = mine.embeddings;
+}
+
+
+/* =========================================================
+   FIND BEST MATCHING STUDENT ACROSS EVERYONE
+   (same comparative approach as admin's page)
+========================================================= */
+
+function findBestMatch(descriptor) {
+
+    let bestStudent = null;
+
+    let bestDistance = Infinity;
+
+    for (const student of allStudents) {
+
+        if (!Array.isArray(student.embeddings)) {
+            continue;
+        }
+
+        for (const embedding of student.embeddings) {
+
+            const d = faceDistance(descriptor, embedding);
+
+            if (d < bestDistance) {
+                bestDistance = d;
+                bestStudent = student;
+            }
+
+        }
+
+    }
+
+    return {
+        student: bestStudent,
+        distance: bestDistance
+    };
 
 }
 
@@ -1006,21 +1046,19 @@ async function scanFaceForQr() {
 
         const descriptor = Array.from(detection.descriptor);
 
-        let bestDistance = Infinity;
+        const match = findBestMatch(descriptor);
 
-        for (const embedding of ownEmbeddings) {
+        console.log(
+            "Best match:",
+            match.student ? match.student.name : "none",
+            "distance:", match.distance
+        );
 
-            const d = faceDistance(descriptor, embedding);
-
-            if (d < bestDistance) {
-                bestDistance = d;
-            }
-
-        }
-
-        console.log("Face verification distance:", bestDistance);
-
-        if (bestDistance <= MATCH_THRESHOLD) {
+        if (
+            match.student &&
+            match.student.id === CURRENT_STUDENT_ID &&
+            match.distance <= MATCH_THRESHOLD
+        ) {
 
             phase = "done";
 
@@ -1031,6 +1069,22 @@ async function scanFaceForQr() {
             setQrStatus("Face matched. Recording attendance...");
 
             await finishQrAttendance();
+
+            return;
+
+        }
+
+        if (
+            match.student &&
+            match.student.id !== CURRENT_STUDENT_ID &&
+            match.distance <= MATCH_THRESHOLD
+        ) {
+
+            faceRecognitionRunning = false;
+
+            setQrStatus("This face doesn't match your registered profile. Make sure it's you.");
+
+            setTimeout(scanFaceForQr, 700);
 
             return;
 
