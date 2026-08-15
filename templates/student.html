@@ -56,6 +56,51 @@
     </div>
 
 
+    <div class="qr-steps" id="qrSteps">
+
+        <div class="qr-step active" id="step-qr">
+
+            <div class="qr-step-icon">
+                1
+            </div>
+
+            <span>
+                Scan QR
+            </span>
+
+        </div>
+
+        <div class="qr-step-line" id="line-1"></div>
+
+        <div class="qr-step" id="step-face">
+
+            <div class="qr-step-icon">
+                2
+            </div>
+
+            <span>
+                Verify Face
+            </span>
+
+        </div>
+
+        <div class="qr-step-line" id="line-2"></div>
+
+        <div class="qr-step" id="step-done">
+
+            <div class="qr-step-icon">
+                3
+            </div>
+
+            <span>
+                Done
+            </span>
+
+        </div>
+
+    </div>
+
+
     <div class="grid2">
 
         <div class="camera qr-scan-camera">
@@ -77,6 +122,8 @@
                     ></div>
 
                 </div>
+
+                <div class="camera-glow"></div>
 
             </div>
 
@@ -508,6 +555,94 @@ function setQrStatus(message) {
 
 
 /* =========================================================
+   STEP INDICATOR
+========================================================= */
+
+function setQrStep(stepName) {
+
+    const order = ["qr", "face", "done"];
+
+    const currentIndex = order.indexOf(stepName);
+
+    order.forEach(function(name, i) {
+
+        const el = document.getElementById("step-" + name);
+
+        if (!el) {
+            return;
+        }
+
+        el.classList.remove("active", "complete");
+
+        if (i < currentIndex) {
+            el.classList.add("complete");
+        } else if (i === currentIndex) {
+            el.classList.add("active");
+        }
+
+    });
+
+    const line1 = document.getElementById("line-1");
+    const line2 = document.getElementById("line-2");
+
+    if (line1) {
+        line1.classList.toggle("complete", currentIndex >= 1);
+    }
+
+    if (line2) {
+        line2.classList.toggle("complete", currentIndex >= 2);
+    }
+
+}
+
+
+/* =========================================================
+   WAIT FOR VIDEO (same reliability pattern as admin's
+   face-attendance page)
+========================================================= */
+
+function waitForVideoReady(videoEl) {
+
+    return new Promise(function(resolve, reject) {
+
+        let attempts = 0;
+
+        const maxAttempts = 100;
+
+        const timer = setInterval(function() {
+
+            attempts++;
+
+            if (
+                videoEl.readyState >= 2 &&
+                videoEl.videoWidth > 0 &&
+                videoEl.videoHeight > 0
+            ) {
+
+                clearInterval(timer);
+
+                resolve();
+
+                return;
+
+            }
+
+            if (attempts >= maxAttempts) {
+
+                clearInterval(timer);
+
+                reject(new Error("Camera video did not become ready."));
+
+            }
+
+        }, 100);
+
+    });
+
+}
+
+
+/* =========================================================
    RESULT ANIMATION (SUCCESS / ERROR)
 ========================================================= */
 
@@ -577,6 +712,8 @@ async function startQrScan() {
 
     closeQrResultOverlay();
 
+    setQrStep("qr");
+
     try {
 
         setQrStatus("Loading QR scanner...");
@@ -590,6 +727,8 @@ async function startQrScan() {
         });
 
         qrVideo.srcObject = qrStream;
+
+        await waitForVideoReady(qrVideo);
 
         await qrVideo.play();
 
@@ -731,11 +870,15 @@ async function handleQrDetected(token) {
 
         qrVideo.srcObject = qrStream;
 
+        await waitForVideoReady(qrVideo);
+
         await qrVideo.play();
 
         phase = "face";
 
         scanFrame.className = "face-frame";
+
+        setQrStep("face");
 
         qrScanStart.textContent = "Verifying face...";
 
@@ -842,8 +985,8 @@ async function scanFaceForQr() {
             .detectSingleFace(
                 qrVideo,
                 new faceapi.TinyFaceDetectorOptions({
-                    inputSize: 416,
-                    scoreThreshold: 0.5
+                    inputSize: 320,
+                    scoreThreshold: 0.35
                 })
             )
             .withFaceLandmarks()
@@ -880,6 +1023,8 @@ async function scanFaceForQr() {
         if (bestDistance <= MATCH_THRESHOLD) {
 
             phase = "done";
+
+            setQrStep("done");
 
             faceRecognitionRunning = false;
 
