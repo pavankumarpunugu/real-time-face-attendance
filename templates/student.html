@@ -478,7 +478,9 @@ const CURRENT_STUDENT_ID = {{ student.id }};
 const MODEL_URL =
     "https://justadudewhohacks.github.io/face-api.js/models";
 
-const MATCH_THRESHOLD = 0.45;
+const MATCH_THRESHOLD = 0.42;
+
+const CONSECUTIVE_MATCHES_REQUIRED = 3;
 
 
 /* =========================================================
@@ -544,6 +546,7 @@ let scannedToken = null;
 let faceModelsLoaded = false;
 let ownEmbeddings = [];
 let faceRecognitionRunning = false;
+let consecutiveMatchCount = 0;
 
 const qrCanvas = document.createElement("canvas");
 const qrCanvasCtx = qrCanvas.getContext("2d");
@@ -714,6 +717,8 @@ async function startQrScan() {
 
     setQrStep("qr");
 
+    consecutiveMatchCount = 0;
+
     try {
 
         setQrStatus("Loading QR scanner...");
@@ -847,6 +852,8 @@ async function handleQrDetected(token) {
     }
 
     scannedToken = token;
+
+    consecutiveMatchCount = 0;
 
     setQrStatus("QR code detected. Preparing face verification...");
 
@@ -994,6 +1001,8 @@ async function scanFaceForQr() {
 
         if (!detection) {
 
+            consecutiveMatchCount = 0;
+
             faceRecognitionRunning = false;
 
             setQrStatus("No face detected. Move closer and look at the camera.");
@@ -1022,6 +1031,23 @@ async function scanFaceForQr() {
 
         if (bestDistance <= MATCH_THRESHOLD) {
 
+            consecutiveMatchCount += 1;
+
+            if (consecutiveMatchCount < CONSECUTIVE_MATCHES_REQUIRED) {
+
+                faceRecognitionRunning = false;
+
+                setQrStatus(
+                    "Verifying... hold still (" +
+                    consecutiveMatchCount + "/" + CONSECUTIVE_MATCHES_REQUIRED + ")"
+                );
+
+                setTimeout(scanFaceForQr, 250);
+
+                return;
+
+            }
+
             phase = "done";
 
             setQrStep("done");
@@ -1035,6 +1061,8 @@ async function scanFaceForQr() {
             return;
 
         }
+
+        consecutiveMatchCount = 0;
 
         faceRecognitionRunning = false;
 
