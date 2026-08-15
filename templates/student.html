@@ -431,7 +431,7 @@ const CURRENT_STUDENT_ID = {{ student.id }};
 const MODEL_URL =
     "https://justadudewhohacks.github.io/face-api.js/models";
 
-const MATCH_THRESHOLD = 0.55;
+const MATCH_THRESHOLD = 0.45;
 
 
 /* =========================================================
@@ -842,8 +842,8 @@ async function scanFaceForQr() {
             .detectSingleFace(
                 qrVideo,
                 new faceapi.TinyFaceDetectorOptions({
-                    inputSize: 320,
-                    scoreThreshold: 0.35
+                    inputSize: 416,
+                    scoreThreshold: 0.5
                 })
             )
             .withFaceLandmarks()
