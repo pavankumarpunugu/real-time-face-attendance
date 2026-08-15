@@ -192,9 +192,10 @@
                 ></div>
 
                 <button
+                    id="qrResultButton"
                     class="primary full"
                     type="button"
-                    onclick="closeQrResultOverlay()"
+                    onclick="handleQrResultButton()"
                 >
                     Close
                 </button>
@@ -543,6 +544,9 @@ let scannedToken = null;
 
 let faceModelsLoaded = false;
 let faceRecognitionRunning = false;
+let faceAttemptCount = 0;
+
+const MAX_FACE_ATTEMPTS = 20;
 
 const qrCanvas = document.createElement("canvas");
 const qrCanvasCtx = qrCanvas.getContext("2d");
@@ -647,6 +651,7 @@ function waitForVideoReady(videoEl) {
 
 const qrResultOverlay = document.getElementById("qrResultOverlay");
 const qrResultMessage = document.getElementById("qrResultMessage");
+const qrResultButton = document.getElementById("qrResultButton");
 
 function showQrResult(success, message) {
 
@@ -660,6 +665,8 @@ function showQrResult(success, message) {
 
     qrResultMessage.textContent = message;
 
+    qrResultButton.textContent = success ? "Done" : "Try Again";
+
     qrScanResult.style.display = "none";
 
 }
@@ -669,6 +676,18 @@ function closeQrResultOverlay() {
     qrResultOverlay.classList.remove("show", "success", "error");
 
     qrScanResult.style.display = "";
+
+}
+
+function handleQrResultButton() {
+
+    const wasError = qrResultOverlay.classList.contains("error");
+
+    closeQrResultOverlay();
+
+    if (wasError) {
+        startQrScan();
+    }
 
 }
 
@@ -712,6 +731,8 @@ async function startQrScan() {
     closeQrResultOverlay();
 
     setQrStep("qr");
+
+    faceAttemptCount = 0;
 
     try {
 
@@ -846,6 +867,8 @@ async function handleQrDetected(token) {
     }
 
     scannedToken = token;
+
+    faceAttemptCount = 0;
 
     setQrStatus("QR code detected. Preparing face verification...");
 
@@ -1036,9 +1059,9 @@ async function scanFaceForQr() {
 
             faceRecognitionRunning = false;
 
-            setQrStatus("No face detected. Move closer and look at the camera.");
-
-            setTimeout(scanFaceForQr, 500);
+            if (!registerFailedAttempt("No face detected. Move closer and look at the camera.")) {
+                setTimeout(scanFaceForQr, 500);
+            }
 
             return;
 
@@ -1066,6 +1089,8 @@ async function scanFaceForQr() {
 
             faceRecognitionRunning = false;
 
+            faceAttemptCount = 0;
+
             setQrStatus("Face matched. Recording attendance...");
 
             await finishQrAttendance();
@@ -1082,9 +1107,9 @@ async function scanFaceForQr() {
 
             faceRecognitionRunning = false;
 
-            setQrStatus("This face doesn't match your registered profile. Make sure it's you.");
-
-            setTimeout(scanFaceForQr, 700);
+            if (!registerFailedAttempt("This face doesn't match your registered profile. Make sure it's you.")) {
+                setTimeout(scanFaceForQr, 700);
+            }
 
             return;
 
@@ -1092,9 +1117,9 @@ async function scanFaceForQr() {
 
         faceRecognitionRunning = false;
 
-        setQrStatus("Face not recognized. Make sure it's you and try again.");
-
-        setTimeout(scanFaceForQr, 700);
+        if (!registerFailedAttempt("Face not recognized. Make sure it's you and try again.")) {
+            setTimeout(scanFaceForQr, 700);
+        }
 
     }
 
@@ -1105,11 +1130,44 @@ async function scanFaceForQr() {
         faceRecognitionRunning = false;
 
         if (phase === "face") {
-            setQrStatus("Recognition error. Trying again...");
-            setTimeout(scanFaceForQr, 1000);
+
+            if (!registerFailedAttempt("Recognition error. Trying again...")) {
+                setTimeout(scanFaceForQr, 1000);
+            }
+
         }
 
     }
+
+}
+
+
+/* =========================================================
+   FAILED ATTEMPT TRACKING
+   Returns true if the max attempt limit was hit (and the
+   scan has been stopped with a clear error), false if the
+   caller should keep retrying.
+========================================================= */
+
+function registerFailedAttempt(message) {
+
+    faceAttemptCount += 1;
+
+    if (faceAttemptCount >= MAX_FACE_ATTEMPTS) {
+
+        faceAttemptCount = 0;
+
+        showQrResult(false, "Face not matched. Please try again.");
+
+        stopAll();
+
+        return true;
+
+    }
+
+    setQrStatus(message);
+
+    return false;
 
 }
 
