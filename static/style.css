@@ -743,20 +743,308 @@ button:disabled {
 
     height: 240px;
 
-    border:
-        3px solid
-        rgba(
-            255,
-            255,
-            255,
-            0.75
-        );
+    border: 3px solid transparent;
 
     border-radius: 45%;
 
+    background:
+        linear-gradient(#0000, #0000) padding-box,
+        linear-gradient(
+            135deg,
+            #a855f7,
+            #ec4899,
+            #a855f7
+        ) border-box;
+
+    background-size: 100% 100%, 300% 300%;
+
     box-shadow:
         0 0 0 9999px
-        rgba(0, 0, 0, 0.12);
+        rgba(0, 0, 0, 0.12),
+        0 0 24px rgba(168, 85, 247, 0.55);
+
+    animation:
+        qrFrameGradient 3s ease infinite,
+        qrFramePulse 1.6s ease-in-out infinite;
+}
+
+.qr-frame {
+    width: 230px;
+
+    height: 230px;
+
+    border: 3px solid transparent;
+
+    border-radius: 22px;
+
+    background:
+        linear-gradient(#0000, #0000) padding-box,
+        linear-gradient(
+            135deg,
+            #2563eb,
+            #06b6d4,
+            #2563eb
+        ) border-box;
+
+    background-size: 100% 100%, 300% 300%;
+
+    box-shadow:
+        0 0 0 9999px
+        rgba(0, 0, 0, 0.12),
+        0 0 24px rgba(37, 99, 235, 0.55);
+
+    animation:
+        qrFrameGradient 3s ease infinite,
+        qrFramePulse 1.6s ease-in-out infinite;
+
+    position: relative;
+
+    overflow: hidden;
+}
+
+.qr-frame::after {
+    content: "";
+
+    position: absolute;
+
+    left: 0;
+    right: 0;
+
+    height: 3px;
+
+    background: linear-gradient(
+        90deg,
+        transparent,
+        #22d3ee,
+        transparent
+    );
+
+    box-shadow: 0 0 12px #22d3ee;
+
+    animation: qrScanSweep 2.2s ease-in-out infinite;
+}
+
+@keyframes qrScanSweep {
+
+    0% {
+        top: 6%;
+    }
+
+    50% {
+        top: 92%;
+    }
+
+    100% {
+        top: 6%;
+    }
+
+}
+
+@keyframes qrFrameGradient {
+
+    0% {
+        background-position: 0 0, 0% 50%;
+    }
+
+    50% {
+        background-position: 0 0, 100% 50%;
+    }
+
+    100% {
+        background-position: 0 0, 0% 50%;
+    }
+
+}
+
+@keyframes qrFramePulse {
+
+    0%, 100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.03);
+    }
+
+}
+
+.camera-glow {
+    position: absolute;
+
+    inset: -40%;
+
+    background: radial-gradient(
+        circle,
+        rgba(99, 102, 241, 0.25),
+        transparent 70%
+    );
+
+    pointer-events: none;
+
+    animation: cameraGlowSpin 8s linear infinite;
+
+    z-index: 0;
+}
+
+@keyframes cameraGlowSpin {
+
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+
+}
+
+
+/* =========================================
+   QR STEP INDICATOR
+========================================= */
+
+.qr-steps {
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    gap: 0;
+
+    margin: 8px 0 26px;
+
+    flex-wrap: wrap;
+}
+
+.qr-step {
+    display: flex;
+
+    flex-direction: column;
+
+    align-items: center;
+
+    gap: 8px;
+
+    min-width: 84px;
+}
+
+.qr-step-icon {
+    width: 38px;
+
+    height: 38px;
+
+    border-radius: 50%;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    font-weight: 800;
+
+    font-size: 15px;
+
+    background: #e4e7ec;
+
+    color: #667085;
+
+    transition:
+        background 0.35s ease,
+        color 0.35s ease,
+        transform 0.35s ease,
+        box-shadow 0.35s ease;
+}
+
+.qr-step span {
+    font-size: 12px;
+
+    font-weight: 700;
+
+    color: #667085;
+
+    text-transform: uppercase;
+
+    letter-spacing: 0.03em;
+
+    transition: color 0.3s ease;
+}
+
+.qr-step.active .qr-step-icon {
+    background: linear-gradient(135deg, #2563eb, #7c3aed);
+
+    color: #fff;
+
+    transform: scale(1.15);
+
+    box-shadow: 0 0 0 6px rgba(124, 58, 237, 0.15);
+
+    animation: qrStepBounce 0.5s ease;
+}
+
+.qr-step.active span {
+    color: #101828;
+}
+
+.qr-step.complete .qr-step-icon {
+    background: linear-gradient(135deg, #059669, #10b981);
+
+    color: #fff;
+}
+
+.qr-step.complete span {
+    color: #027a48;
+}
+
+@keyframes qrStepBounce {
+
+    0% {
+        transform: scale(0.8);
+    }
+
+    60% {
+        transform: scale(1.25);
+    }
+
+    100% {
+        transform: scale(1.15);
+    }
+
+}
+
+.qr-step-line {
+    width: 56px;
+
+    height: 3px;
+
+    background: #e4e7ec;
+
+    margin: 0 4px;
+
+    border-radius: 2px;
+
+    align-self: center;
+
+    margin-bottom: 22px;
+
+    transition: background 0.4s ease;
+}
+
+.qr-step-line.complete {
+    background: linear-gradient(90deg, #10b981, #059669);
+}
+
+@media (max-width: 560px) {
+
+    .qr-step-line {
+        width: 28px;
+    }
+
+    .qr-step span {
+        font-size: 10px;
+    }
+
 }
 
 
@@ -1046,7 +1334,7 @@ button:disabled {
     min-height: 320px;
 }
 
-.qr-frame {
+.qr-generated-frame {
     width: 220px;
 
     height: 220px;
