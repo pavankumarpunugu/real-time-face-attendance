@@ -878,6 +878,12 @@ button:disabled {
 
     stroke-dashoffset: 60;
 
+    opacity: 0;
+}
+
+.qr-result-overlay.success .qr-result-check {
+    opacity: 1;
+
     animation: qrCheckDraw 0.35s ease 0.4s forwards;
 }
 
@@ -893,6 +899,12 @@ button:disabled {
     stroke-dasharray: 58;
 
     stroke-dashoffset: 58;
+
+    opacity: 0;
+}
+
+.qr-result-overlay.error .qr-result-cross {
+    opacity: 1;
 
     animation: qrCheckDraw 0.3s ease 0.4s forwards;
 }
