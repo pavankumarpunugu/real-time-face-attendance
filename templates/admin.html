@@ -921,7 +921,7 @@ function showAdminTab(tabName) {
 
 }
 
-(function initAdminTab() {
+function applyAdminTabFromHash() {
 
     const hash = (window.location.hash || "").replace("#", "");
 
@@ -929,7 +929,11 @@ function showAdminTab(tabName) {
         showAdminTab(hash);
     }
 
-})();
+}
+
+applyAdminTabFromHash();
+
+window.addEventListener("hashchange", applyAdminTabFromHash);
 
 
 /* =========================================================
