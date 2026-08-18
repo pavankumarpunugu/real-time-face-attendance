@@ -409,6 +409,20 @@ def parse_class_start(class_info):
     )
 
 
+def parse_db_datetime(value):
+
+    if isinstance(value, str):
+
+        v = value.strip()
+
+        if " " in v and "T" not in v:
+            v = v.replace(" ", "T", 1)
+
+        return datetime.fromisoformat(v)
+
+    return value
+
+
 def q(
     sql,
     params=None,
@@ -2890,6 +2904,122 @@ def override_attendance():
     return jsonify(
         ok=True,
         status="Present"
+    )
+
+
+# =========================================================
+# ADMIN: ATTENDANCE CLEANUP (free up DB storage)
+# =========================================================
+
+CLEANUP_RANGES = {
+    "1h": timedelta(hours=1),
+    "24h": timedelta(hours=24),
+    "7d": timedelta(days=7),
+    "30d": timedelta(days=30)
+}
+
+
+def find_old_attendance_ids(range_key):
+
+    if range_key not in CLEANUP_RANGES and range_key != "all":
+        return None
+
+    rows = q(
+        """
+        SELECT id, marked_at
+        FROM attendance
+        """,
+        {},
+        True
+    )
+
+    if range_key == "all":
+
+        return [r["id"] for r in rows]
+
+    cutoff = (
+        india_now().replace(tzinfo=None)
+        - CLEANUP_RANGES[range_key]
+    )
+
+    old_ids = []
+
+    for r in rows:
+
+        try:
+
+            marked = parse_db_datetime(r["marked_at"])
+
+        except (ValueError, TypeError):
+
+            continue
+
+        if marked < cutoff:
+            old_ids.append(r["id"])
+
+    return old_ids
+
+
+@app.route(
+    "/api/attendance/cleanup-preview"
+)
+@admin_required
+def attendance_cleanup_preview():
+
+    range_key = request.args.get(
+        "older_than", ""
+    )
+
+    ids = find_old_attendance_ids(range_key)
+
+    if ids is None:
+
+        return jsonify(
+            ok=False,
+            error="Invalid time range."
+        ), 400
+
+    return jsonify(
+        ok=True,
+        count=len(ids)
+    )
+
+
+@app.route(
+    "/api/attendance/cleanup",
+    methods=["POST"]
+)
+@admin_required
+def attendance_cleanup():
+
+    data = request.get_json(force=True) or {}
+
+    range_key = data.get(
+        "older_than", ""
+    )
+
+    ids = find_old_attendance_ids(range_key)
+
+    if ids is None:
+
+        return jsonify(
+            ok=False,
+            error="Invalid time range."
+        ), 400
+
+    for attendance_id in ids:
+
+        q(
+            """
+            DELETE FROM attendance
+            WHERE id=:id
+            """,
+            {"id": attendance_id}
+        )
+
+    return jsonify(
+        ok=True,
+        deleted=len(ids)
     )
 
 
