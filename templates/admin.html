@@ -625,6 +625,104 @@
 </div>
 
 
+<!-- ATTENDANCE CLEANUP -->
+
+<div class="panel">
+
+    <h2>
+        Delete Old Attendance Records
+    </h2>
+
+    <p class="muted">
+        Permanently remove attendance records older than
+        a chosen time range to free up database storage.
+        This cannot be undone.
+    </p>
+
+    <div class="cleanup-options" id="cleanupOptions">
+
+        <button
+            class="cleanup-btn"
+            type="button"
+            data-range="1h"
+            onclick="selectCleanupRange('1h')"
+        >
+            Older than 1 hour
+        </button>
+
+        <button
+            class="cleanup-btn"
+            type="button"
+            data-range="24h"
+            onclick="selectCleanupRange('24h')"
+        >
+            Older than 24 hours
+        </button>
+
+        <button
+            class="cleanup-btn"
+            type="button"
+            data-range="7d"
+            onclick="selectCleanupRange('7d')"
+        >
+            Older than 7 days
+        </button>
+
+        <button
+            class="cleanup-btn"
+            type="button"
+            data-range="30d"
+            onclick="selectCleanupRange('30d')"
+        >
+            Older than 30 days
+        </button>
+
+        <button
+            class="cleanup-btn danger"
+            type="button"
+            data-range="all"
+            onclick="selectCleanupRange('all')"
+        >
+            All attendance records
+        </button>
+
+    </div>
+
+    <div
+        id="cleanupPreview"
+        class="cleanup-preview"
+        style="display:none;"
+    >
+
+        <p id="cleanupPreviewText"></p>
+
+        <button
+            id="cleanupConfirmBtn"
+            class="danger-btn"
+            type="button"
+            onclick="confirmCleanup()"
+        >
+            Permanently Delete
+        </button>
+
+        <button
+            class="link-btn"
+            type="button"
+            onclick="cancelCleanup()"
+        >
+            Cancel
+        </button>
+
+    </div>
+
+    <div
+        id="cleanupResult"
+        class="status"
+    ></div>
+
+</div>
+
+
 </div>
 
 <div class="admin-tab-panel" id="tabpanel-holidays" style="display:none;">
@@ -3032,6 +3130,175 @@ async function overrideAttendance(classId, studentId, status) {
     catch (error) {
 
         alert(error.message || "Unable to update attendance.");
+
+    }
+
+}
+
+
+/* =========================================================
+   ATTENDANCE CLEANUP
+========================================================= */
+
+const CLEANUP_LABELS = {
+    "1h": "older than 1 hour",
+    "24h": "older than 24 hours",
+    "7d": "older than 7 days",
+    "30d": "older than 30 days",
+    "all": "ALL attendance records"
+};
+
+let selectedCleanupRange = null;
+
+async function selectCleanupRange(rangeKey) {
+
+    selectedCleanupRange = rangeKey;
+
+    document
+        .querySelectorAll("#cleanupOptions .cleanup-btn")
+        .forEach(function(btn) {
+            btn.classList.toggle(
+                "active",
+                btn.getAttribute("data-range") === rangeKey
+            );
+        });
+
+    const preview = document.getElementById("cleanupPreview");
+    const previewText = document.getElementById("cleanupPreviewText");
+    const resultEl = document.getElementById("cleanupResult");
+
+    resultEl.textContent = "";
+
+    previewText.textContent = "Checking...";
+
+    preview.style.display = "block";
+
+    try {
+
+        const response = await fetch(
+            "/api/attendance/cleanup-preview?older_than=" +
+                encodeURIComponent(rangeKey),
+            { credentials: "same-origin" }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok || !data.ok) {
+            throw new Error(data.error || "Unable to check records.");
+        }
+
+        if (data.count === 0) {
+
+            previewText.textContent =
+                "No attendance records " + CLEANUP_LABELS[rangeKey] + ".";
+
+            document.getElementById("cleanupConfirmBtn").disabled = true;
+
+        } else {
+
+            previewText.textContent =
+                "This will permanently delete " + data.count +
+                " attendance record" + (data.count === 1 ? "" : "s") +
+                " (" + CLEANUP_LABELS[rangeKey] + "). This cannot be undone.";
+
+            document.getElementById("cleanupConfirmBtn").disabled = false;
+
+        }
+
+    }
+
+    catch (error) {
+
+        previewText.textContent =
+            error.message || "Unable to check records.";
+
+        document.getElementById("cleanupConfirmBtn").disabled = true;
+
+    }
+
+}
+
+function cancelCleanup() {
+
+    selectedCleanupRange = null;
+
+    document.getElementById("cleanupPreview").style.display = "none";
+
+    document
+        .querySelectorAll("#cleanupOptions .cleanup-btn")
+        .forEach(function(btn) {
+            btn.classList.remove("active");
+        });
+
+}
+
+async function confirmCleanup() {
+
+    if (!selectedCleanupRange) {
+        return;
+    }
+
+    const label = CLEANUP_LABELS[selectedCleanupRange] || "";
+
+    const sure = confirm(
+        "Are you absolutely sure you want to permanently delete " +
+        "attendance records " + label + "? This cannot be undone."
+    );
+
+    if (!sure) {
+        return;
+    }
+
+    const confirmBtn = document.getElementById("cleanupConfirmBtn");
+    const resultEl = document.getElementById("cleanupResult");
+
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = "Deleting...";
+
+    try {
+
+        const response = await fetch("/api/attendance/cleanup", {
+            method: "POST",
+            credentials: "same-origin",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                older_than: selectedCleanupRange
+            })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || !data.ok) {
+            throw new Error(data.error || "Unable to delete records.");
+        }
+
+        resultEl.textContent =
+            "Deleted " + data.deleted + " attendance record" +
+            (data.deleted === 1 ? "" : "s") + ".";
+
+        resultEl.className = "status success";
+
+        cancelCleanup();
+
+        loadClassAttendance();
+
+    }
+
+    catch (error) {
+
+        resultEl.textContent = error.message || "Unable to delete records.";
+
+        resultEl.className = "status error";
+
+    }
+
+    finally {
+
+        confirmBtn.disabled = false;
+
+        confirmBtn.textContent = "Permanently Delete";
 
     }
 
