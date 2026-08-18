@@ -541,6 +541,7 @@ let qrStream = null;
 let phase = "idle";
 let qrFrameHandle = null;
 let scannedToken = null;
+let lastMatchDistance = null;
 
 let faceModelsLoaded = false;
 let faceRecognitionRunning = false;
@@ -550,6 +551,110 @@ const MAX_FACE_ATTEMPTS = 30;
 
 const qrCanvas = document.createElement("canvas");
 const qrCanvasCtx = qrCanvas.getContext("2d");
+
+const faceCanvas = document.createElement("canvas");
+const faceCanvasCtx = faceCanvas.getContext("2d", { willReadFrequently: true });
+
+
+/* =========================================================
+   ADAPTIVE GAMMA CORRECTION
+   Improves face detection in poor lighting (dim rooms,
+   backlit windows) by brightening/darkening frames before
+   they're handed to face-api. Pure client-side canvas work,
+   no new dependencies, only affects the face-verify step.
+========================================================= */
+
+const GAMMA_LUT_CACHE = {};
+
+function getGammaLut(gamma) {
+
+    const key = gamma.toFixed(2);
+
+    if (GAMMA_LUT_CACHE[key]) {
+        return GAMMA_LUT_CACHE[key];
+    }
+
+    const lut = new Uint8ClampedArray(256);
+
+    const invGamma = 1 / gamma;
+
+    for (let i = 0; i < 256; i++) {
+        lut[i] = Math.pow(i / 255, invGamma) * 255;
+    }
+
+    GAMMA_LUT_CACHE[key] = lut;
+
+    return lut;
+
+}
+
+function estimateAverageBrightness(imageData) {
+
+    const data = imageData.data;
+
+    let sum = 0;
+
+    let sampleCount = 0;
+
+    // sample every 16th pixel for speed, full accuracy isn't needed
+    for (let i = 0; i < data.length; i += 64) {
+
+        sum += (data[i] + data[i + 1] + data[i + 2]) / 3;
+
+        sampleCount += 1;
+
+    }
+
+    return sampleCount ? sum / sampleCount : 128;
+
+}
+
+function prepareFaceFrame(videoEl) {
+
+    faceCanvas.width = videoEl.videoWidth;
+    faceCanvas.height = videoEl.videoHeight;
+
+    faceCanvasCtx.drawImage(
+        videoEl, 0, 0, faceCanvas.width, faceCanvas.height
+    );
+
+    const imageData = faceCanvasCtx.getImageData(
+        0, 0, faceCanvas.width, faceCanvas.height
+    );
+
+    const brightness = estimateAverageBrightness(imageData);
+
+    // only correct when the frame is meaningfully too dark or
+    // too bright; well-lit frames pass through untouched
+    let gamma = 1;
+
+    if (brightness < 90) {
+        gamma = 1.8;
+    } else if (brightness < 120) {
+        gamma = 1.35;
+    } else if (brightness > 190) {
+        gamma = 0.75;
+    }
+
+    if (gamma !== 1) {
+
+        const lut = getGammaLut(gamma);
+
+        const data = imageData.data;
+
+        for (let i = 0; i < data.length; i += 4) {
+            data[i] = lut[data[i]];
+            data[i + 1] = lut[data[i + 1]];
+            data[i + 2] = lut[data[i + 2]];
+        }
+
+        faceCanvasCtx.putImageData(imageData, 0, 0);
+
+    }
+
+    return faceCanvas;
+
+}
 
 
 function setQrStatus(message) {
@@ -1046,9 +1151,11 @@ async function scanFaceForQr() {
 
         }
 
+        const preparedFrame = prepareFaceFrame(qrVideo);
+
         const detection = await faceapi
             .detectSingleFace(
-                qrVideo,
+                preparedFrame,
                 new faceapi.TinyFaceDetectorOptions({
                     inputSize: 320,
                     scoreThreshold: 0.35
@@ -1092,6 +1199,8 @@ async function scanFaceForQr() {
             faceRecognitionRunning = false;
 
             faceAttemptCount = 0;
+
+            lastMatchDistance = match.distance;
 
             setQrStatus("Face matched. Recording attendance...");
 
@@ -1200,7 +1309,22 @@ async function finishQrAttendance() {
         if (data.already) {
             showQrResult(true, "Attendance already marked for " + data.subject + ".");
         } else {
-            showQrResult(true, "Attendance recorded for " + data.subject + "!");
+
+            let successMessage = "Attendance recorded for " + data.subject + "!";
+
+            if (lastMatchDistance !== null) {
+
+                const confidence = Math.max(
+                    0,
+                    Math.min(100, Math.round((1 - lastMatchDistance) * 100))
+                );
+
+                successMessage += " (AI face match confidence: " + confidence + "%)";
+
+            }
+
+            showQrResult(true, successMessage);
+
         }
 
         stopAll();
