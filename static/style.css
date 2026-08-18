@@ -1711,6 +1711,130 @@ button:disabled {
 }
 
 
+.cleanup-options {
+    display: flex;
+
+    flex-wrap: wrap;
+
+    gap: 10px;
+
+    margin: 16px 0;
+}
+
+.cleanup-btn {
+    background: #f8fafc;
+
+    border: 1px solid #d0d5dd;
+
+    color: #344054;
+
+    padding: 10px 16px;
+
+    border-radius: 10px;
+
+    font-weight: 600;
+
+    font-size: 13px;
+
+    cursor: pointer;
+
+    transition:
+        background 0.15s,
+        border-color 0.15s,
+        transform 0.15s;
+}
+
+.cleanup-btn:hover {
+    background: #eef4ff;
+
+    border-color: #2563eb;
+
+    transform: translateY(-1px);
+}
+
+.cleanup-btn.active {
+    background: #2563eb;
+
+    border-color: #2563eb;
+
+    color: white;
+}
+
+.cleanup-btn.danger {
+    color: #b42318;
+
+    border-color: #fecdca;
+}
+
+.cleanup-btn.danger:hover {
+    background: #fef3f2;
+
+    border-color: #f04438;
+}
+
+.cleanup-btn.danger.active {
+    background: #f04438;
+
+    border-color: #f04438;
+
+    color: white;
+}
+
+.cleanup-preview {
+    background: #fffaeb;
+
+    border: 1px solid #fedf89;
+
+    border-radius: 12px;
+
+    padding: 16px;
+
+    margin-top: 8px;
+
+    animation: panelFadeInUp 0.3s ease;
+}
+
+.cleanup-preview p {
+    margin: 0 0 12px;
+
+    font-size: 14px;
+
+    color: #93370d;
+
+    font-weight: 600;
+}
+
+.danger-btn {
+    background: #f04438;
+
+    color: white;
+
+    border: none;
+
+    padding: 10px 18px;
+
+    border-radius: 8px;
+
+    font-weight: 700;
+
+    cursor: pointer;
+
+    margin-right: 8px;
+
+    transition: background 0.15s;
+}
+
+.danger-btn:hover {
+    background: #d92d20;
+}
+
+.danger-btn:disabled {
+    background: #f2a29c;
+
+    cursor: not-allowed;
+}
+
+
 .pct-badge {
     display: inline-block;
 
