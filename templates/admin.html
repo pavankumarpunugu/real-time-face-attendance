@@ -102,6 +102,10 @@
         Attendance
     </button>
 
+    <button class="admin-tab-btn" type="button" onclick="showAdminTab('ai-insights')">
+        ✨ AI Insights
+    </button>
+
     <button class="admin-tab-btn" type="button" onclick="showAdminTab('holidays')">
         Holidays
     </button>
@@ -725,6 +729,74 @@
 
 </div>
 
+<div class="admin-tab-panel" id="tabpanel-ai-insights" style="display:none;">
+<!-- AI INSIGHTS -->
+
+<div class="panel ai-panel">
+
+    <div class="ai-panel-head">
+
+        <div class="ai-badge">
+            🤖
+        </div>
+
+        <div>
+
+            <h2>
+                AI Attendance Insights
+            </h2>
+
+            <p class="muted">
+                Powered by the same deep learning face-recognition
+                model used for attendance, plus statistical
+                forecasting on your attendance history.
+            </p>
+
+        </div>
+
+        <button
+            class="primary"
+            type="button"
+            onclick="loadAiInsights()"
+        >
+            Refresh
+        </button>
+
+    </div>
+
+    <div class="ai-model-info" id="aiModelInfo">
+    </div>
+
+    <div id="aiInsightsMsg" class="status"></div>
+
+    <h3 class="ai-section-title">
+        📈 Attendance Risk Predictions
+    </h3>
+
+    <p class="muted">
+        Forecast based on a linear regression model fitted to each
+        student's weekly attendance rate, projecting their trend
+        3 weeks forward.
+    </p>
+
+    <div id="riskPredictionsResult"></div>
+
+    <h3 class="ai-section-title">
+        ⚠️ Anomaly Detection
+    </h3>
+
+    <p class="muted">
+        Flags students whose attendance in the last 7 days has
+        dropped sharply compared to their historical average —
+        a statistical early-warning signal.
+    </p>
+
+    <div id="anomaliesResult"></div>
+
+</div>
+
+</div>
+
 <div class="admin-tab-panel" id="tabpanel-holidays" style="display:none;">
 <!-- HOLIDAYS -->
 
@@ -983,6 +1055,7 @@ const ADMIN_TABS = [
     "qr",
     "schedule",
     "attendance",
+    "ai-insights",
     "holidays",
     "students"
 ];
@@ -3591,6 +3664,138 @@ function escapeHtml(
 
 
 /* =========================================================
+   AI INSIGHTS
+========================================================= */
+
+async function loadAiInsights() {
+
+    const msg = document.getElementById("aiInsightsMsg");
+    const modelInfoEl = document.getElementById("aiModelInfo");
+    const riskEl = document.getElementById("riskPredictionsResult");
+    const anomalyEl = document.getElementById("anomaliesResult");
+
+    msg.textContent = "Running models...";
+
+    try {
+
+        const response = await fetch("/api/ai/insights", {
+            credentials: "same-origin"
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || !data.ok) {
+            throw new Error(data.error || "Unable to load AI insights.");
+        }
+
+        modelInfoEl.innerHTML = `
+            <div class="ai-model-chip">
+                <strong>Face Model:</strong> ${escapeHtml(data.model_info.face_model)}
+            </div>
+            <div class="ai-model-chip">
+                <strong>Trend Model:</strong> ${escapeHtml(data.model_info.trend_model)}
+            </div>
+            <div class="ai-model-chip">
+                <strong>Anomaly Model:</strong> ${escapeHtml(data.model_info.anomaly_model)}
+            </div>
+        `;
+
+        if (data.risk_predictions.length === 0) {
+
+            riskEl.innerHTML = `<p class="muted">Not enough completed classes yet to generate predictions.</p>`;
+
+        } else {
+
+            let riskHtml = `
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Roll</th>
+                                <th>Name</th>
+                                <th>Current %</th>
+                                <th>Trend</th>
+                                <th>Predicted %</th>
+                                <th>Risk</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            data.risk_predictions.forEach(function(r) {
+
+                const trendIcon =
+                    r.trend === "declining" ? "📉" :
+                    r.trend === "improving" ? "📈" : "➖";
+
+                const riskClass =
+                    r.risk === "High" ? "risk-high" :
+                    r.risk === "Medium" ? "risk-medium" : "risk-low";
+
+                riskHtml += `
+                    <tr>
+                        <td>${escapeHtml(r.roll_no)}</td>
+                        <td>${escapeHtml(r.name)}</td>
+                        <td>${r.current_percentage}%</td>
+                        <td>${trendIcon} ${escapeHtml(r.trend)}</td>
+                        <td>${r.predicted_percentage !== null ? r.predicted_percentage + "%" : "-"}</td>
+                        <td><span class="risk-badge ${riskClass}">${escapeHtml(r.risk)}</span></td>
+                    </tr>
+                `;
+
+            });
+
+            riskHtml += `</tbody></table></div>`;
+
+            riskEl.innerHTML = riskHtml;
+
+        }
+
+        if (data.anomalies.length === 0) {
+
+            anomalyEl.innerHTML = `<p class="muted">No unusual attendance drops detected.</p>`;
+
+        } else {
+
+            let anomalyHtml = `<div class="anomaly-list">`;
+
+            data.anomalies.forEach(function(a) {
+
+                anomalyHtml += `
+                    <div class="anomaly-card">
+                        <div>
+                            <strong>${escapeHtml(a.name)}</strong>
+                            <span class="muted">(${escapeHtml(a.roll_no)})</span>
+                        </div>
+                        <div class="anomaly-stats">
+                            ${a.historical_rate}% historically → ${a.recent_rate}% recently
+                            <span class="anomaly-drop">-${a.drop} pts</span>
+                        </div>
+                    </div>
+                `;
+
+            });
+
+            anomalyHtml += `</div>`;
+
+            anomalyEl.innerHTML = anomalyHtml;
+
+        }
+
+        msg.textContent = "";
+
+    }
+
+    catch (error) {
+
+        msg.textContent = error.message || "Unable to load AI insights.";
+
+    }
+
+}
+
+
+/* =========================================================
    PAGE INITIALIZATION
 ========================================================= */
 
@@ -3640,6 +3845,8 @@ document.addEventListener(
         await loadSchedules();
 
         await loadHolidays();
+
+        await loadAiInsights();
 
     }
 );
