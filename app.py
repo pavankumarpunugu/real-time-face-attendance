@@ -423,6 +423,33 @@ def parse_db_datetime(value):
     return value
 
 
+def linear_regression_slope(x_values, y_values):
+
+    n = len(x_values)
+
+    if n < 2:
+        return 0.0
+
+    mean_x = sum(x_values) / n
+
+    mean_y = sum(y_values) / n
+
+    numerator = sum(
+        (x - mean_x) * (y - mean_y)
+        for x, y in zip(x_values, y_values)
+    )
+
+    denominator = sum(
+        (x - mean_x) ** 2
+        for x in x_values
+    )
+
+    if denominator == 0:
+        return 0.0
+
+    return numerator / denominator
+
+
 def q(
     sql,
     params=None,
@@ -3020,6 +3047,288 @@ def attendance_cleanup():
     return jsonify(
         ok=True,
         deleted=len(ids)
+    )
+
+
+# =========================================================
+# AI INSIGHTS
+# Attendance trend forecasting (linear regression) and
+# anomaly detection (rate-of-change vs historical average).
+# Pure Python, no new dependencies.
+# =========================================================
+
+def compute_ai_insights():
+
+    now = india_now().replace(
+        tzinfo=None
+    )
+
+    rows = q(
+        """
+        SELECT
+            s.id,
+            s.roll_no,
+            s.name,
+            s.department,
+            c.id AS class_id,
+            c.class_date,
+            c.start_time,
+            c.duration_minutes,
+            a.status
+        FROM students s
+        LEFT JOIN classes c
+            ON 1=1
+        LEFT JOIN attendance a
+            ON a.student_id = s.id
+            AND a.class_id = c.id
+        ORDER BY
+            s.name,
+            c.class_date,
+            c.start_time
+        """,
+        fetch=True
+    )
+
+    students = {}
+
+    for r in rows:
+
+        d = dict(r)
+
+        sid = d["id"]
+
+        if sid not in students:
+
+            students[sid] = {
+                "id": sid,
+                "roll_no": d["roll_no"],
+                "name": d["name"],
+                "department": d["department"],
+                "records": []
+            }
+
+        if not d["class_id"]:
+            continue
+
+        try:
+
+            start = datetime.strptime(
+                f'{str(d["class_date"])[:10]} '
+                f'{str(d["start_time"])[:5]}',
+                "%Y-%m-%d %H:%M"
+            )
+
+            duration = int(
+                d["duration_minutes"] or 60
+            )
+
+            end = (
+                start
+                + timedelta(minutes=duration)
+            )
+
+        except (TypeError, ValueError):
+            continue
+
+        if now < start:
+            continue
+
+        is_present = d["status"] == "Present"
+
+        is_completed = is_present or now >= end
+
+        if is_completed:
+
+            students[sid]["records"].append(
+                (start.date(), is_present)
+            )
+
+    risk_predictions = []
+
+    anomalies = []
+
+    risk_order = {
+        "High": 0,
+        "Medium": 1,
+        "Low": 2
+    }
+
+    for student in students.values():
+
+        records = sorted(
+            student["records"],
+            key=lambda rec: rec[0]
+        )
+
+        total = len(records)
+
+        present = sum(
+            1 for _, is_present in records
+            if is_present
+        )
+
+        if total == 0:
+            continue
+
+        current_pct = round(
+            present / total * 100, 1
+        )
+
+        first_date = records[0][0]
+
+        weekly = {}
+
+        for date, is_present in records:
+
+            week_idx = (
+                (date - first_date).days // 7
+            )
+
+            if week_idx not in weekly:
+                weekly[week_idx] = [0, 0]
+
+            weekly[week_idx][1] += 1
+
+            if is_present:
+                weekly[week_idx][0] += 1
+
+        week_indices = sorted(weekly.keys())
+
+        x_values = []
+
+        y_values = []
+
+        for wi in week_indices:
+
+            p, t = weekly[wi]
+
+            if t > 0:
+                x_values.append(wi)
+                y_values.append(p / t * 100)
+
+        slope = linear_regression_slope(
+            x_values, y_values
+        )
+
+        predicted_pct = None
+
+        if x_values:
+
+            predicted_pct = (
+                y_values[-1] + slope * 3
+            )
+
+            predicted_pct = max(
+                0, min(100, predicted_pct)
+            )
+
+            predicted_pct = round(predicted_pct, 1)
+
+        if current_pct < 75:
+            risk = "High"
+        elif (
+            predicted_pct is not None
+            and predicted_pct < 75
+            and slope < 0
+        ):
+            risk = "Medium"
+        elif slope < -3:
+            risk = "Medium"
+        else:
+            risk = "Low"
+
+        if slope > 1:
+            trend = "improving"
+        elif slope < -1:
+            trend = "declining"
+        else:
+            trend = "stable"
+
+        risk_predictions.append({
+            "id": student["id"],
+            "roll_no": student["roll_no"],
+            "name": student["name"],
+            "current_percentage": current_pct,
+            "predicted_percentage": predicted_pct,
+            "trend": trend,
+            "risk": risk
+        })
+
+        cutoff = now.date() - timedelta(days=7)
+
+        recent = [
+            is_present for date, is_present in records
+            if date >= cutoff
+        ]
+
+        older = [
+            is_present for date, is_present in records
+            if date < cutoff
+        ]
+
+        if len(recent) >= 2 and len(older) >= 3:
+
+            recent_rate = (
+                sum(recent) / len(recent) * 100
+            )
+
+            older_rate = (
+                sum(older) / len(older) * 100
+            )
+
+            drop = older_rate - recent_rate
+
+            if drop >= 30:
+
+                anomalies.append({
+                    "id": student["id"],
+                    "roll_no": student["roll_no"],
+                    "name": student["name"],
+                    "historical_rate": round(older_rate, 1),
+                    "recent_rate": round(recent_rate, 1),
+                    "drop": round(drop, 1)
+                })
+
+    risk_predictions.sort(
+        key=lambda r: (
+            risk_order[r["risk"]],
+            r["current_percentage"]
+        )
+    )
+
+    anomalies.sort(
+        key=lambda a: -a["drop"]
+    )
+
+    return risk_predictions, anomalies
+
+
+@app.route(
+    "/api/ai/insights"
+)
+@admin_required
+def ai_insights():
+
+    risk_predictions, anomalies = compute_ai_insights()
+
+    return jsonify(
+        ok=True,
+        risk_predictions=risk_predictions,
+        anomalies=anomalies,
+        model_info={
+            "trend_model": (
+                "Linear regression (least-squares) over "
+                "weekly attendance rate"
+            ),
+            "anomaly_model": (
+                "Statistical rate-of-change detection "
+                "(last 7 days vs historical average)"
+            ),
+            "face_model": (
+                "128-dimensional deep face embeddings "
+                "(CNN-based, face-api.js / TensorFlow.js)"
+            )
+        }
     )
 
 
