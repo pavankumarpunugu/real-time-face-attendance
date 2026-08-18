@@ -546,7 +546,7 @@ let faceModelsLoaded = false;
 let faceRecognitionRunning = false;
 let faceAttemptCount = 0;
 
-const MAX_FACE_ATTEMPTS = 20;
+const MAX_FACE_ATTEMPTS = 30;
 
 const qrCanvas = document.createElement("canvas");
 const qrCanvasCtx = qrCanvas.getContext("2d");
@@ -1038,7 +1038,9 @@ async function scanFaceForQr() {
 
             faceRecognitionRunning = false;
 
-            setTimeout(scanFaceForQr, 500);
+            if (!registerFailedAttempt("Waiting for camera...")) {
+                setTimeout(scanFaceForQr, 500);
+            }
 
             return;
 
